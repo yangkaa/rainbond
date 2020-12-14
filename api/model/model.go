@@ -414,6 +414,11 @@ type TenantResources struct {
 	}
 }
 
+// Check Tenant Resources Req
+type CheckTenantResourcesReq struct {
+	NeedMemory int `json:"need_memory" validate:"required"`
+}
+
 //ServicesResources ServicesResources
 // swagger:parameters serviceResources
 type ServicesResources struct {

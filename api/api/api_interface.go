@@ -52,6 +52,7 @@ type TenantInterface interface {
 	GetManyDeployVersion(w http.ResponseWriter, r *http.Request)
 	LimitTenantMemory(w http.ResponseWriter, r *http.Request)
 	TenantResourcesStatus(w http.ResponseWriter, r *http.Request)
+	CheckTenantResource(w http.ResponseWriter, r *http.Request)
 }
 
 //ServiceInterface ServiceInterface
