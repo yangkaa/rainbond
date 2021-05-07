@@ -234,6 +234,7 @@ func (e *etcdClusterClient) Update(h *HostNode) error {
 	saveNode := *h
 	saveNode.NodeStatus.KubeNode = nil
 	_, err := e.conf.EtcdCli.Put(ctx, e.conf.NodePath+"/"+saveNode.ID, h.String())
+	logrus.Infof("----update status finish---, path key is %v, value is %v, err is %v", e.conf.NodePath+"/"+saveNode.ID, h.String(), err)
 	return err
 }
 
