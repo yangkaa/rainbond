@@ -67,6 +67,7 @@ type etcdClusterClient struct {
 }
 
 func (e *etcdClusterClient) UpdateStatus(n *HostNode, deleteConditions []NodeConditionType) error {
+	logrus.Infof("-----access update status")
 	existNode, err := e.GetNode(n.ID)
 	if err != nil {
 		return fmt.Errorf("get node %s failure where update node %s", n.ID, err.Error())
@@ -100,6 +101,7 @@ func (e *etcdClusterClient) UpdateStatus(n *HostNode, deleteConditions []NodeCon
 		existNode.DeleteCondition(t)
 		logrus.Infof("remove old condition %s", t)
 	}
+	logrus.Infof("----ready update status")
 	return e.Update(existNode)
 }
 
