@@ -445,7 +445,7 @@ func (s *slugBuild) runBuildJob(re *Request) error {
 			re.Logger.Info(util.Translation(fmt.Sprintf("get setting :[ %s ] success", mavenSettingConfigName)), map[string]string{"step": "build-exector"})
 		} else {
 			re.Logger.Info(util.Translation(fmt.Sprintf("get setting :[ %s ] failed 1", mavenSettingConfigName)), map[string]string{"step": "build-exector"})
-			mavenSettingConfigName = ""
+			//mavenSettingConfigName = ""
 			re.Logger.Info(util.Translation(fmt.Sprintf("get setting :[ %s ] failed 2", mavenSettingConfigName)), map[string]string{"step": "build-exector"})
 			logrus.Warnf("maven setting config %s not found", mavenSettingName)
 		}
