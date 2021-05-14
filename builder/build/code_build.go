@@ -442,12 +442,18 @@ func (s *slugBuild) runBuildJob(re *Request) error {
 	if mavenSettingName != "" && re.Lang.String() == code.JavaMaven.String() {
 		if setting := jobc.GetJobController().GetLanguageBuildSetting(re.Ctx, code.JavaMaven, mavenSettingName); setting != "" {
 			mavenSettingConfigName = setting
+			re.Logger.Info(util.Translation(fmt.Sprintf("get setting :[ %s ] success", mavenSettingConfigName)), map[string]string{"step": "build-exector"})
 		} else {
+			re.Logger.Info(util.Translation(fmt.Sprintf("get setting :[ %s ] failed 1", mavenSettingConfigName)), map[string]string{"step": "build-exector"})
+			mavenSettingConfigName = ""
+			re.Logger.Info(util.Translation(fmt.Sprintf("get setting :[ %s ] failed 2", mavenSettingConfigName)), map[string]string{"step": "build-exector"})
 			logrus.Warnf("maven setting config %s not found", mavenSettingName)
 		}
 	} else if settingName := jobc.GetJobController().GetDefaultLanguageBuildSetting(re.Ctx, code.JavaMaven); settingName != "" {
 		mavenSettingConfigName = settingName
+		re.Logger.Info(util.Translation(fmt.Sprintf("get default setting :[ %s ] success", mavenSettingConfigName)), map[string]string{"step": "build-exector"})
 	}
+	re.Logger.Info(util.Translation(fmt.Sprintf("maven setting is :[ %s ]", mavenSettingConfigName)), map[string]string{"step": "build-exector"})
 	if mavenSettingConfigName != "" {
 		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
 			Name: "mavensetting",
