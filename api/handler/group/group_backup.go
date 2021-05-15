@@ -239,6 +239,7 @@ func (h *BackupHandle) snapshot(ids []string, sourceDir string, force bool) erro
 		status := h.statusCli.GetStatus(id)
 		logrus.Debugf("service: %s is state: %v", service.ServiceAlias, service.IsState())
 		if !force && status != v1.CLOSED && service.IsState() { // state running service force backup
+			logrus.Errorf("Get component status is: %v", status)
 			versions, err := db.GetManager().VersionInfoDao().GetVersionByServiceID(id)
 			if err != nil {
 				logrus.Errorf("Get component version error when backing up components: %v", err)
