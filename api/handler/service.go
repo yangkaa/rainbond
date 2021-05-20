@@ -29,7 +29,6 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/jinzhu/gorm"
-	pkgerr "github.com/pkg/errors"
 	"github.com/pquerna/ffjson/ffjson"
 	"github.com/sirupsen/logrus"
 	"github.com/twinj/uuid"
@@ -417,7 +416,8 @@ func (s *ServiceAction) ServiceHorizontal(hs *model.HorizontalScalingTaskBody) e
 	pods, err := s.statusCli.GetServicePods(service.ServiceID)
 	if err != nil {
 		logrus.Errorf("GetPodByService Error. %v", err)
-		return pkgerr.Wrap(err, "GetPodByService Error")
+		return fmt.Errorf("horizontal service faliure:%s", err.Error())
+		//return pkgerr.Wrap(err, "GetPodByService Error")
 	}
 	if int32(len(pods.NewPods)) == hs.Replicas{
 		return bcode.ErrHorizontalDueToNoChange
