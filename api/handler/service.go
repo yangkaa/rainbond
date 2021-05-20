@@ -29,10 +29,10 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/jinzhu/gorm"
+	pkgerr "github.com/pkg/errors"
 	"github.com/pquerna/ffjson/ffjson"
 	"github.com/sirupsen/logrus"
 	"github.com/twinj/uuid"
-	pkgerr "github.com/pkg/errors"
 
 	"github.com/goodrain/rainbond/api/client/prometheus"
 	"github.com/goodrain/rainbond/api/util"
@@ -405,6 +405,7 @@ func (s *ServiceAction) ServiceVertical(vs *model.VerticalScalingTaskBody) error
 
 //ServiceHorizontal Service Horizontal
 func (s *ServiceAction) ServiceHorizontal(hs *model.HorizontalScalingTaskBody) error {
+	hs.ServiceID = "1234567890ass"
 	service, err := db.GetManager().TenantServiceDao().GetServiceByID(hs.ServiceID)
 	if err != nil {
 		logrus.Errorf("get service by id %s error, %s", service.ServiceID, err)
