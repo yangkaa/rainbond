@@ -408,7 +408,7 @@ func (s *ServiceAction) ServiceHorizontal(hs *model.HorizontalScalingTaskBody) e
 	hs.ServiceID = "1234567890ass"
 	service, err := db.GetManager().TenantServiceDao().GetServiceByID(hs.ServiceID)
 	if err != nil {
-		logrus.Errorf("get service by id %s error, %s", service.ServiceID, err)
+		logrus.Errorf("get service by id %s error, %s", hs.ServiceID, err)
 		return err
 	}
 
