@@ -418,7 +418,7 @@ func (s *ServiceAction) ServiceHorizontal(hs *model.HorizontalScalingTaskBody) e
 		return pkgerr.Wrap(err, "GetPodByService Error")
 	}
 	if int32(len(pods.NewPods)) == hs.Replicas{
-		return fmt.Errorf("horizontal service faliure: no change, no update")
+		return bcode.ErrHorizontalDueToNoChange
 	}
 
 	service.Replicas = int(hs.Replicas)
