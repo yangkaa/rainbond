@@ -416,6 +416,7 @@ func (s *ServiceAction) ServiceHorizontal(hs *model.HorizontalScalingTaskBody) e
 	service.ServiceID = "1234567890ass"
 	pods, err := s.statusCli.GetServicePods(service.ServiceID)
 	if err != nil {
+		logrus.Errorf("GetPodByService Error. %v", err)
 		return pkgerr.Wrap(err, "GetPodByService Error")
 	}
 	if int32(len(pods.NewPods)) == hs.Replicas{
