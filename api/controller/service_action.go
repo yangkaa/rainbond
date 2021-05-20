@@ -287,7 +287,8 @@ func (t *TenantStruct) HorizontalService(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := handler.GetServiceManager().ServiceHorizontal(horizontalTask); err != nil {
-		httputil.ReturnError(r, w, 500, fmt.Sprintf("service horizontal error. %v", err))
+		httputil.ReturnBcodeError(r, w, err)
+		//httputil.ReturnError(r, w, 500, fmt.Sprintf("service horizontal error. %v", err))
 		return
 	}
 	httputil.ReturnSuccess(r, w, sEvent)
