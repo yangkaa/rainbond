@@ -405,7 +405,6 @@ func (s *ServiceAction) ServiceVertical(vs *model.VerticalScalingTaskBody) error
 
 //ServiceHorizontal Service Horizontal
 func (s *ServiceAction) ServiceHorizontal(hs *model.HorizontalScalingTaskBody) error {
-	hs.ServiceID = "1234567890ass"
 	service, err := db.GetManager().TenantServiceDao().GetServiceByID(hs.ServiceID)
 	if err != nil {
 		logrus.Errorf("get service by id %s error, %s", hs.ServiceID, err)
@@ -414,6 +413,7 @@ func (s *ServiceAction) ServiceHorizontal(hs *model.HorizontalScalingTaskBody) e
 
 	// for rollback database
 	oldReplicas := service.Replicas
+	service.ServiceID = "1234567890ass"
 	pods, err := s.statusCli.GetServicePods(service.ServiceID)
 	if err != nil {
 		return pkgerr.Wrap(err, "GetPodByService Error")
