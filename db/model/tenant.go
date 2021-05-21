@@ -359,14 +359,17 @@ func (t *TenantServiceRelation) TableName() string {
 //TenantServiceEnvVar  应用环境变量
 type TenantServiceEnvVar struct {
 	Model
-	TenantID      string `gorm:"column:tenant_id;size:32" validate:"tenant_id|between:30,33" json:"tenant_id"`
-	ServiceID     string `gorm:"column:service_id;size:32" validate:"service_id|between:30,33" json:"service_id"`
-	ContainerPort int    `gorm:"column:container_port" validate:"container_port|numeric_between:1,65535" json:"container_port"`
-	Name          string `gorm:"column:name;size:1024" validate:"name" json:"name"`
-	AttrName      string `gorm:"column:attr_name;size:1024" validate:"env_name|required" json:"attr_name"`
-	AttrValue     string `gorm:"column:attr_value;type:text" validate:"env_value|required" json:"attr_value"`
-	IsChange      bool   `gorm:"column:is_change" validate:"is_change|bool" json:"is_change"`
-	Scope         string `gorm:"column:scope;default:'outer'" validate:"scope|in:outer,inner,both" json:"scope"`
+	TenantID          string `gorm:"column:tenant_id;size:32" validate:"tenant_id|between:30,33" json:"tenant_id"`
+	ServiceID         string `gorm:"column:service_id;size:32" validate:"service_id|between:30,33" json:"service_id"`
+	ContainerPort     int    `gorm:"column:container_port" validate:"container_port|numeric_between:1,65535" json:"container_port"`
+	Name              string `gorm:"column:name;size:1024" validate:"name" json:"name"`
+	AttrName          string `gorm:"column:attr_name;size:1024" validate:"env_name|required" json:"attr_name"`
+	AttrValue         string `gorm:"column:attr_value;type:text" validate:"env_value|required" json:"attr_value"`
+	AttrValueText     string `gorm:"column:attr_value_text;type:text" validate:"env_value|required" json:"attr_value_text"`
+	AttrValueLongText string `gorm:"column:attr_value_longtext;type:longtext" validate:"env_value|required" json:"attr_value_longtext"`
+	AttrValueLongSize string `gorm:"column:attr_value_longsize;size:65535" validate:"env_value|required" json:"attr_value_longsize"`
+	IsChange          bool   `gorm:"column:is_change" validate:"is_change|bool" json:"is_change"`
+	Scope             string `gorm:"column:scope;default:'outer'" validate:"scope|in:outer,inner,both" json:"scope"`
 }
 
 //TableName 表名
