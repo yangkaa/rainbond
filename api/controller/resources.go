@@ -27,6 +27,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/goodrain/rainbond/api/handler"
@@ -645,11 +646,16 @@ func (t *TenantStruct) ServicesInfo(w http.ResponseWriter, r *http.Request) {
 
 //CreateService create Service
 func (t *TenantStruct) CreateService(w http.ResponseWriter, r *http.Request) {
+	validateTime := time.Now()
+	logrus.Errorf("---->view: start validate param ,time is %v", startTime)
 	var ss api_model.ServiceStruct
 	if !httputil.ValidatorRequestStructAndErrorResponse(r, w, &ss, nil) {
 		return
 	}
+	tc1 := time.Since(validateTime)
+	logrus.Errorf("---->view: end validate param ,time is %v, count is %v", time.Now(), tc1)
 
+	checkAppID := time.Now()
 	// Check if the application ID exists
 	if ss.AppID == "" {
 		httputil.ReturnBcodeError(r, w, bcode.ErrCreateNeedCorrectAppID)
@@ -660,10 +666,17 @@ func (t *TenantStruct) CreateService(w http.ResponseWriter, r *http.Request) {
 		httputil.ReturnBcodeError(r, w, err)
 		return
 	}
+	tc2 := time.Since(checkAppID)
+	logrus.Errorf("---->view: checkappID ,time is %v, count is %v", time.Now(), tc2)
 
+
+	cleanEtcd := time.Now()
 	// clean etcd data(source check)
 	handler.GetEtcdHandler().CleanServiceCheckData(ss.EtcdKey)
+	tc3 := time.Since(cleanEtcd)
+	logrus.Errorf("---->view: cleanEtcd ,time is %v, count is %v", time.Now(), tc3)
 
+	checkEndpoint := time.Now()
 	values := url.Values{}
 	if ss.Endpoints != nil && strings.TrimSpace(ss.Endpoints.Static) != "" {
 		if strings.Contains(ss.Endpoints.Static, "127.0.0.1") {
@@ -674,7 +687,10 @@ func (t *TenantStruct) CreateService(w http.ResponseWriter, r *http.Request) {
 		httputil.ReturnValidationError(r, w, values)
 		return
 	}
+	tc4 := time.Since(checkEndpoint)
+	logrus.Errorf("---->view: checkEndpoint ,time is %v, count is %v", time.Now(), tc4)
 
+	createService := time.Now()
 	tenantID := r.Context().Value(middleware.ContextKey("tenant_id")).(string)
 	ss.TenantID = tenantID
 	if err := handler.GetServiceManager().ServiceCreate(&ss); err != nil {
@@ -684,7 +700,11 @@ func (t *TenantStruct) CreateService(w http.ResponseWriter, r *http.Request) {
 		httputil.ReturnError(r, w, 500, fmt.Sprintf("create service error, %v", err))
 		return
 	}
+	tc5 := time.Since(createService)
+	logrus.Errorf("---->view: createService ,time is %v, count is %v", time.Now(), tc5)
 
+	tc6 := time.Since(validateTime)
+	logrus.Errorf("---->view: total ,time is %v, count is %v", time.Now(), tc6)
 	httputil.ReturnSuccess(r, w, nil)
 }
 

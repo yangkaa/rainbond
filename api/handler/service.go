@@ -491,6 +491,8 @@ func (s *ServiceAction) ServiceUpgrade(ru *model.RollingUpgradeTaskBody) error {
 
 //ServiceCreate create service
 func (s *ServiceAction) ServiceCreate(sc *api_model.ServiceStruct) error {
+	startTime := time.Now()
+	logrus.Errorf("---->handler: start create service ,time is %v", startTime)
 	jsonSC, err := ffjson.Marshal(sc)
 	if err != nil {
 		logrus.Errorf("trans service struct to json failed. %v", err)
@@ -803,6 +805,8 @@ func (s *ServiceAction) ServiceCreate(sc *api_model.ServiceStruct) error {
 		tx.Rollback()
 		return err
 	}
+	tc := time.Since(startTime)
+	logrus.Errorf("---->handler: end create service ,time is %v, count is %v", time.Now(), tc)
 	logrus.Debugf("create a new app %s success", ts.ServiceAlias)
 	return nil
 }
