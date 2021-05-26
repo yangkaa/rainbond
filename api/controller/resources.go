@@ -647,7 +647,7 @@ func (t *TenantStruct) ServicesInfo(w http.ResponseWriter, r *http.Request) {
 //CreateService create Service
 func (t *TenantStruct) CreateService(w http.ResponseWriter, r *http.Request) {
 	validateTime := time.Now()
-	logrus.Errorf("---->view: start validate param ,time is %v", startTime)
+	logrus.Errorf("---->view: start validate param ,time is %v", validateTime)
 	var ss api_model.ServiceStruct
 	if !httputil.ValidatorRequestStructAndErrorResponse(r, w, &ss, nil) {
 		return
