@@ -2659,6 +2659,7 @@ func (s *ServiceAction) SyncComponentPlugins(tx *gorm.DB, components []*api_mode
 			}
 		}
 	}
+	logrus.Errorf("----> pluginRelations -- %v ----->switch %v", pluginRelations, pluginRelations[0].Switch)
 	// TODO: plugin stream port delete and create
 	if err := db.GetManager().TenantServicePluginRelationDaoTransactions(tx).DeleteByComponentIDs(componentIDs); err != nil {
 		return err
