@@ -281,7 +281,7 @@ func (h *HTTPRuleDaoImpl) DeleteByComponentIDs(componentIDs []string) error{
 }
 
 // CreateOrUpdateHTTPRuleInBatch Batch insert or update http rule
-func (h *HTTPRuleDaoImpl) CreateOrUpdateHTTPRuleInBatch(httpRules []model.HTTPRule) error {
+func (h *HTTPRuleDaoImpl) CreateOrUpdateHTTPRuleInBatch(httpRules []*model.HTTPRule) error {
 	var objects []interface{}
 	for _, httpRule := range httpRules {
 		objects = append(objects, httpRule)
@@ -412,7 +412,7 @@ func (t *TCPRuleDaoTmpl) DeleteByComponentIDs(componentIDs []string) error{
 }
 
 // CreateOrUpdateTCPRuleInBatch Batch insert or update http rule
-func (t *TCPRuleDaoTmpl) CreateOrUpdateTCPRuleInBatch(tcpRules []model.TCPRule) error {
+func (t *TCPRuleDaoTmpl) CreateOrUpdateTCPRuleInBatch(tcpRules []*model.TCPRule) error {
 	var objects []interface{}
 	for _, tcpRule := range tcpRules {
 		objects = append(objects, tcpRule)

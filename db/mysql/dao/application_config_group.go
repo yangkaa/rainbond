@@ -119,7 +119,7 @@ func (a *AppConfigGroupServiceDaoImpl) DeleteByComponentIDs(componentIDs []strin
 }
 
 // CreateOrUpdateConfigGroupServicesInBatch -
-func (a *AppConfigGroupServiceDaoImpl) CreateOrUpdateConfigGroupServicesInBatch(cgservices []model.ConfigGroupService) error {
+func (a *AppConfigGroupServiceDaoImpl) CreateOrUpdateConfigGroupServicesInBatch(cgservices []*model.ConfigGroupService) error {
 	var objects []interface{}
 	for _, cgs := range cgservices {
 		objects = append(objects, cgs)

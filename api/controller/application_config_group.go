@@ -112,12 +112,11 @@ func (a *ApplicationController) ListConfigGroups(w http.ResponseWriter, r *http.
 // SyncComponent -
 func (a *ApplicationController)SyncComponent(w http.ResponseWriter, r *http.Request){
 	var syncComponentReq model.SyncComponentReq
-	tenant := r.Context().Value(middleware.ContextKey("tenant")).(*dbmodel.Tenants)
-	appID := r.Context().Value(middleware.ContextKey("app_id")).(string)
+	app := r.Context().Value(middleware.ContextKey("application")).(*dbmodel.Application)
 	if !httputil.ValidatorRequestStructAndErrorResponse(r, w, &syncComponentReq, nil){
 		return
 	}
-	err := handler.GetApplicationHandler().SyncComponent(tenant, appID, syncComponentReq.Components)
+	err := handler.GetApplicationHandler().SyncComponent(app, syncComponentReq.Components)
 	if err != nil {
 		httputil.ReturnBcodeError(r, w, err)
 		return

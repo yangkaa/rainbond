@@ -58,7 +58,7 @@ func (t *TenantServiceMonitorDaoImpl) DeleteByComponentIDs(componentIDs []string
 }
 
 //CreateOrUpdateMonitorInBatch -
-func (t *TenantServiceMonitorDaoImpl) CreateOrUpdateMonitorInBatch(monitors []model.TenantServiceMonitor) error {
+func (t *TenantServiceMonitorDaoImpl) CreateOrUpdateMonitorInBatch(monitors []*model.TenantServiceMonitor) error {
 	var objects []interface{}
 	for _, monitor := range monitors {
 		objects = append(objects, monitor)

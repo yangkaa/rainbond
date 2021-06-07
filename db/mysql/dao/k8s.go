@@ -121,7 +121,7 @@ func (t *ServiceProbeDaoImpl) DeleteByComponentIDs(componentIDs []string) error 
 }
 
 // CreateOrUpdateProbesInBatch -
-func (t *ServiceProbeDaoImpl) CreateOrUpdateProbesInBatch(probes []model.TenantServiceProbe) error {
+func (t *ServiceProbeDaoImpl) CreateOrUpdateProbesInBatch(probes []*model.TenantServiceProbe) error {
 	var objects []interface{}
 	for _, probe := range probes {
 		objects = append(objects, probe)

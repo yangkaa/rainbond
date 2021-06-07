@@ -405,7 +405,7 @@ func (t *PluginVersionEnvDaoImpl) DeleteByComponentIDs(componentIDs []string) er
 }
 
 // CreateOrUpdatePluginVersionEnvsInBatch -
-func (t *PluginVersionEnvDaoImpl) CreateOrUpdatePluginVersionEnvsInBatch(versionEnvs []model.TenantPluginVersionEnv) error {
+func (t *PluginVersionEnvDaoImpl) CreateOrUpdatePluginVersionEnvsInBatch(versionEnvs []*model.TenantPluginVersionEnv) error {
 	var objects []interface{}
 	for _, env := range versionEnvs {
 		objects = append(objects, env)
@@ -491,7 +491,7 @@ func (t *PluginVersionConfigDaoImpl) DeleteByComponentIDs(componentIDs []string)
 }
 
 // CreateOrUpdatePluginVersionConfigsInBatch -
-func (t *PluginVersionConfigDaoImpl) CreateOrUpdatePluginVersionConfigsInBatch(versionConfigs []model.TenantPluginVersionDiscoverConfig) error {
+func (t *PluginVersionConfigDaoImpl) CreateOrUpdatePluginVersionConfigsInBatch(versionConfigs []*model.TenantPluginVersionDiscoverConfig) error {
 	var objects []interface{}
 	for _, config := range versionConfigs {
 		objects = append(objects, config)
@@ -612,7 +612,7 @@ func (t *TenantServicePluginRelationDaoImpl) DeleteByComponentIDs(componentIDs [
 }
 
 // CreateOrUpdatePluginRelsInBatch -
-func (t *TenantServicePluginRelationDaoImpl) CreateOrUpdatePluginRelsInBatch(relations []model.TenantServicePluginRelation) error {
+func (t *TenantServicePluginRelationDaoImpl) CreateOrUpdatePluginRelsInBatch(relations []*model.TenantServicePluginRelation) error {
 	var objects []interface{}
 	for _, relation := range relations {
 		objects = append(objects, relation)
