@@ -1,12 +1,13 @@
 package handler
 
 import (
-	"github.com/goodrain/rainbond/.cache/github.com/sirupsen/logrus@v1.6.0"
+
 	api_model "github.com/goodrain/rainbond/api/model"
 	"github.com/goodrain/rainbond/api/util/bcode"
 	"github.com/goodrain/rainbond/db"
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	"github.com/jinzhu/gorm"
+	"github.com/sirupsen/logrus"
 )
 
 //UpdateServiceMonitor update service monitor
