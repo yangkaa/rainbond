@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/goodrain/rainbond/.cache/github.com/sirupsen/logrus@v1.6.0"
 	api_model "github.com/goodrain/rainbond/api/model"
 	"github.com/goodrain/rainbond/api/util/bcode"
 	"github.com/goodrain/rainbond/db"
@@ -71,6 +72,8 @@ func (s *ServiceAction) SyncComponentMonitors(tx *gorm.DB,app *dbmodel.Applicati
 			}
 		}
 	}
+	logrus.Errorf("componentIDs is %v\n", componentIDs)
+	logrus.Errorf("monitors is %v\n", monitors)
 	if err := db.GetManager().TenantServiceMonitorDaoTransactions(tx).DeleteByComponentIDs(componentIDs); err != nil {
 		return err
 	}
