@@ -2490,15 +2490,15 @@ func (s *ServiceAction) SyncComponentEnvs(tx *gorm.DB, app *dbmodel.Application,
 		componentIDs []string
 		envs         []*dbmodel.TenantServiceEnvVar
 	)
+	logrus.Errorln("------> Env is Changed1 ")
 	for _, component := range components {
-		logrus.Errorln("------> Env is Changed ")
-		if component.Envs == nil {
-			continue
-		}
-		componentIDs = append(componentIDs, component.ComponentBase.ComponentID)
-		for _, env := range component.Envs {
-			logrus.Errorf("------> Env %v is Changed %v, %T", env.AttrName, env.IsChange, env.IsChange)
-			envs = append(envs, env.DbModel(app.TenantID, component.ComponentBase.ComponentID))
+		logrus.Errorln("------> Env is Changed2 ")
+		if component.Envs != nil {
+			componentIDs = append(componentIDs, component.ComponentBase.ComponentID)
+			for _, env := range component.Envs {
+				logrus.Errorf("------> Env %v is Changed %v, %T", env.AttrName, env.IsChange, env.IsChange)
+				envs = append(envs, env.DbModel(app.TenantID, component.ComponentBase.ComponentID))
+			}
 		}
 	}
 	if err := db.GetManager().TenantServiceEnvVarDaoTransactions(tx).DeleteByComponentIDs(componentIDs); err != nil {
