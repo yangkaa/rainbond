@@ -1270,7 +1270,7 @@ func (a *AddTenantServiceEnvVar) DbModel(tenantID, componentID string) *dbmodel.
 		AttrName:      a.AttrName,
 		AttrValue:     a.AttrValue,
 		ContainerPort: a.ContainerPort,
-		IsChange:      true,
+		IsChange:      a.IsChange,
 		Scope:         a.Scope,
 	}
 }

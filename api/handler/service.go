@@ -2491,12 +2491,13 @@ func (s *ServiceAction) SyncComponentEnvs(tx *gorm.DB, app *dbmodel.Application,
 		envs         []*dbmodel.TenantServiceEnvVar
 	)
 	for _, component := range components {
-		if component.Envs != nil {
+		if component.Envs == nil {
+			continue
+		}
 			componentIDs = append(componentIDs, component.ComponentBase.ComponentID)
 			for _, env := range component.Envs {
 				envs = append(envs, env.DbModel(app.TenantID, component.ComponentBase.ComponentID))
 			}
-		}
 	}
 	if err := db.GetManager().TenantServiceEnvVarDaoTransactions(tx).DeleteByComponentIDs(componentIDs); err != nil {
 		return err
@@ -2659,7 +2660,7 @@ func (s *ServiceAction) SyncComponentPlugins(tx *gorm.DB, components []*api_mode
 			}
 		}
 	}
-	logrus.Errorf("----> pluginRelations -- %v ----->switch %v", pluginRelations, pluginRelations[0].Switch)
+	logrus.Errorf("----> pluginRelations -- %v ----->switch %v --->type %T", pluginRelations[0], pluginRelations[0].Switch, pluginRelations[0].Switch)
 	// TODO: plugin stream port delete and create
 	if err := db.GetManager().TenantServicePluginRelationDaoTransactions(tx).DeleteByComponentIDs(componentIDs); err != nil {
 		return err
