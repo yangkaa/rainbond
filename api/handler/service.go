@@ -2496,6 +2496,7 @@ func (s *ServiceAction) SyncComponentEnvs(tx *gorm.DB, app *dbmodel.Application,
 		}
 			componentIDs = append(componentIDs, component.ComponentBase.ComponentID)
 			for _, env := range component.Envs {
+				logrus.Errorf("------> Env %v is Changed %v, %T", env.AttrName, env.IsChange, env.IsChange)
 				envs = append(envs, env.DbModel(app.TenantID, component.ComponentBase.ComponentID))
 			}
 	}
