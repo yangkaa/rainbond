@@ -9,7 +9,7 @@ import (
 type ComponentBase struct {
 	// in: body
 	// required: true
-	ComponentID string `json:"component_id" validate:"component_id"`
+	ComponentID string `json:"component_id" validate:"required"`
 	// 服务名称，用于有状态服务DNS
 	// in: body
 	// required: false
@@ -17,7 +17,7 @@ type ComponentBase struct {
 	// 服务别名
 	// in: body
 	// required: true
-	ComponentAlias string `json:"component_alias" validate:"component_alias"`
+	ComponentAlias string `json:"component_alias" validate:"required"`
 	// 服务描述
 	// in: body
 	// required: false
@@ -95,7 +95,7 @@ func (c *ComponentBase) DbModel(tenantID, appID string) *dbmodel.TenantServices 
 
 // TenantComponentRelation -
 type TenantComponentRelation struct {
-	DependServiceID   string `json:"depend_service_id"`
+	DependServiceID   string `json:"dep_service_id"`
 	DependServiceType string `json:"dep_service_type"`
 	DependOrder       int    `json:"dep_order"`
 }
@@ -233,7 +233,7 @@ type Component struct {
 	Ports              []TenantServicesPort             `json:"ports"`
 	Relations          []TenantComponentRelation        `json:"relations"`
 	Envs               []ComponentEnv                   `json:"envs"`
-	Probes             []ServiceProbe                   `json:"probes"`
+	Probe              ServiceProbe                     `json:"probe"`
 	AppConfigGroupRels []AppConfigGroupRelations        `json:"app_config_groups"`
 	Labels             []ComponentLabel                 `json:"labels"`
 	Plugins            []ComponentPlugin                `json:"plugins"`
