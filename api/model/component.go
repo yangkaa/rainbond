@@ -200,6 +200,30 @@ func (l *ComponentLabel) DbModel(componentID string) *dbmodel.TenantServiceLable
 	}
 }
 
+//ComponentEnv  -
+type ComponentEnv struct {
+	ContainerPort int    `validate:"container_port|numeric_between:1,65535" json:"container_port"`
+	Name          string `validate:"name" json:"name"`
+	AttrName      string `validate:"attr_name|required" json:"attr_name"`
+	AttrValue     string `validate:"attr_value" json:"attr_value"`
+	IsChange      bool   `validate:"is_change|bool" json:"is_change"`
+	Scope         string `validate:"scope|in:outer,inner,both,build" json:"scope"`
+}
+
+// DbModel return database model
+func (e *ComponentEnv) DbModel(tenantID, componentID string) *dbmodel.TenantServiceEnvVar {
+	return &dbmodel.TenantServiceEnvVar{
+		TenantID:      tenantID,
+		ServiceID:     componentID,
+		Name:          e.Name,
+		AttrName:      e.AttrName,
+		AttrValue:     e.AttrValue,
+		ContainerPort: e.ContainerPort,
+		IsChange:      true,
+		Scope:         e.Scope,
+	}
+}
+
 // Component All attributes related to the component
 type Component struct {
 	ComponentBase      ComponentBase                    `json:"component_base"`
@@ -208,7 +232,7 @@ type Component struct {
 	Monitors           []AddServiceMonitorRequestStruct `json:"monitors"`
 	Ports              []TenantServicesPort             `json:"ports"`
 	Relations          []TenantComponentRelation        `json:"relations"`
-	Envs               []AddTenantServiceEnvVar         `json:"envs"`
+	Envs               []ComponentEnv                   `json:"envs"`
 	Probes             []ServiceProbe                   `json:"probes"`
 	AppConfigGroupRels []AppConfigGroupRelations        `json:"app_config_groups"`
 	Labels             []ComponentLabel                 `json:"labels"`
