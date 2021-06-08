@@ -114,7 +114,7 @@ func (t *TenantComponentRelation) DbModel(tenantID, componentID string) *dbmodel
 
 type ComponentConfigFile struct {
 	VolumeName  string `json:"volume_name"`
-	FileContent string `json:"filename"`
+	FileContent string `json:"file_content"`
 }
 
 func (c *ComponentConfigFile) DbModel(componentID string) *dbmodel.TenantServiceConfigFile {
