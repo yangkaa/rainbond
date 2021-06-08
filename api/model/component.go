@@ -62,10 +62,6 @@ type ComponentBase struct {
 	// in: body
 	// required: false
 	Namespace string `json:"namespace" validate:"namespace"`
-	// 更新时间
-	// in: body
-	// required: false
-	UpdateTime time.Time `json:"update_time" validate:"update_time"`
 	// 服务创建类型cloud云市服务,assistant云帮服务
 	// in: body
 	// required: false
