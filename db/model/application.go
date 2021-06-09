@@ -61,6 +61,8 @@ type ApplicationConfigGroup struct {
 	ConfigGroupName string `gorm:"column:config_group_name" json:"config_group_name"`
 	DeployType      string `gorm:"column:deploy_type;default:'env'" json:"deploy_type"`
 	Enable          bool   `gorm:"column:enable" json:"enable"`
+	TestField       string `gorm:"column:test_field;default:env" json:"test_field"`
+	TestFieldB       string `gorm:"column:test_fieldb;default:env" json:"test_fieldb"`
 }
 
 // TableName return tableName "application"
