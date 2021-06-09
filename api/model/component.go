@@ -9,7 +9,7 @@ import (
 type ComponentBase struct {
 	// in: body
 	// required: true
-	ComponentID string `json:"component_id" validate:"required"`
+	ComponentID string `json:"component_id" valid:"required"`
 	// 服务名称，用于有状态服务DNS
 	// in: body
 	// required: false
