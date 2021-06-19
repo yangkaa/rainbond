@@ -1310,6 +1310,8 @@ type TenantServicesPort struct {
 
 // DbModel return database model
 func (p *TenantServicesPort) DbModel(tenantID, componentID string) *dbmodel.TenantServicesPort {
+	isInnerService := p.IsInnerService
+	isOuterService := p.IsOuterService
 	return &dbmodel.TenantServicesPort{
 		TenantID:       tenantID,
 		ServiceID:      componentID,
@@ -1317,8 +1319,8 @@ func (p *TenantServicesPort) DbModel(tenantID, componentID string) *dbmodel.Tena
 		MappingPort:    p.MappingPort,
 		Protocol:       p.Protocol,
 		PortAlias:      p.PortAlias,
-		IsInnerService: &p.IsInnerService,
-		IsOuterService: &p.IsOuterService,
+		IsInnerService: &isInnerService,
+		IsOuterService: &isOuterService,
 		K8sServiceName: p.K8sServiceName,
 	}
 }
@@ -1826,8 +1828,8 @@ type BindServiceRequest struct {
 
 // ConfigGroupService -
 type ConfigGroupService struct {
-	ServiceID       string `json:"service_id"`
-	ServiceAlias    string `json:"service_alias"`
+	ServiceID    string `json:"service_id"`
+	ServiceAlias string `json:"service_alias"`
 }
 
 // DbModel return database model
@@ -1860,12 +1862,12 @@ func (c ConfigItem) DbModel(appID, configGroupName string) *dbmodel.ConfigGroupI
 
 // ApplicationConfigGroup -
 type ApplicationConfigGroup struct {
-	AppID               string               `json:"app_id"`
-	ConfigGroupName     string               `json:"config_group_name" validate:"required,alphanum,min=2,max=64"`
-	DeployType          string               `json:"deploy_type" validate:"required,oneof=env configfile"`
-	ServiceIDs          []string             `json:"service_ids"`
-	ConfigItems         []ConfigItem         `json:"config_items"`
-	Enable              bool                 `json:"enable"`
+	AppID           string       `json:"app_id"`
+	ConfigGroupName string       `json:"config_group_name" validate:"required,alphanum,min=2,max=64"`
+	DeployType      string       `json:"deploy_type" validate:"required,oneof=env configfile"`
+	ServiceIDs      []string     `json:"service_ids"`
+	ConfigItems     []ConfigItem `json:"config_items"`
+	Enable          bool         `json:"enable"`
 }
 
 // AppConfigGroup Interface for synchronizing application configuration groups
