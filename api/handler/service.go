@@ -1244,6 +1244,9 @@ func (s *ServiceAction) SyncComponentPorts(tx *gorm.DB, app *dbmodel.Application
 		}
 		componentIDs = append(componentIDs, component.ComponentBase.ComponentID)
 		for _, port := range component.Ports {
+			logrus.Errorln(port)
+			logrus.Errorln("--------------------------------------------")
+			logrus.Errorln(port.DbModel(app.TenantID, component.ComponentBase.ComponentID))
 			ports = append(ports, port.DbModel(app.TenantID, component.ComponentBase.ComponentID))
 		}
 	}
