@@ -443,6 +443,7 @@ func GetPublicKey(tenantID string) string {
 	if home == "" {
 		home = "/root"
 	}
+	logrus.Errorln("home dir is ----> ", home)
 	PublicKey := tenantID + ".pub"
 	PrivateKey := tenantID
 
@@ -456,6 +457,7 @@ func GetPublicKey(tenantID string) string {
 	}
 	PrivateKeyFile, err := os.Create(path.Join(home, "/.ssh/"+PrivateKey))
 	if err != nil {
+		logrus.Errorln("create ssh private key dir failed ----> ", err)
 		fmt.Println(err)
 	} else {
 		PrivateKeyFile.WriteString(Private)
@@ -463,6 +465,7 @@ func GetPublicKey(tenantID string) string {
 	PublicKeyFile, err2 := os.Create(path.Join(home, "/.ssh/"+PublicKey))
 
 	if err2 != nil {
+		logrus.Errorln("create ssh public key dir failed ----> ", err)
 		fmt.Println(err)
 	} else {
 		PublicKeyFile.WriteString(Public)
