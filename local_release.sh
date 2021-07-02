@@ -1,5 +1,5 @@
 #! /bin/bash
 
-export VERSION=v5.3.0-release
-export BUILD_IMAGE_BASE_NAME=registry.cn-hangzhou.aliyuncs.com/goodrain
+export VERSION=enterprise-2107
+export BUILD_IMAGE_BASE_NAME=image.goodrain.com
 ./release.sh all push
