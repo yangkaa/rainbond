@@ -33,13 +33,40 @@ import (
 
 //LicenseInfo license data
 type LicenseInfo struct {
-	Code      string    `json:"code"`
-	Company   string    `json:"company"`
-	Node      int64     `json:"node"`
-	Memory    int64     `json:"memory"`
-	EndTime   string    `json:"end_time"`
-	StartTime string    `json:"start_time"`
-	Features  []Feature `json:"features"`
+	Code        string    `json:"code"`
+	Company     string    `json:"company"`
+	Node        int64     `json:"node"`
+	Memory      int64     `json:"memory"`
+	EndTime     string    `json:"end_time"`
+	StartTime   string    `json:"start_time"`
+	Features    []Feature `json:"features"`
+	IsPermanent bool      `json:"is_permanent" description:"是否为永久授权"`
+}
+
+func (l *LicenseInfo) SetResp() *LicenseResp {
+	return &LicenseResp{
+		Code:        l.Code,
+		Company:     l.Company,
+		ExpectNode:  l.Node,
+		Memory:      l.Memory,
+		EndTime:     l.EndTime,
+		StartTime:   l.StartTime,
+		Features:    l.Features,
+		IsPermanent: l.IsPermanent,
+	}
+}
+
+//LicenseResp license resp data
+type LicenseResp struct {
+	Code        string    `json:"code" description:"code"`
+	Company     string    `json:"company" description:"公司名"`
+	ExpectNode  int64     `json:"expect_node" description:"授权节点数量"`
+	ActualNode  int64     `json:"actual_node" description:"实际节点数量"`
+	Memory      int64     `json:"memory" description:"授权内存"`
+	EndTime     string    `json:"end_time" description:"结束时间"`
+	StartTime   string    `json:"start_time" description:"开始时间"`
+	Features    []Feature `json:"features" description:"特性列表"`
+	IsPermanent bool      `json:"is_permanent" description:"是否为永久授权"`
 }
 
 func (l *LicenseInfo) HaveFeature(code string) bool {
@@ -100,6 +127,7 @@ func ReadLicense() *LicenseInfo {
 	return &info
 }
 
+// Decrypt -
 func Decrypt(key []byte, encrypted string) ([]byte, error) {
 	ciphertext, err := base64.RawURLEncoding.DecodeString(encrypted)
 	if err != nil {
