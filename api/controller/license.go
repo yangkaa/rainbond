@@ -19,6 +19,7 @@
 package controller
 
 import (
+	"github.com/goodrain/rainbond/api/handler"
 	"github.com/goodrain/rainbond/api/region"
 	"net/http"
 
@@ -67,16 +68,10 @@ func (l *LicenseManager) Getlicense(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := lic.SetResp()
-	nodes, err := l.RegionClient.Nodes().List()
+	computeNodes, err:= handler.GetClusterHandler().GetComputeNodeNums(r.Context())
 	if err != nil {
 		httputil.ReturnBcodeError(r, w, err)
 		return
-	}
-	var computeNodes int64
-	for _, node := range nodes{
-		if node.Role.HasRule("compute") {
-			computeNodes += 1
-		}
 	}
 	resp.ActualNode = computeNodes
 	httputil.ReturnSuccess(r, w, resp)
