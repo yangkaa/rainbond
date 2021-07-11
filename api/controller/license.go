@@ -27,7 +27,7 @@ import (
 )
 
 //LicenseManager license manager
-type LicenseManager struct {}
+type LicenseManager struct{}
 
 var licenseManager *LicenseManager
 
@@ -60,11 +60,7 @@ func (l *LicenseManager) Getlicense(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := lic.SetResp()
-	computeNodes, err:= handler.GetClusterHandler().GetComputeNodeNums(r.Context())
-	if err != nil {
-		httputil.ReturnBcodeError(r, w, err)
-		return
-	}
+	computeNodes, _ := handler.GetClusterHandler().GetComputeNodeNums(r.Context())
 	resp.ActualNode = computeNodes
 	httputil.ReturnSuccess(r, w, resp)
 }

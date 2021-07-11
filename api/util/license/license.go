@@ -40,7 +40,6 @@ type LicenseInfo struct {
 	EndTime     string    `json:"end_time"`
 	StartTime   string    `json:"start_time"`
 	Features    []Feature `json:"features"`
-	IsPermanent bool      `json:"is_permanent" description:"是否为永久授权"`
 }
 
 func (l *LicenseInfo) SetResp() *LicenseResp {
@@ -52,7 +51,6 @@ func (l *LicenseInfo) SetResp() *LicenseResp {
 		EndTime:     l.EndTime,
 		StartTime:   l.StartTime,
 		Features:    l.Features,
-		IsPermanent: l.IsPermanent,
 	}
 }
 
@@ -66,7 +64,6 @@ type LicenseResp struct {
 	EndTime     string    `json:"end_time" description:"结束时间"`
 	StartTime   string    `json:"start_time" description:"开始时间"`
 	Features    []Feature `json:"features" description:"特性列表"`
-	IsPermanent bool      `json:"is_permanent" description:"是否为永久授权"`
 }
 
 func (l *LicenseInfo) HaveFeature(code string) bool {
