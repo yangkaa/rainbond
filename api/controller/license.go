@@ -19,6 +19,7 @@
 package controller
 
 import (
+	"github.com/goodrain/rainbond/api/handler"
 	"net/http"
 
 	"github.com/goodrain/rainbond/api/util/license"
@@ -49,4 +50,17 @@ func (l *LicenseManager) GetlicenseFeature(w http.ResponseWriter, r *http.Reques
 		features = lic.Features
 	}
 	httputil.ReturnSuccess(r, w, features)
+}
+
+// Getlicense -
+func (l *LicenseManager) Getlicense(w http.ResponseWriter, r *http.Request) {
+	lic := license.ReadLicense()
+	if lic == nil {
+		httputil.ReturnSuccess(r, w, nil)
+		return
+	}
+	resp := lic.SetResp()
+	computeNodes, _ := handler.GetClusterHandler().GetComputeNodeNums(r.Context())
+	resp.ActualNode = computeNodes
+	httputil.ReturnSuccess(r, w, resp)
 }

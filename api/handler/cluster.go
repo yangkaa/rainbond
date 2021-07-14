@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/goodrain/rainbond/api/model"
@@ -27,6 +28,7 @@ type ClusterHandler interface {
 	MavenSettingUpdate(ctx context.Context, ms *MavenSetting) *util.APIHandleError
 	MavenSettingDelete(ctx context.Context, name string) *util.APIHandleError
 	MavenSettingDetail(ctx context.Context, name string) (*MavenSetting, *util.APIHandleError)
+	GetComputeNodeNums(ctx context.Context) (int64, error)
 }
 
 // NewClusterHandler -
@@ -167,6 +169,21 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	return result, nil
 }
 
+// GetComputeNodeNums -
+func (c *clusterAction) GetComputeNodeNums(ctx context.Context) (int64, error) {
+	nodes, err := c.listNodes(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("[GetComputeNodeNums] list nodes: %v", err)
+	}
+	var number int64
+	for _, node := range nodes {
+		if isComputeNode(node) {
+			number += 1
+		}
+	}
+	return number, nil
+}
+
 func (c *clusterAction) listNodes(ctx context.Context) ([]*corev1.Node, error) {
 	opts := metav1.ListOptions{}
 	nodeList, err := c.clientset.CoreV1().Nodes().List(ctx, opts)
@@ -187,6 +204,15 @@ func (c *clusterAction) listNodes(ctx context.Context) ([]*corev1.Node, error) {
 	}
 
 	return nodes, nil
+}
+
+func isComputeNode(node *corev1.Node) bool {
+	for lableKey, _ := range node.Labels {
+		if strings.Contains(lableKey, "node-role.kubernetes.io/master") {
+			return false
+		}
+	}
+	return true
 }
 
 func isNodeReady(node *corev1.Node) bool {

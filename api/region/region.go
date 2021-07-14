@@ -55,6 +55,7 @@ type Region interface {
 	Monitor() MonitorInterface
 	Notification() NotificationInterface
 	DoRequest(path, method string, body io.Reader, decode *utilhttp.ResponseBody) (int, error)
+	License() LicenseInterface
 }
 
 //APIConf region api config
