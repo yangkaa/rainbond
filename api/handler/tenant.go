@@ -369,8 +369,9 @@ func (t *TenantAction) GetTenantsResources(ctx context.Context, tr *api_model.Te
 			logrus.Errorf("----> result[tenantID][\"disk\"] ----> %v", result[tenantID]["disk"])
 		}
 		logrus.Errorf("----> result 1 ----> %v", result)
+		result[tenantID]["disk"] = 3000
+		logrus.Errorf("----> result 2 ----> %v", result)
 	}
-	logrus.Errorf("----> result 2 ----> %v", result)
 	return result, nil
 }
 
