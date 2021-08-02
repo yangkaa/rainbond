@@ -352,16 +352,25 @@ func (t *TenantAction) GetTenantsResources(ctx context.Context, tr *api_model.Te
 	//query disk used in prometheus
 	query := fmt.Sprintf(`sum(app_resource_appfs{tenant_id=~"%s"}) by(tenant_id)`, strings.Join(ids, "|"))
 	metric := t.prometheusCli.GetMetric(query, time.Now())
+	logrus.Errorf("----> query sql ----> %s", query)
+	logrus.Errorf("---> value length --> %s", len(metric.MetricData.MetricValues))
 	for _, mv := range metric.MetricData.MetricValues {
+		logrus.Errorf("----> metadata ----> %v", mv.Metadata)
 		var tenantID = mv.Metadata["tenant_id"]
+		logrus.Errorf("----> tenantID ----> %v", tenantID)
 		var disk int
 		if mv.Sample != nil {
+			logrus.Errorf("----> mv.Sample.Value() ----> %v", mv.Sample.Value())
 			disk = int(mv.Sample.Value() / 1024)
+			logrus.Errorf("----> disk ----> %v", disk)
 		}
 		if tenantID != "" {
 			result[tenantID]["disk"] = disk / 1024
+			logrus.Errorf("----> result[tenantID][\"disk\"] ----> %v", result[tenantID]["disk"])
 		}
+		logrus.Errorf("----> result 1 ----> %v", result)
 	}
+	logrus.Errorf("----> result 2 ----> %v", result)
 	return result, nil
 }
 
