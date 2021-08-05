@@ -75,6 +75,7 @@ type ApplicationDao interface {
 	GetAppByID(appID string) (*model.Application, error)
 	DeleteApp(appID string) error
 	GetByServiceID(sid string) (*model.Application, error)
+	ListByAppIDs(appIDs []string) ([]*model.Application, error)
 }
 
 //AppConfigGroupDao Application config group Dao
@@ -428,6 +429,7 @@ type EventDao interface {
 	LatestFailurePodEvent(podName string) (*model.ServiceEvent, error)
 	UpdateReason(eventID string, reason string) error
 	SetEventStatus(ctx context.Context, status model.EventStatus) error
+	UpdateInBatch(events []*model.ServiceEvent) error
 }
 
 //VersionInfoDao VersionInfoDao
@@ -446,6 +448,7 @@ type VersionInfoDao interface {
 	DeleteFailureVersionInfo(timePoint time.Time, status string, serviceIDList []string) error
 	SearchVersionInfo() ([]*model.VersionInfo, error)
 	ListByServiceIDStatus(serviceID string, finalStatus *bool) ([]*model.VersionInfo, error)
+	ListVersionsByComponentIDs(componentIDs []string) ([]*model.VersionInfo, error)
 }
 
 //RegionUserInfoDao UserRegionInfoDao
@@ -552,6 +555,8 @@ type ThirdPartySvcDiscoveryCfgDao interface {
 	Dao
 	GetByServiceID(sid string) (*model.ThirdPartySvcDiscoveryCfg, error)
 	DeleteByServiceID(sid string) error
+	DeleteByComponentIDs(componentIDs []string) error
+	CreateOrUpdate3rdSvcDiscoveryCfgInBatch(cfgs []*model.ThirdPartySvcDiscoveryCfg) error
 }
 
 // GwRuleConfigDao is the interface that wraps the required methods to execute

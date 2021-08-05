@@ -243,7 +243,7 @@ type Component struct {
 	Ports              []TenantServicesPort             `json:"ports"`
 	Relations          []TenantComponentRelation        `json:"relations"`
 	Envs               []ComponentEnv                   `json:"envs"`
-	Probe              ServiceProbe                     `json:"probe"`
+	Probes             []ServiceProbe                   `json:"probes"`
 	AppConfigGroupRels []AppConfigGroupRelations        `json:"app_config_groups"`
 	Labels             []ComponentLabel                 `json:"labels"`
 	Plugins            []ComponentPlugin                `json:"plugins"`
@@ -251,6 +251,7 @@ type Component struct {
 	ConfigFiles        []ComponentConfigFile            `json:"config_files"`
 	VolumeRelations    []VolumeRelation                 `json:"volume_relations"`
 	Volumes            []ComponentVolume                `json:"volumes"`
+	Endpoint           *Endpoints                       `json:"endpoint"`
 }
 
 // SyncComponentReq -
