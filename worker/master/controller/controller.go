@@ -1,5 +1,5 @@
 // RAINBOND, Application Management Platform
-// Copyright (C) 2014-2017 Goodrain Co., Ltd.
+// Copyright (C) 2021-2021 Goodrain Co., Ltd.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,15 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package main
+package controller
 
-import "testing"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
 
-func TestHaveChange(t *testing.T) {
-	old := make(map[string]string)
-	t.Log(haveChange(map[string]string{"console": "127.0.0.1"}, old))
-	t.Log(haveChange(map[string]string{"console": "127.0.0.1"}, map[string]string{"console": "127.0.0.1"}))
-	t.Log(haveChange(map[string]string{"console": "127.0.0.2"}, map[string]string{"console": "127.0.0.1"}))
-	t.Log(haveChange(map[string]string{"console": "127.0.0.2", "console1": "127.0.0.1"}, map[string]string{"console": "127.0.0.1"}))
-	t.Log(haveChange(map[string]string{"console": "127.0.0.2"}, map[string]string{"console2": "127.0.0.1", "console1": "127.0.0.1"}))
+type Controller interface {
+	reconcile.Reconciler
+	Collect(ch chan<- prometheus.Metric)
 }
