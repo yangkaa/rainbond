@@ -117,7 +117,7 @@ func (o *OrService) Start(errCh chan error) error {
 			cmd := nginxcmd.CreateNginxCommand()
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			logrus.Infof("start nginx command )
+			logrus.Infof("start nginx command")
 			logrus.Infof("start nginx command %v", cmd)
 
 			if err := cmd.Start(); err != nil {
