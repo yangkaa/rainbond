@@ -96,7 +96,7 @@ func Run(s *option.GWServer) error {
 		}
 	}
 	mc.Start()
-
+	logrus.Error("-----> controller.NewGWController start")
 	gwc, err := controller.NewGWController(ctx, clientset, &s.Config, mc, node)
 	if err != nil {
 		return err

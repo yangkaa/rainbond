@@ -136,8 +136,9 @@ func (gwc *GWController) handleEvent() {
 }
 
 func (gwc *GWController) syncGateway(key interface{}) error {
+	logrus.Error("-----> syncGateway start")
 	gwc.syncRateLimiter.Accept()
-
+	logrus.Error("-----> syncGateway start")
 	if gwc.syncQueue.IsShuttingDown() {
 		return nil
 	}
@@ -189,13 +190,16 @@ func NewGWController(ctx context.Context, clientset kubernetes.Interface, cfg *o
 		metricCollector: mc,
 	}
 
+	logrus.Error("-----> CreateOpenrestyService start")
 	gwc.GWS = openresty.CreateOpenrestyService(cfg, &gwc.isShuttingDown)
-
+	logrus.Error("-----> CreateOpenrestyService end")
 	gwc.store = store.New(
 		clientset,
 		gwc.updateCh,
 		cfg, node)
+	logrus.Error("-----> store.New end")
 	gwc.syncQueue = task.NewTaskQueue(gwc.syncGateway)
+	logrus.Error("-----> gwc.syncQueue end")
 
 	return gwc, nil
 }
