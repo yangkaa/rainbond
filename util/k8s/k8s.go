@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"encoding/json"
-	networkingv1 "k8s.io/api/networking/v1"
 	"net"
 	"os"
 
@@ -119,9 +118,4 @@ func CreatePatch(o, n, datastruct interface{}) ([]byte, error) {
 		return nil, err
 	}
 	return strategicpatch.CreateTwoWayMergePatch(oldData, newData, datastruct)
-}
-
-// IngressPathType -
-func IngressPathType(pathType networkingv1.PathType) *networkingv1.PathType {
-	return &pathType
 }

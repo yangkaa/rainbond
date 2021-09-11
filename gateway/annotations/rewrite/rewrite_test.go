@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	api "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -32,13 +32,13 @@ const (
 	defRoute = "/demo"
 )
 
-func buildIngress() *networkingv1.Ingress {
+func buildIngress() *extensions.Ingress {
 	defaultBackend := extensions.IngressBackend{
 		ServiceName: "default-backend",
 		ServicePort: intstr.FromInt(80),
 	}
 
-	return &networkingv1.Ingress{
+	return &extensions.Ingress{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "foo",
 			Namespace: api.NamespaceDefault,
