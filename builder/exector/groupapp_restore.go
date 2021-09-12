@@ -32,7 +32,6 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/docker/docker/client"
 	"github.com/goodrain/rainbond/builder"
-	"github.com/goodrain/rainbond/builder/cloudos"
 	"github.com/goodrain/rainbond/builder/parser"
 	"github.com/goodrain/rainbond/builder/sources"
 	"github.com/goodrain/rainbond/db"
@@ -114,10 +113,10 @@ func (b *BackupAPPRestore) Run(timeout time.Duration) error {
 		return fmt.Errorf("backup can not be restore")
 	}
 
-	cacheDir := fmt.Sprintf("/grdata/cache/tmp/%s/%s", b.BackupID, util.NewUUID())
-	if err := util.CheckAndCreateDir(cacheDir); err != nil {
-		return fmt.Errorf("create cache dir error %s", err.Error())
-	}
+	cacheDir := fmt.Sprintf("/grdata/cache/tmp/%s/%s", "restore", "1234567890")
+	//if err := util.CheckAndCreateDir(cacheDir); err != nil {
+	//	return fmt.Errorf("create cache dir error %s", err.Error())
+	//}
 	b.cacheDir = cacheDir
 	switch backup.BackupMode {
 	case "full-online":
@@ -699,31 +698,31 @@ func (b *BackupAPPRestore) downloadFromLocal(backup *dbmodel.AppBackup) error {
 }
 
 func (b *BackupAPPRestore) downloadFromS3(sourceDir string) error {
-	s3Provider, err := cloudos.Str2S3Provider(b.S3Config.Provider)
-	if err != nil {
-		return err
-	}
-	cfg := &cloudos.Config{
-		ProviderType: s3Provider,
-		Endpoint:     b.S3Config.Endpoint,
-		AccessKey:    b.S3Config.AccessKey,
-		SecretKey:    b.S3Config.SecretKey,
-		BucketName:   b.S3Config.BucketName,
-	}
-	cloudoser, err := cloudos.New(cfg)
-	if err != nil {
-		return fmt.Errorf("error creating cloudoser: %v", err)
-	}
+	//s3Provider, err := cloudos.Str2S3Provider(b.S3Config.Provider)
+	//if err != nil {
+	//	return err
+	//}
+	//cfg := &cloudos.Config{
+	//	ProviderType: s3Provider,
+	//	Endpoint:     b.S3Config.Endpoint,
+	//	AccessKey:    b.S3Config.AccessKey,
+	//	SecretKey:    b.S3Config.SecretKey,
+	//	BucketName:   b.S3Config.BucketName,
+	//}
+	//cloudoser, err := cloudos.New(cfg)
+	//if err != nil {
+	//	return fmt.Errorf("error creating cloudoser: %v", err)
+	//}
 
 	_, objectKey := filepath.Split(sourceDir)
 	disDir := path.Join(b.cacheDir, objectKey)
 	logrus.Debugf("object key: %s; file path: %s; start downloading backup file.", objectKey, disDir)
-	if err := cloudoser.GetObject(objectKey, disDir); err != nil {
-		return fmt.Errorf("object key: %s; file path: %s; error downloading file for object storage: %v", objectKey, disDir, err)
-	}
+	//if err := cloudoser.GetObject(objectKey, disDir); err != nil {
+	//	return fmt.Errorf("object key: %s; file path: %s; error downloading file for object storage: %v", objectKey, disDir, err)
+	//}
 	logrus.Debugf("successfully downloading backup file: %s", disDir)
 
-	err = util.Unzip(disDir, b.cacheDir)
+	err := util.Unzip(disDir, b.cacheDir)
 	if err != nil {
 		// b.Logger.Error(util.Translation("unzip metadata file error"), map[string]string{"step": "backup_builder", "status": "failure"})
 		logrus.Errorf("error unzipping backup file: %v", err)
