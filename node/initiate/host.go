@@ -23,6 +23,7 @@ package initiate
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/goodrain/rainbond/cmd/node/option"
 	discover "github.com/goodrain/rainbond/discover.v2"
@@ -75,11 +76,15 @@ func (h *hostManager) Start() {
 			logrus.Warningf("cleanup hosts file: %v", err)
 			return
 		}
+		url := "192.168.20.238"
+		if os.Getenv("IMAGE_URL") != "" {
+			url = os.Getenv("IMAGE_URL")
+		}
 		logrus.Infof("set hosts %s to %s", h.cfg.ImageRepositoryHost, h.cfg.GatewayVIP)
 		lines := []string{
 			util.StartOfSection,
-			h.cfg.GatewayVIP + " " + h.cfg.ImageRepositoryHost,
-			h.cfg.GatewayVIP + " " + "region.goodrain.me",
+			url + " " + h.cfg.ImageRepositoryHost,
+			url + " " + "region.goodrain.me",
 			util.EndOfSection,
 		}
 		h.hostCallback.hosts.AddLines(lines...)
@@ -105,11 +110,15 @@ func (h *hostCallback) UpdateEndpoints(endpoints ...*config.Endpoint) {
 	}
 
 	if len(endpoints) > 0 {
+		url := "192.168.20.238"
+		if os.Getenv("IMAGE_URL") != "" {
+			url = os.Getenv("IMAGE_URL")
+		}
 		logrus.Infof("found endpints: %d; endpoint selected: %#v", len(endpoints), *endpoints[0])
 		lines := []string{
 			util.StartOfSection,
-			endpoints[0].URL + " " + h.cfg.ImageRepositoryHost,
-			endpoints[0].URL + " " + "region.goodrain.me",
+			url + " " + h.cfg.ImageRepositoryHost,
+			url + " " + "region.goodrain.me",
 			util.EndOfSection,
 		}
 		h.hosts.AddLines(lines...)
