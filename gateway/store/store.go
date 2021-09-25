@@ -505,7 +505,7 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 
 	for _, item := range s.listers.Ingress.List() {
 		if !s.ingressIsValid(item) {
-			logrus.Info("ListVirtualService is no valid")
+			logrus.Debugf("ListVirtualService is no valid--1:%+v", item)
 			continue
 		}
 		var ingName, ingNamespace, ingKey, ingServiceName string
@@ -543,6 +543,7 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 			}
 		}
 		anns, err := s.GetIngressAnnotations(ingKey)
+		logrus.Debugf("--->1--->List--->ingKey:%+v---->anns:%+v--->isBeta:%v", ingKey, anns, isBetaIngress)
 		if err != nil {
 			logrus.Errorf("Error getting Ingress annotations %q: %v", ingKey, err)
 			continue
@@ -571,11 +572,12 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 				svcKey = fmt.Sprintf("%v/%v", item.(*betav1.Ingress).Namespace, item.(*betav1.Ingress).Spec.Backend.ServiceName)
 				protocol = s.GetServiceProtocol(svcKey, item.(*betav1.Ingress).Spec.Backend.ServicePort.IntVal)
 			} else {
-				svcKey := fmt.Sprintf("%v/%v", ingNamespace, item.(*networkingv1.Ingress).Spec.DefaultBackend.Service.Name)
+				svcKey = fmt.Sprintf("%v/%v", ingNamespace, item.(*networkingv1.Ingress).Spec.DefaultBackend.Service.Name)
 				protocol = s.GetServiceProtocol(svcKey, item.(*networkingv1.Ingress).Spec.DefaultBackend.Service.Port.Number)
 			}
 
 			listening := fmt.Sprintf("%s:%v", host, anns.L4.L4Port)
+			logrus.Debugf("--->1--->List----anns.L4.L4Enable && anns.L4.L4Port != 0-->listening:%v", listening)
 			if string(protocol) == string(v1.ProtocolUDP) {
 				listening = fmt.Sprintf("%s %s", listening, "udp")
 			}
@@ -825,6 +827,7 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 
 	for _, item := range s.listers.Ingress.List() {
 		if !s.ingressIsValid(item) {
+			logrus.Debugf("ListVirtualService is no valid--2:%+v", item)
 			continue
 		}
 
@@ -839,6 +842,7 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 		}
 
 		anns, err := s.GetIngressAnnotations(ingKey)
+		logrus.Debugf("--->2--->List--->ingKey:%+v---->anns:%+v--->isBeta:%v", ingKey, anns, isBetaIngress)
 		if err != nil {
 			logrus.Errorf("Error getting Ingress annotations %q: %v", ingKey, err)
 		}
@@ -848,6 +852,7 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 		}
 
 		if !anns.L4.L4Enable || anns.L4.L4Port == 0 {
+			logrus.Debugf("--->1--->List----!anns.L4.L4Enable || anns.L4.L4Port == 0 -->isBetaIngress:%v", isBetaIngress)
 			if isBetaIngress {
 				ing := item.(*betav1.Ingress)
 				for _, rule := range ing.Spec.Rules {
