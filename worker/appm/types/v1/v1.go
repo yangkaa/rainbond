@@ -441,6 +441,7 @@ func (a *AppService) SetIngress(d interface{}) {
 	if ok {
 		if len(a.ingresses) > 0 {
 			for i, ingress := range a.ingresses {
+				logrus.Debugf("ingress.GetName()  %v, nwkIngress.GetName() %v",ingress.GetName(), nwkIngress.GetName())
 				if ingress.GetName() == nwkIngress.GetName() {
 					a.ingresses[i] = ingress
 					return
