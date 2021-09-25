@@ -238,7 +238,9 @@ func (a AppServiceBuild) ApplyRules(serviceID string, containerPort, pluginConta
 				continue
 			}
 			ingresses = append(ingresses, ing)
+			logrus.Debugf("--->ing %+v ----tcp rule:%+v",ing, tcpRule)
 		}
+		logrus.Debugf("--->ingresses2:%+v", ingresses)
 	}
 
 	return ingresses, secrets, nil
