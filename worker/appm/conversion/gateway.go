@@ -72,9 +72,13 @@ func TenantServiceRegist(as *v1.AppService, dbmanager db.Manager) error {
 	for _, service := range k8s.Services {
 		as.SetService(service)
 	}
+	newIng, oldIng := as.GetIngress(false)
+	logrus.Debugf("len(k8s.Ingresses) %v, len(as.Ingresses) %v", len(k8s.Ingresses), len(newIng), len(oldIng))
 	for _, ing := range k8s.Ingresses {
 		as.SetIngress(ing)
 	}
+	new1Ing, old1Ing := as.GetIngress(false)
+	logrus.Debugf("--->end len(k8s.Ingresses) %v, len(as.Ingresses) %v", len(k8s.Ingresses), len(new1Ing), len(old1Ing))
 	for _, sec := range k8s.Secrets {
 		as.SetSecret(sec)
 	}
