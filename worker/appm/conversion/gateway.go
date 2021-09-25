@@ -206,6 +206,7 @@ func (a AppServiceBuild) ApplyRules(serviceID string, containerPort, pluginConta
 	// create http ingresses
 	logrus.Debugf("find %d count http rule", len(httpRules))
 	if len(httpRules) > 0 {
+		logrus.Debugf("--->%s/%s ----http rules:%+v",a.tenant.UUID, serviceID, httpRules)
 		for _, httpRule := range httpRules {
 			ingress, sec, err := a.applyHTTPRule(httpRule, containerPort, pluginContainerPort, service)
 			if err != nil {
@@ -228,6 +229,7 @@ func (a AppServiceBuild) ApplyRules(serviceID string, containerPort, pluginConta
 		logrus.Infof("Can't get TCPRule corresponding to ServiceID(%s): %v", serviceID, err)
 	}
 	if len(tcpRules) > 0 {
+		logrus.Debugf("--->%s/%s ----tcp rules:%+v",a.tenant.UUID, serviceID, tcpRules)
 		for _, tcpRule := range tcpRules {
 			ing, err := a.applyTCPRule(tcpRule, service, a.tenant.UUID)
 			if err != nil {
