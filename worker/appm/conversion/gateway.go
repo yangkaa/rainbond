@@ -334,6 +334,7 @@ func (a *AppServiceBuild) applyTCPRule(rule *model.TCPRule, service *corev1.Serv
 			},
 		}
 		nwkIngress.SetAnnotations(annos)
+		logrus.Debugf("annos is %+v, netw annos is %+v", annos, nwkIngress.Annotations)
 		return nwkIngress, nil
 	}
 
