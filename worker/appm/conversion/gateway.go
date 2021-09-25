@@ -348,6 +348,7 @@ func (a *AppServiceBuild) applyTCPRule(rule *model.TCPRule, service *corev1.Serv
 		},
 	}
 	betaIngress.SetAnnotations(annos)
+	logrus.Debugf("annos is %+v, betaIngress annos is %+v", annos, betaIngress.Annotations)
 	return betaIngress, nil
 }
 
