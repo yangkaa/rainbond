@@ -449,6 +449,7 @@ func (a *AppService) SetIngress(d interface{}) {
 			}
 		}
 		a.ingresses = append(a.ingresses, nwkIngress)
+		return
 	}
 	betaIngress, ok := d.(*betav1.Ingress)
 	if ok {
