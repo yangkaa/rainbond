@@ -1181,10 +1181,12 @@ func (s *k8sStore) loopUpdateIngress() {
 				meta = &betaIngress.ObjectMeta
 			}
 
+			logrus.Infof("s.annotations.Extract(meta).L4.L4Host %v, ipevent %+v", s.annotations.Extract(meta).L4.L4Host, ipevent)
 			if s.annotations.Extract(meta).L4.L4Host == ipevent.IP.String() {
 				s.extractAnnotations(superIngress)
 				s.secretIngressMap.update(superIngress)
 				s.syncSecrets(superIngress)
+				logrus.Infof("superIngress %+v", superIngress)
 
 				s.updateCh.In() <- Event{
 					Type: func() EventType {
