@@ -179,10 +179,11 @@ func New(client kubernetes.Interface,
 
 	if k8sutil.IsHighVersion() {
 		store.informers.Ingress = store.sharedInformer.Networking().V1().Ingresses().Informer()
+		store.listers.Ingress.Store = store.informers.Ingress.GetStore()
 	} else {
 		store.informers.Ingress = store.sharedInformer.Networking().V1beta1().Ingresses().Informer()
+		store.listers.Ingress.Store = store.informers.Ingress.GetStore()
 	}
-	store.listers.Ingress.Store = store.informers.Ingress.GetStore()
 
 	store.informers.Service = store.sharedInformer.Core().V1().Services().Informer()
 	store.listers.Service.Store = store.informers.Service.GetStore()
@@ -201,18 +202,16 @@ func New(client kubernetes.Interface,
 				store.extractAnnotations(nwkIngress)
 				store.secretIngressMap.update(nwkIngress)
 				store.syncSecrets(nwkIngress)
-
-			} else {
-				betaIngress, ok := obj.(*betav1.Ingress)
-				if ok {
-					// updating annotations information for ingress
-					store.extractAnnotations(betaIngress)
-					store.secretIngressMap.update(betaIngress)
-					// synchronizes data from all Secrets referenced by the given Ingress with the local store and file system.
-					// takes an Ingress and updates all Secret objects it references in secretIngressMap.
-					store.syncSecrets(betaIngress)
-
-				}
+			}
+			betaIngress, ok := obj.(*betav1.Ingress)
+			if ok {
+				logrus.Info("-----> add")
+				// updating annotations information for ingress
+				store.extractAnnotations(betaIngress)
+				// synchronizes data from all Secrets referenced by the given Ingress with the local store and file system.
+				store.secretIngressMap.update(betaIngress)
+				// takes an Ingress and updates all Secret objects it references in secretIngressMap.
+				store.syncSecrets(betaIngress)
 			}
 
 			updateCh.In() <- Event{
@@ -251,6 +250,7 @@ func New(client kubernetes.Interface,
 			store.extractAnnotations(ingress)
 			store.secretIngressMap.update(ingress)
 			store.syncSecrets(ingress)
+			logrus.Info("-----> update")
 			updateCh.In() <- Event{
 				Type: UpdateEvent,
 				Obj:  cur,
@@ -399,7 +399,7 @@ func (s *k8sStore) checkIngress(meta *metav1.ObjectMeta) bool {
 // annotation to a go struct and also information about the referenced secrets
 func (s *k8sStore) extractAnnotations(ingress interface{}) {
 	key := ik8s.MetaNamespaceKey(ingress)
-	logrus.Debugf("updating annotations information for ingress %v", key)
+	//logrus.Infof("updating annotations information for ingress %v", key)
 
 	var anns *annotations.Ingress
 	if k8sutil.IsHighVersion() {
@@ -409,7 +409,7 @@ func (s *k8sStore) extractAnnotations(ingress interface{}) {
 		betaIngress := ingress.(*betav1.Ingress)
 		anns = s.annotations.Extract(&betaIngress.ObjectMeta)
 	}
-
+	logrus.Infof("updating annotations information for ingress %v, anns %+v", key, anns)
 	err := s.listers.IngressAnnotation.Update(anns)
 	if err != nil {
 		logrus.Error(err)
