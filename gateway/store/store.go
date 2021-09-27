@@ -215,7 +215,7 @@ func New(client kubernetes.Interface,
 				}
 			}
 
-			logrus.Infof("add obj %+v", obj)
+			logrus.Infof("add obj %+v", obj.(*betav1.Ingress).Name)
 			updateCh.In() <- Event{
 				Type: CreateEvent,
 				Obj:  obj,
@@ -250,7 +250,7 @@ func New(client kubernetes.Interface,
 				}
 				ingress = curIng
 			}
-			logrus.Infof("update obj %+v", ingress)
+			logrus.Infof("update obj %+v", ingress.(*betav1.Ingress).Name)
 			store.extractAnnotations(ingress)
 			store.secretIngressMap.update(ingress)
 			store.syncSecrets(ingress)
@@ -413,7 +413,7 @@ func (s *k8sStore) extractAnnotations(ingress interface{}) {
 	}
 
 	err := s.listers.IngressAnnotation.Update(anns)
-	logrus.Infof("updating annotations information for ingress %v: anns %+v", key, anns)
+	logrus.Infof("updating annotations information for ingress %v", key)
 	if err != nil {
 		logrus.Error(err)
 	}
