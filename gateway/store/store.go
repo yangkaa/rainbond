@@ -180,7 +180,7 @@ func New(client kubernetes.Interface,
 	if k8sutil.IsHighVersion() {
 		store.informers.Ingress = store.sharedInformer.Networking().V1().Ingresses().Informer()
 	} else {
-		store.informers.Ingress = store.sharedInformer.Networking().V1beta1().Ingresses().Informer()
+		store.informers.Ingress = store.sharedInformer.Extensions().V1beta1().Ingresses().Informer()
 	}
 	store.listers.Ingress.Store = store.informers.Ingress.GetStore()
 
