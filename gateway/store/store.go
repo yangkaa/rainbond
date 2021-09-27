@@ -1160,40 +1160,49 @@ func (s *k8sStore) loopUpdateIngress() {
 	for ipevent := range s.node.IPManager().NeedUpdateGatewayPolicy() {
 		ingress := s.listers.Ingress.List()
 		for i := range ingress {
-			var meta *metav1.ObjectMeta
-			var superIngress interface{}
-			netIngress, ok := ingress[i].(*networkingv1.Ingress)
-			if ok && netIngress != nil {
-				superIngress = netIngress
-				meta = &netIngress.ObjectMeta
-			} else {
-				betaIngress, ok := ingress[i].(*betav1.Ingress)
-				if !ok || betaIngress == nil {
-					return
+			if k8sutil.IsHighVersion() {
+				curIng, ok := ingress[i].(*networkingv1.Ingress)
+				if ok && curIng != nil && s.annotations.Extract(&curIng.ObjectMeta).L4.L4Host == ipevent.IP.String() {
+					s.extractAnnotations(curIng)
+					s.secretIngressMap.update(curIng)
+					s.syncSecrets(curIng)
+					s.updateCh.In() <- Event{
+						Type: func() EventType {
+							switch ipevent.Type {
+							case coreutil.ADD:
+								return CreateEvent
+							case coreutil.UPDATE:
+								return UpdateEvent
+							case coreutil.DEL:
+								return DeleteEvent
+							default:
+								return UpdateEvent
+							}
+						}(),
+						Obj: ingress[i],
+					}
 				}
-				superIngress = betaIngress
-				meta = &betaIngress.ObjectMeta
-			}
-
-			if s.annotations.Extract(meta).L4.L4Host == ipevent.IP.String() {
-				s.extractAnnotations(superIngress)
-				s.secretIngressMap.update(superIngress)
-				s.syncSecrets(superIngress)
-
-				s.updateCh.In() <- Event{
-					Type: func() EventType {
-						switch ipevent.Type {
-						case coreutil.ADD:
-							return CreateEvent
-						case coreutil.UPDATE:
-							return UpdateEvent
-						case coreutil.DEL:
-							return DeleteEvent
-						default:
-							return UpdateEvent
-						}
-					}(),
-					Obj: ingress[i],
+			} else {
+				curIng, ok := ingress[i].(*betav1.Ingress)
+				if ok && curIng != nil && s.annotations.Extract(&curIng.ObjectMeta).L4.L4Host == ipevent.IP.String() {
+					s.extractAnnotations(curIng)
+					s.secretIngressMap.update(curIng)
+					s.syncSecrets(curIng)
+					s.updateCh.In() <- Event{
+						Type: func() EventType {
+							switch ipevent.Type {
+							case coreutil.ADD:
+								return CreateEvent
+							case coreutil.UPDATE:
+								return UpdateEvent
+							case coreutil.DEL:
+								return DeleteEvent
+							default:
+								return UpdateEvent
+							}
+						}(),
+						Obj: ingress[i],
+					}
 				}
 			}
 		}
