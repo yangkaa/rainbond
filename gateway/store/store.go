@@ -47,8 +47,8 @@ import (
 	ik8s "github.com/goodrain/rainbond/util/ingress-nginx/k8s"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	betav1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -1187,6 +1187,9 @@ func (s *k8sStore) loopUpdateIngress() {
 				}
 			} else {
 				curIng, ok := ingress[i].(*betav1.Ingress)
+				if ok && curIng != nil{
+					logrus.Infof("L4Host: %+v, ipevent.IP.String(): %+v", s.annotations.Extract(&curIng.ObjectMeta).L4.L4Host, ipevent.IP.String())
+				}
 				if ok && curIng != nil && s.annotations.Extract(&curIng.ObjectMeta).L4.L4Host == ipevent.IP.String() {
 					logrus.Infof("start extractAnnotations:%+v", curIng)
 					s.extractAnnotations(curIng)
