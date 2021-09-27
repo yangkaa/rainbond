@@ -215,12 +215,14 @@ func New(client kubernetes.Interface,
 				}
 			}
 
+			logrus.Infof("add obj %+v", obj)
 			updateCh.In() <- Event{
 				Type: CreateEvent,
 				Obj:  obj,
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
+			logrus.Infof("delete obj %+v", obj)
 			updateCh.In() <- Event{
 				Type: DeleteEvent,
 				Obj:  obj,
@@ -248,6 +250,7 @@ func New(client kubernetes.Interface,
 				}
 				ingress = curIng
 			}
+			logrus.Infof("update obj %+v", ingress)
 			store.extractAnnotations(ingress)
 			store.secretIngressMap.update(ingress)
 			store.syncSecrets(ingress)
@@ -399,7 +402,6 @@ func (s *k8sStore) checkIngress(meta *metav1.ObjectMeta) bool {
 // annotation to a go struct and also information about the referenced secrets
 func (s *k8sStore) extractAnnotations(ingress interface{}) {
 	key := ik8s.MetaNamespaceKey(ingress)
-	logrus.Debugf("updating annotations information for ingress %v", key)
 
 	var anns *annotations.Ingress
 	if k8sutil.IsHighVersion() {
@@ -411,6 +413,7 @@ func (s *k8sStore) extractAnnotations(ingress interface{}) {
 	}
 
 	err := s.listers.IngressAnnotation.Update(anns)
+	logrus.Infof("updating annotations information for ingress %v: anns %+v", key, anns)
 	if err != nil {
 		logrus.Error(err)
 	}
