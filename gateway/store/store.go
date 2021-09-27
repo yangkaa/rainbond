@@ -1189,6 +1189,7 @@ func (s *k8sStore) loopUpdateIngress() {
 			} else {
 				curIng, ok := ingress[i].(*betav1.Ingress)
 				if ok && curIng != nil && s.annotations.Extract(&curIng.ObjectMeta).L4.L4Host == ipevent.IP.String() {
+					logrus.Infof("start extractAnnotations:%+v",curIng)
 					s.extractAnnotations(curIng)
 					s.secretIngressMap.update(curIng)
 					s.syncSecrets(curIng)
