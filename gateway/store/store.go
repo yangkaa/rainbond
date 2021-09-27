@@ -195,17 +195,16 @@ func New(client kubernetes.Interface,
 
 	ingEventHandler := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			nwkIngress, ok := obj.(*networkingv1.Ingress)
-			if ok {
+			if k8sutil.IsHighVersion() {
+				nwkIngress := obj.(*networkingv1.Ingress)
 				logrus.Infof("on add----> %+v", nwkIngress)
 				// updating annotations information for ingress
 				store.extractAnnotations(nwkIngress)
 				store.secretIngressMap.update(nwkIngress)
 				store.syncSecrets(nwkIngress)
 
-			}
-			betaIngress, ok := obj.(*betav1.Ingress)
-			if ok {
+			} else {
+				betaIngress := obj.(*betav1.Ingress)
 				logrus.Infof("on add----> %+v", betaIngress)
 				// updating annotations information for ingress
 				store.extractAnnotations(betaIngress)
@@ -1189,7 +1188,7 @@ func (s *k8sStore) loopUpdateIngress() {
 			} else {
 				curIng, ok := ingress[i].(*betav1.Ingress)
 				if ok && curIng != nil && s.annotations.Extract(&curIng.ObjectMeta).L4.L4Host == ipevent.IP.String() {
-					logrus.Infof("start extractAnnotations:%+v",curIng)
+					logrus.Infof("start extractAnnotations:%+v", curIng)
 					s.extractAnnotations(curIng)
 					s.secretIngressMap.update(curIng)
 					s.syncSecrets(curIng)
