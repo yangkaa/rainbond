@@ -264,7 +264,7 @@ func (o *OrService) UpdatePools(hpools []*v1.Pool, tpools []*v1.Pool) error {
 	var lock sync.Mutex
 	lock.Lock()
 	defer lock.Unlock()
-	logrus.Debugf("start update pools(tcp pools count %d, http pool count %d)", len(tpools), len(hpools))
+	logrus.Infof("start update pools(tcp pools count %d, http pool count %d)", len(tpools), len(hpools))
 	if len(tpools) > 0 {
 		err := o.persistUpstreams(tpools)
 		if err != nil {

@@ -156,7 +156,7 @@ func (gwc *GWController) syncGateway(key interface{}) error {
 		logrus.Warningf("error updating pools: %v", err)
 	}
 	if gwc.rcfg.Equals(currentConfig) {
-		logrus.Debug("No need to update running configuration.")
+		logrus.Info("No need to update running configuration.")
 		return nil
 	}
 	logrus.Infof("update nginx server config file.")

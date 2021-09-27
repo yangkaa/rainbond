@@ -108,7 +108,7 @@ func (cfg *Config) Equals(c *Config) bool {
 			return false
 		}
 	}
-	logrus.Debugf("len if cnf.L4VS = %d, l4vs = %d", len(cfg.L4VS), len(c.L4VS))
+	logrus.Infof("len if cnf.L4VS = %d, l4vs = %d", len(cfg.L4VS), len(c.L4VS))
 	if len(cfg.L4VS) != len(c.L4VS) {
 		return false
 	}
