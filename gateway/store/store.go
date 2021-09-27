@@ -197,22 +197,22 @@ func New(client kubernetes.Interface,
 		AddFunc: func(obj interface{}) {
 			nwkIngress, ok := obj.(*networkingv1.Ingress)
 			if ok {
+				logrus.Infof("on add----> %+v", nwkIngress)
 				// updating annotations information for ingress
 				store.extractAnnotations(nwkIngress)
 				store.secretIngressMap.update(nwkIngress)
 				store.syncSecrets(nwkIngress)
 
-			} else {
-				betaIngress, ok := obj.(*betav1.Ingress)
-				if ok {
-					// updating annotations information for ingress
-					store.extractAnnotations(betaIngress)
-					store.secretIngressMap.update(betaIngress)
-					// synchronizes data from all Secrets referenced by the given Ingress with the local store and file system.
-					// takes an Ingress and updates all Secret objects it references in secretIngressMap.
-					store.syncSecrets(betaIngress)
-
-				}
+			}
+			betaIngress, ok := obj.(*betav1.Ingress)
+			if ok {
+				logrus.Infof("on add----> %+v", betaIngress)
+				// updating annotations information for ingress
+				store.extractAnnotations(betaIngress)
+				// synchronizes data from all Secrets referenced by the given Ingress with the local store and file system.
+				store.secretIngressMap.update(betaIngress)
+				// takes an Ingress and updates all Secret objects it references in secretIngressMap.
+				store.syncSecrets(betaIngress)
 			}
 
 			updateCh.In() <- Event{
@@ -233,6 +233,7 @@ func New(client kubernetes.Interface,
 			if k8sutil.IsHighVersion() {
 				oldIng := old.(*networkingv1.Ingress)
 				curIng := cur.(*networkingv1.Ingress)
+				logrus.Infof("on update ----> high version")
 				// ignore the same secret as the old one
 				if oldIng.ResourceVersion == curIng.ResourceVersion || reflect.DeepEqual(oldIng, curIng) {
 					return
@@ -242,12 +243,14 @@ func New(client kubernetes.Interface,
 			} else {
 				oldIng := old.(*betav1.Ingress)
 				curIng := cur.(*betav1.Ingress)
+				logrus.Infof("on update ----> low version")
 				// ignore the same secret as the old one
 				if oldIng.ResourceVersion == curIng.ResourceVersion || reflect.DeepEqual(oldIng, curIng) {
 					return
 				}
 				ingress = curIng
 			}
+			logrus.Infof("on update --extractAnnotations--> ")
 			store.extractAnnotations(ingress)
 			store.secretIngressMap.update(ingress)
 			store.syncSecrets(ingress)
