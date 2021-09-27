@@ -172,10 +172,10 @@ func New(client kubernetes.Interface,
 	store.listers.IngressAnnotation.Store = cache.NewStore(cache.DeletionHandlingMetaNamespaceKeyFunc)
 
 	// create informers factory, enable and assign required informers
-	store.sharedInformer = informers.NewFilteredSharedInformerFactory(client, conf.ResyncPeriod, corev1.NamespaceAll,
-		func(options *metav1.ListOptions) {
+	store.sharedInformer = informers.NewSharedInformerFactoryWithOptions(client, conf.ResyncPeriod, informers.WithNamespace(corev1.NamespaceAll),
+		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
 			options.LabelSelector = "creator=Rainbond"
-		})
+		}))
 
 	if k8sutil.IsHighVersion() {
 		store.informers.Ingress = store.sharedInformer.Networking().V1().Ingresses().Informer()
@@ -213,7 +213,7 @@ func New(client kubernetes.Interface,
 				// takes an Ingress and updates all Secret objects it references in secretIngressMap.
 				store.syncSecrets(betaIngress)
 			}
-
+			logrus.Infof("produce on add----> %+v", obj)
 			updateCh.In() <- Event{
 				Type: CreateEvent,
 				Obj:  obj,
