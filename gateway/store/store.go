@@ -399,7 +399,7 @@ func (s *k8sStore) checkIngress(meta *metav1.ObjectMeta) bool {
 // annotation to a go struct and also information about the referenced secrets
 func (s *k8sStore) extractAnnotations(ingress interface{}) {
 	key := ik8s.MetaNamespaceKey(ingress)
-	logrus.Debugf("updating annotations information for ingress %v", key)
+	//logrus.Infof("updating annotations information for ingress %v", key)
 
 	var anns *annotations.Ingress
 	if k8sutil.IsHighVersion() {
@@ -411,6 +411,7 @@ func (s *k8sStore) extractAnnotations(ingress interface{}) {
 	}
 
 	err := s.listers.IngressAnnotation.Update(anns)
+	logrus.Infof("updating annotations information for ingress %v, anns %+v", key, anns)
 	if err != nil {
 		logrus.Error(err)
 	}
