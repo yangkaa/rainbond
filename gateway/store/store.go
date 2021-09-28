@@ -195,6 +195,7 @@ func New(client kubernetes.Interface,
 
 	ingEventHandler := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
+			logrus.Infof("---> add")
 			nwkIngress, ok := obj.(*networkingv1.Ingress)
 			if ok {
 				// updating annotations information for ingress
@@ -228,6 +229,7 @@ func New(client kubernetes.Interface,
 			}
 		},
 		UpdateFunc: func(old, cur interface{}) {
+			logrus.Infof("--->update")
 			var (
 				ingress interface{}
 			)
@@ -249,7 +251,7 @@ func New(client kubernetes.Interface,
 				}
 				ingress = curIng
 			}
-			logrus.Infof("--->update %+v", ingress)
+
 			store.extractAnnotations(ingress)
 			store.secretIngressMap.update(ingress)
 			store.syncSecrets(ingress)
