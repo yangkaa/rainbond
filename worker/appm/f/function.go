@@ -67,7 +67,9 @@ func ApplyOne(ctx context.Context, apply apply.Applicator, clientset kubernetes.
 			}
 		}
 	}
+	logrus.Infof("apply one--------->")
 	if app.CustomParams != nil {
+		logrus.Infof("apply one---app.CustomParams------>%+v", app.CustomParams)
 		if domain, exist := app.CustomParams["domain"]; exist {
 			// update ingress
 			ingresses, betaIngresses := app.GetIngress(true)
@@ -114,6 +116,12 @@ func ApplyOne(ctx context.Context, apply apply.Applicator, clientset kubernetes.
 						ensureBetaIngress(ing, clientset)
 					}
 				}
+			}
+		}
+		// update endpoints
+		for _, ep := range app.GetEndpoints(true) {
+			if err := EnsureEndpoints(ep, clientset); err != nil {
+				logrus.Errorf("create or update endpoint %s failure %s", ep.Name, err.Error())
 			}
 		}
 	} else {
