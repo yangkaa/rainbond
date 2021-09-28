@@ -214,13 +214,14 @@ func New(client kubernetes.Interface,
 
 				}
 			}
-
+			logrus.Infof("--->add %+v", obj)
 			updateCh.In() <- Event{
 				Type: CreateEvent,
 				Obj:  obj,
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
+			logrus.Infof("--->delete %+v", obj)
 			updateCh.In() <- Event{
 				Type: DeleteEvent,
 				Obj:  obj,
@@ -248,6 +249,7 @@ func New(client kubernetes.Interface,
 				}
 				ingress = curIng
 			}
+			logrus.Infof("--->update %+v", ingress)
 			store.extractAnnotations(ingress)
 			store.secretIngressMap.update(ingress)
 			store.syncSecrets(ingress)
