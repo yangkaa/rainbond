@@ -195,7 +195,7 @@ func New(client kubernetes.Interface,
 
 	ingEventHandler := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			logrus.Infof("---> add")
+			logrus.Infof("---> add %+v", obj.(*betav1.Ingress).Name)
 			nwkIngress, ok := obj.(*networkingv1.Ingress)
 			if ok {
 				// updating annotations information for ingress
@@ -222,14 +222,14 @@ func New(client kubernetes.Interface,
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			logrus.Infof("--->delete %+v", obj)
+			logrus.Infof("--->delete %+v", obj.(*betav1.Ingress).Name)
 			updateCh.In() <- Event{
 				Type: DeleteEvent,
 				Obj:  obj,
 			}
 		},
 		UpdateFunc: func(old, cur interface{}) {
-			logrus.Infof("--->update")
+			logrus.Infof("--->update %+v to %+v", old.(*betav1.Ingress).Name, cur.(*betav1.Ingress).Name)
 			var (
 				ingress interface{}
 			)
