@@ -22,10 +22,9 @@ import (
 	"fmt"
 	"github.com/goodrain/rainbond/gateway/annotations/parser"
 	"github.com/goodrain/rainbond/gateway/annotations/resolver"
-	networkingv1 "k8s.io/api/networking/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
 )
 
-// Config -
 type Config struct {
 	L4Enable bool
 	L4Host   string
@@ -36,12 +35,11 @@ type l4 struct {
 	r resolver.Resolver
 }
 
-// NewParser -
 func NewParser(r resolver.Resolver) parser.IngressAnnotation {
 	return l4{r}
 }
 
-func (l l4) Parse(ing *networkingv1.Ingress) (interface{}, error) {
+func (l l4) Parse(ing *extensions.Ingress) (interface{}, error) {
 	l4Enable, _ := parser.GetBoolAnnotation("l4-enable", ing)
 	l4Host, _ := parser.GetStringAnnotation("l4-host", ing)
 	if l4Host == "" {

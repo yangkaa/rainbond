@@ -47,7 +47,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	internalclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -207,7 +207,7 @@ func NewStore(
 	store.listers.ConfigMap = infFactory.Core().V1().ConfigMaps().Lister()
 
 	store.informers.Ingress = infFactory.Extensions().V1beta1().Ingresses().Informer()
-	store.listers.Ingress = infFactory.Networking().V1().Ingresses().Lister()
+	store.listers.Ingress = infFactory.Extensions().V1beta1().Ingresses().Lister()
 
 	store.informers.ReplicaSet = infFactory.Apps().V1().ReplicaSets().Informer()
 	store.listers.ReplicaSets = infFactory.Apps().V1().ReplicaSets().Lister()
@@ -466,7 +466,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 			}
 		}
 	}
-	if ingress, ok := obj.(*networkingv1.Ingress); ok {
+	if ingress, ok := obj.(*extensions.Ingress); ok {
 		serviceID := ingress.Labels["service_id"]
 		version := ingress.Labels["version"]
 		createrID := ingress.Labels["creater_id"]
@@ -579,8 +579,8 @@ func (a *appRuntimeStore) getAppService(serviceID, version, createrID string, cr
 }
 func (a *appRuntimeStore) OnUpdate(oldObj, newObj interface{}) {
 	// ingress update maybe change owner component
-	if ingress, ok := newObj.(*networkingv1.Ingress); ok {
-		oldIngress := oldObj.(*networkingv1.Ingress)
+	if ingress, ok := newObj.(*extensions.Ingress); ok {
+		oldIngress := oldObj.(*extensions.Ingress)
 		if oldIngress.Labels["service_id"] != ingress.Labels["service_id"] {
 			logrus.Infof("ingress %s change owner component", oldIngress.Name)
 			serviceID := oldIngress.Labels["service_id"]
@@ -689,7 +689,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 				}
 			}
 		}
-		if ingress, ok := obj.(*networkingv1.Ingress); ok {
+		if ingress, ok := obj.(*extensions.Ingress); ok {
 			serviceID := ingress.Labels["service_id"]
 			version := ingress.Labels["version"]
 			createrID := ingress.Labels["creater_id"]

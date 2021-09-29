@@ -7,7 +7,7 @@ import (
 
 	"github.com/goodrain/rainbond/gateway/annotations/parser"
 	api "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -60,8 +60,8 @@ func TestRbdStore_checkIngress(t *testing.T) {
 	}
 }
 
-func buildIngress() *networkingv1.Ingress {
-	return &networkingv1.Ingress{
+func buildIngress() *extensions.Ingress {
+	return &extensions.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foobar",
 			Namespace: api.NamespaceDefault,
