@@ -358,6 +358,7 @@ func (t *TenantAction) GetTenantsResources(ctx context.Context, tr *api_model.Te
 		if mv.Sample != nil {
 			disk = int(mv.Sample.Value() / 1024)
 		}
+		logrus.Infof("mvValue %+v, disk %v", mv.Sample, disk)
 		if tenantID != "" {
 			result[tenantID]["disk"] = disk
 		}
