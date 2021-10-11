@@ -94,9 +94,11 @@ func (d *DiskCache) setcache() {
 	if sharePath == "" {
 		sharePath = "/grdata"
 	}
+	logrus.Infof("SHARE_DATA_PATH %v", os.Getenv("SHARE_DATA_PATH"))
 	var cache = make(map[string]*model.TenantServices)
 	for _, service := range services {
 		//service nfs volume
+		logrus.Infof("get dir path is %v", fmt.Sprintf("%s/tenant/%s/service/%s", sharePath, service.TenantID, service.ServiceID))
 		size := util.GetDirSize(fmt.Sprintf("%s/tenant/%s/service/%s", sharePath, service.TenantID, service.ServiceID))
 		if size != 0 {
 			diskcache = append(diskcache, struct {
