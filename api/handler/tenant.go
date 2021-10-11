@@ -351,6 +351,7 @@ func (t *TenantAction) GetTenantsResources(ctx context.Context, tr *api_model.Te
 	}
 	//query disk used in prometheus
 	query := fmt.Sprintf(`sum(app_resource_appfs{tenant_id=~"%s"}) by(tenant_id)`, strings.Join(ids, "|"))
+	logrus.Infof("query is %v", query)
 	metric := t.prometheusCli.GetMetric(query, time.Now())
 	for _, mv := range metric.MetricData.MetricValues {
 		var tenantID = mv.Metadata["tenant_id"]
