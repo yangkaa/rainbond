@@ -269,6 +269,7 @@ func (m *Controller) Stop() {
 
 //Scrape scrape app runtime
 func (m *Controller) Scrape(ch chan<- prometheus.Metric, scrapeDurationDesc *prometheus.Desc) {
+	logrus.Infof("start scrape data, worke is Leader : %v", m.isLeader)
 	if !m.isLeader {
 		return
 	}
@@ -285,8 +286,10 @@ func (m *Controller) Scrape(ch chan<- prometheus.Metric, scrapeDurationDesc *pro
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, time.Since(scrapeTime).Seconds(), "collect.memory")
 	scrapeTime = time.Now()
 	diskcache := m.diskCache.Get()
+	logrus.Infof("diskcache is : %v", diskcache)
 	for k, v := range diskcache {
 		key := strings.Split(k, "_")
+		logrus.Infof("start scrape diskcache, key is : %v, length :%v", key, len(key))
 		if len(key) == 3 {
 			m.fsUse.WithLabelValues(key[2], key[1], key[0], string(model.ShareFileVolumeType)).Set(v)
 		}
