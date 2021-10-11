@@ -50,6 +50,7 @@ func NewPrometheus(options *Options) (Interface, error) {
 	} else if !strings.HasPrefix(options.Endpoint, "http") {
 		options.Endpoint = fmt.Sprintf("http://%s", options.Endpoint)
 	}
+	logrus.Infof("monitor endpoints is %v", options.Endpoint)
 	cfg := api.Config{
 		Address: options.Endpoint,
 		RoundTripper: &http.Transport{
