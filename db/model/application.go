@@ -28,6 +28,11 @@ func IsGovernanceModeValid(governanceMode string) bool {
 	return false
 }
 
+// NeedControlPlaneGovernanceMode checks if the governanceMode need control plane.
+func NeedControlPlaneGovernanceMode(governanceMode string) bool {
+	return governanceMode == GovernanceModeIstioServiceMesh
+}
+
 // Application -
 type Application struct {
 	Model

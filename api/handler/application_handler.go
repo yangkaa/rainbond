@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"time"
@@ -61,6 +62,7 @@ type ApplicationHandler interface {
 	SyncComponentConfigGroupRels(tx *gorm.DB, app *dbmodel.Application, components []*model.Component) error
 	SyncAppConfigGroups(app *dbmodel.Application, appConfigGroups []model.AppConfigGroup) error
 	ListAppStatuses(ctx context.Context, appIDs []string) ([]*model.AppStatus, error)
+	CheckGovernanceMode(ctx context.Context, governanceMode string) error
 }
 
 // NewApplicationHandler creates a new Tenant Application Handler.
@@ -727,4 +729,23 @@ func (a *ApplicationAction) ListAppStatuses(ctx context.Context, appIDs []string
 		})
 	}
 	return resp, nil
+}
+
+// CheckGovernanceMode -
+func (a *ApplicationAction) CheckGovernanceMode(ctx context.Context, governanceMode string) error {
+	if !dbmodel.IsGovernanceModeValid(governanceMode) {
+		return bcode.ErrDeleteDueToBindService
+	}
+	cmName := os.Getenv("ISTIO_CM")
+	if cmName == "" {
+		cmName = "istio-ca-root-cert"
+	}
+	if dbmodel.NeedControlPlaneGovernanceMode(governanceMode) {
+		_, err := a.kubeClient.CoreV1().ConfigMaps("default").Get(ctx, cmName, metav1.GetOptions{})
+		if err != nil {
+			logrus.Infof("get istio config map failed %v", err)
+			return bcode.ErrControlPlaneNotInstall
+		}
+	}
+	return nil
 }
