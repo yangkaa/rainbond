@@ -37,6 +37,7 @@ func (a *AppService) GetCommonLabels(labels ...map[string]string) map[string]str
 	resultLabel["app_id"] = a.AppID
 	if a.AppServiceBase.GovernanceMode == model.GovernanceModeIstioServiceMesh {
 		resultLabel["sidecar.istio.io/inject"] = "true"
+		resultLabel["app"] = a.ServiceAlias
 	}
 	return resultLabel
 }
