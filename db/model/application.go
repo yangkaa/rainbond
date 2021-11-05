@@ -5,6 +5,8 @@ const (
 	GovernanceModeBuildInServiceMesh = "BUILD_IN_SERVICE_MESH"
 	// GovernanceModeKubernetesNativeService means the governance mode is KUBERNETES_NATIVE_SERVICE
 	GovernanceModeKubernetesNativeService = "KUBERNETES_NATIVE_SERVICE"
+	// GovernanceModeIstioServiceMesh means the governance mode is ISTIO_SERVICE_MESH
+	GovernanceModeIstioServiceMesh = "ISTIO_SERVICE_MESH"
 )
 
 // app type
@@ -15,7 +17,15 @@ const (
 
 // IsGovernanceModeValid checks if the governanceMode is valid.
 func IsGovernanceModeValid(governanceMode string) bool {
-	return governanceMode == GovernanceModeBuildInServiceMesh || governanceMode == GovernanceModeKubernetesNativeService
+	switch governanceMode {
+	case GovernanceModeBuildInServiceMesh:
+		return true
+	case GovernanceModeKubernetesNativeService:
+		return true
+	case GovernanceModeIstioServiceMesh:
+		return true
+	}
+	return false
 }
 
 // Application -

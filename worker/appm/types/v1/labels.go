@@ -18,6 +18,8 @@
 
 package v1
 
+import "github.com/goodrain/rainbond/db/model"
+
 //GetCommonLabels get common labels
 func (a *AppService) GetCommonLabels(labels ...map[string]string) map[string]string {
 	var resultLabel = make(map[string]string)
@@ -33,5 +35,8 @@ func (a *AppService) GetCommonLabels(labels ...map[string]string) map[string]str
 	resultLabel["tenant_name"] = a.TenantName
 	resultLabel["tenant_id"] = a.TenantID
 	resultLabel["app_id"] = a.AppID
+	if a.AppServiceBase.GovernanceMode == model.GovernanceModeIstioServiceMesh {
+		resultLabel["sidecar.istio.io/inject"] = "true"
+	}
 	return resultLabel
 }
