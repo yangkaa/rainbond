@@ -120,6 +120,7 @@ func (t *TenantAction) BindTenantsResource(source []*dbmodel.Tenants) api_model.
 			item.RunningAppNum = re.RunningAppNum
 			item.RunningAppInternalNum = re.RunningAppInternalNum
 			item.RunningAppThirdNum = re.RunningAppThirdNum
+			item.RunningApplications = re.RunningApplications
 		}
 		list.Add(item)
 	}

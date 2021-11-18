@@ -1,5 +1,5 @@
 syntax = "proto3";
-package pb;
+option go_package = "/worker/server/pb";
 
 service AppRuntimeSync {
   // Deprecated: -
@@ -103,6 +103,7 @@ message TenantResource {
   int64 running_app_num = 5;
   int64 running_app_third_num = 10;
   int64 running_app_internal_num = 11;
+  int64 running_applications = 12;
 }
 
 message TenantResourceList {
