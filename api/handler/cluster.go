@@ -82,7 +82,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		}
 	}
 
-	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR int64
+	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR, all_pods int64
 	nodeAllocatableResourceList := make(map[string]*model.NodeResource, len(usedNodeList))
 	var maxAllocatableMemory *model.NodeResource
 	for i := range usedNodeList {
@@ -92,7 +92,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		if err != nil {
 			return nil, fmt.Errorf("list pods: %v", err)
 		}
-
+		all_pods += int64(len(pods))
 		nodeAllocatableResource := model.NewResource(node.Status.Allocatable)
 		for _, pod := range pods {
 			nodeAllocatableResource.AllowedPodNumber--
@@ -156,6 +156,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		CapDisk:                          diskCap,
 		ReqDisk:                          reqDisk,
 		MaxAllocatableMemoryNodeResource: maxAllocatableMemory,
+		Pods:                             all_pods,
 	}
 
 	result.AllNode = len(nodes)
