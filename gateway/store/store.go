@@ -524,6 +524,7 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 			}
 			vs.Namespace = anns.Namespace
 			vs.ServiceID = anns.Labels["service_id"]
+			vs.AppID = anns.Labels["app_id"]
 			l4PoolMap[ing.Spec.Backend.ServiceName] = struct{}{}
 			l4vsMap[listening] = vs
 			l4vs = append(l4vs, vs)
@@ -577,6 +578,7 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 
 					vs.Namespace = ing.Namespace
 					vs.ServiceID = anns.Labels["service_id"]
+					vs.AppID = anns.Labels["app_id"]
 					if len(hostSSLMap) != 0 {
 						vs.Listening = []string{strconv.Itoa(s.conf.ListenPorts.HTTPS), "ssl"}
 						if hostSSLMap[virSrvName] != nil {
