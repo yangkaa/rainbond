@@ -9,6 +9,11 @@ type ClusterResource struct {
 	AllNode                          int           `json:"all_node"`
 	NotReadyNode                     int           `json:"notready_node"`
 	ComputeNode                      int           `json:"compute_node"`
+	NotReadyComputeNode              int           `json:"notready_compute_node"`
+	ManageNode                       int           `json:"manage_node"`
+	NotReadyManageNode               int           `json:"notready_manage_node"`
+	EtcdNode                         int           `json:"etcd_node"`
+	NotReadyEtcdNode                 int           `json:"notready_etcd_node"`
 	Tenant                           int           `json:"tenant"`
 	CapCPU                           int           `json:"cap_cpu"`
 	CapMem                           int           `json:"cap_mem"`

@@ -64,6 +64,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		return nil, fmt.Errorf("[GetClusterInfo] list nodes: %v", err)
 	}
 
+	var computeNode, manageNode, etcdNode, notReadyComputeNode, notReadyManageNode, notReadyEtcdNode int
 	var healthCapCPU, healthCapMem, unhealthCapCPU, unhealthCapMem int64
 	usedNodeList := make([]*corev1.Node, len(nodes))
 	for i := range nodes {
@@ -72,9 +73,29 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 			logrus.Debugf("[GetClusterInfo] node(%s) not ready", node.GetName())
 			unhealthCapCPU += node.Status.Allocatable.Cpu().Value()
 			unhealthCapMem += node.Status.Allocatable.Memory().Value()
+			if isComputeNode(node) {
+				computeNode++
+				notReadyComputeNode++
+			}
+			if isManageNode(node) {
+				manageNode++
+				notReadyManageNode++
+			}
+			if isEtcdNode(node) {
+				etcdNode++
+				notReadyEtcdNode++
+			}
 			continue
 		}
-
+		if isComputeNode(node) {
+			computeNode++
+		}
+		if isManageNode(node) {
+			manageNode++
+		}
+		if isEtcdNode(node) {
+			etcdNode++
+		}
 		healthCapCPU += node.Status.Allocatable.Cpu().Value()
 		healthCapMem += node.Status.Allocatable.Memory().Value()
 		if node.Spec.Unschedulable == false {
@@ -152,11 +173,16 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		HealthReqMem:                     int(healthmemR) / 1024 / 1024,
 		UnhealthReqCPU:                   float32(unhealthCPUR) / 1000,
 		UnhealthReqMem:                   int(unhealthMemR) / 1024 / 1024,
-		ComputeNode:                      len(nodes),
+		ComputeNode:                      computeNode,
+		NotReadyComputeNode:              notReadyComputeNode,
 		CapDisk:                          diskCap,
 		ReqDisk:                          reqDisk,
 		MaxAllocatableMemoryNodeResource: maxAllocatableMemory,
 		Pods:                             all_pods,
+		ManageNode:                       manageNode,
+		NotReadyManageNode:               notReadyManageNode,
+		EtcdNode:                         etcdNode,
+		NotReadyEtcdNode:                 notReadyEtcdNode,
 	}
 
 	result.AllNode = len(nodes)
@@ -208,12 +234,32 @@ func (c *clusterAction) listNodes(ctx context.Context) ([]*corev1.Node, error) {
 }
 
 func isComputeNode(node *corev1.Node) bool {
+	if worker, ok := node.Labels["node-role.kubernetes.io/worker"]; ok && worker == "true" {
+		return true
+	}
 	for lableKey, _ := range node.Labels {
 		if strings.Contains(lableKey, "node-role.kubernetes.io/master") {
 			return false
 		}
 	}
 	return true
+}
+
+func isManageNode(node *corev1.Node) bool {
+	if controlplane, ok := node.Labels["node-role.kubernetes.io/controlplane"]; ok && controlplane == "true" {
+		return true
+	}
+	if _, ok := node.Labels["node-role.kubernetes.io/master"]; ok {
+		return true
+	}
+	return false
+}
+
+func isEtcdNode(node *corev1.Node) bool {
+	if etcd, ok := node.Labels["node-role.kubernetes.io/etcd"]; ok && etcd == "true" {
+		return true
+	}
+	return false
 }
 
 func isNodeReady(node *corev1.Node) bool {
