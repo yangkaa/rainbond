@@ -21,6 +21,8 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/shirou/gopsutil/disk"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -401,6 +403,8 @@ type ClusterResourceStats struct {
 	AllMemory     int64
 	RequestCPU    int64
 	RequestMemory int64
+	UsageDisk     uint64
+	TotalDisk     uint64
 }
 
 func (t *TenantAction) initClusterResource(ctx context.Context) error {
@@ -427,6 +431,16 @@ func (t *TenantAction) initClusterResource(ctx context.Context) error {
 			}
 			crs.AllMemory += node.Status.Allocatable.Memory().Value() / (1024 * 1024)
 			crs.AllCPU += node.Status.Allocatable.Cpu().MilliValue()
+		}
+		var diskstauts *disk.UsageStat
+		if runtime.GOOS != "windows" {
+			diskstauts, _ = disk.Usage("/grdata")
+		} else {
+			diskstauts, _ = disk.Usage(`z:\\`)
+		}
+		if diskstauts != nil {
+			crs.TotalDisk = diskstauts.Total
+			crs.UsageDisk = diskstauts.Used
 		}
 		t.cacheClusterResourceStats = &crs
 		t.cacheTime = time.Now()

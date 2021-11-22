@@ -62,15 +62,29 @@ func NewExporter() *Exporter {
 			Name:      "cluster_cpu_total",
 			Help:      "rainbond cluster cpu total",
 		}),
+		clusterSharedStorageUsage: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "cluster_shared_storage_usage",
+			Help:      "rainbond cluster shared storage usage, path is /grdata",
+		}),
+		clusterSharedStorageTotal: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "cluster_shared_storage_total",
+			Help:      "rainbond cluster shared_storage total, path is /grdata",
+		}),
 	}
 }
 
 //Exporter exporter
 type Exporter struct {
-	apiRequest         *prometheus.CounterVec
-	tenantLimit        *prometheus.GaugeVec
-	clusterCPUTotal    prometheus.Gauge
-	clusterMemoryTotal prometheus.Gauge
+	apiRequest                *prometheus.CounterVec
+	tenantLimit               *prometheus.GaugeVec
+	clusterCPUTotal           prometheus.Gauge
+	clusterMemoryTotal        prometheus.Gauge
+	clusterSharedStorageTotal prometheus.Gauge
+	clusterSharedStorageUsage prometheus.Gauge
 }
 
 //RequestInc request inc
@@ -110,8 +124,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	if resource != nil {
 		e.clusterMemoryTotal.Set(float64(resource.AllMemory))
 		e.clusterCPUTotal.Set(float64(resource.AllCPU))
+		e.clusterSharedStorageTotal.Set(float64(resource.TotalDisk))
+		e.clusterSharedStorageUsage.Set(float64(resource.UsageDisk))
 	}
 	e.tenantLimit.Collect(ch)
 	e.clusterMemoryTotal.Collect(ch)
 	e.clusterCPUTotal.Collect(ch)
+	e.clusterSharedStorageTotal.Collect(ch)
+	e.clusterSharedStorageUsage.Collect(ch)
 }

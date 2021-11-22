@@ -279,7 +279,7 @@ func (m *Controller) Scrape(ch chan<- prometheus.Metric, scrapeDurationDesc *pro
 	for _, service := range services {
 		if _, ok := status[service.ServiceID]; ok {
 			m.memoryUse.WithLabelValues(service.TenantID, service.AppID, service.ServiceID, "running").Set(float64(service.GetMemoryRequest()))
-			m.cpuUse.WithLabelValues(service.TenantID, service.AppID, service.ServiceID, "running").Set(float64(service.GetMemoryRequest()))
+			m.cpuUse.WithLabelValues(service.TenantID, service.AppID, service.ServiceID, "running").Set(float64(service.GetCPURequest()))
 		}
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, time.Since(scrapeTime).Seconds(), "collect.memory")
