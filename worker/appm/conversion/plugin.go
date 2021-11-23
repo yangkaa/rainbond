@@ -445,6 +445,10 @@ func createPluginResources(memory int, cpu int) v1.ResourceRequirements {
 
 func createTCPUDPMeshRecources(as *typesv1.AppService) v1.ResourceRequirements {
 	var memory = 128
+	setMemory, err := strconv.Atoi(os.Getenv("DEFAULT_MESH_MEMORY"))
+	if err == nil && setMemory != 0 {
+		memory = setMemory
+	}
 	var cpu int64
 	if limit, ok := as.ExtensionSet["tcpudp_mesh_cpu"]; ok {
 		limitint, _ := strconv.Atoi(limit)
