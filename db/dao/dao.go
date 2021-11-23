@@ -430,6 +430,8 @@ type EventDao interface {
 	UpdateReason(eventID string, reason string) error
 	SetEventStatus(ctx context.Context, status model.EventStatus) error
 	UpdateInBatch(events []*model.ServiceEvent) error
+	GetExceptionEventsByTime(eventTypes []string, createTime time.Time) ([]*model.ServiceEvent, error)
+	CountEvents(tenantID, serviceID string, eventType string) int64
 }
 
 //VersionInfoDao VersionInfoDao

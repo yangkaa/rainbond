@@ -232,6 +232,24 @@ func (c *EventDaoImpl) SetEventStatus(ctx context.Context, status model.EventSta
 	return nil
 }
 
+// GetExceptionEventsByTime -
+func (c *EventDaoImpl) GetExceptionEventsByTime(eventTypes []string, createTime time.Time) ([]*model.ServiceEvent, error) {
+	var events []*model.ServiceEvent
+	if err := c.DB.Model(&model.ServiceEvent{}).Where("opt_type in (?) and create_time > ?", eventTypes, createTime).Find(&events).Error; err != nil {
+		return nil, errors.Wrap(err, "get exception events")
+	}
+	return events, nil
+}
+
+// CountEvents -
+func (c *EventDaoImpl) CountEvents(tenantID, serviceID string, eventType string) int64 {
+	var count int64
+	if err := c.DB.Model(&model.ServiceEvent{}).Where("tenant_id = ? and service_id = ? and opt_type =?", tenantID, serviceID, eventType).Count(&count).Error; err != nil {
+		return 0
+	}
+	return count
+}
+
 //NotificationEventDaoImpl NotificationEventDaoImpl
 type NotificationEventDaoImpl struct {
 	DB *gorm.DB

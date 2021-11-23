@@ -38,3 +38,12 @@ type PodEvent struct {
 	Age     string `json:"age,omitempty"`
 	Message string `json:"message,omitempty"`
 }
+
+// PodExceptionEvent -
+type PodExceptionEvent struct {
+	EventType     string `json:"event_type"`
+	EventNums     int64  `json:"event_nums"`
+	TenantID      string `json:"tenant_id"`
+	AppID       string `json:"app_id"`
+	ComponentID string `json:"component_id"`
+}

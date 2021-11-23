@@ -115,6 +115,7 @@ type LogInterface interface {
 	TenantLogByAction(w http.ResponseWriter, r *http.Request)
 	Events(w http.ResponseWriter, r *http.Request)
 	EventLog(w http.ResponseWriter, r *http.Request)
+	GetLatestExceptionEvents(w http.ResponseWriter, r *http.Request)
 }
 
 //PluginInterface plugin interface

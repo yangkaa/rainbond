@@ -83,6 +83,7 @@ func (v2 *V2) eventsRouter() chi.Router {
 	r.Get("/", controller.GetManager().Events)
 	// get target's event content
 	r.Get("/{eventID}/log", controller.GetManager().EventLog)
+	r.Get("/exception", controller.GetManager().GetLatestExceptionEvents)
 	return r
 }
 
