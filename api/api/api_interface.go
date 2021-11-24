@@ -30,6 +30,7 @@ type ClusterInterface interface {
 	MavenSettingUpdate(w http.ResponseWriter, r *http.Request)
 	MavenSettingDelete(w http.ResponseWriter, r *http.Request)
 	MavenSettingDetail(w http.ResponseWriter, r *http.Request)
+	GetExceptionNodeInfo(w http.ResponseWriter, r *http.Request)
 }
 
 //TenantInterface interface

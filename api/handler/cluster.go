@@ -29,6 +29,7 @@ type ClusterHandler interface {
 	MavenSettingDelete(ctx context.Context, name string) *util.APIHandleError
 	MavenSettingDetail(ctx context.Context, name string) (*MavenSetting, *util.APIHandleError)
 	GetComputeNodeNums(ctx context.Context) (int64, error)
+	GetExceptionNodeInfo(ctx context.Context) ([]*model.ExceptionNode, error)
 }
 
 // NewClusterHandler -
@@ -271,6 +272,18 @@ func isNodeReady(node *corev1.Node) bool {
 	return false
 }
 
+func getExceptionNodeReason(node *corev1.Node) (exceptionType, reason string) {
+	for _, cond := range node.Status.Conditions {
+		if cond.Type == corev1.NodeReady && cond.Status == corev1.ConditionTrue {
+			continue
+		}
+		if cond.Status == corev1.ConditionTrue {
+			return string(cond.Type), cond.Reason
+		}
+	}
+	return "", ""
+}
+
 func containsTaints(node *corev1.Node) bool {
 	for _, taint := range node.Spec.Taints {
 		if taint.Effect == corev1.TaintEffectNoSchedule {
@@ -404,4 +417,25 @@ func (c *clusterAction) MavenSettingDetail(ctx context.Context, name string) (*M
 		UpdateTime: sm.Annotations["updateTime"],
 		Content:    sm.Data["mavensetting"],
 	}, nil
+}
+
+// GetExceptionNodeInfo -
+func (c *clusterAction) GetExceptionNodeInfo(ctx context.Context) ([]*model.ExceptionNode, error) {
+	nodes, err := c.listNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var exceptionNodes []*model.ExceptionNode
+	for _, node := range nodes {
+		exceptionType, reason := getExceptionNodeReason(node)
+		if exceptionType == "" {
+			continue
+		}
+		exceptionNodes = append(exceptionNodes, &model.ExceptionNode{
+			Name:          node.Name,
+			ExceptionType: exceptionType,
+			Reason:        reason,
+		})
+	}
+	return exceptionNodes, nil
 }

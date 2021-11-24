@@ -72,3 +72,10 @@ func (r *NodeResource) Add(rl corev1.ResourceList) {
 		}
 	}
 }
+
+// ExceptionNode -
+type ExceptionNode struct {
+	Name          string `json:"name"`
+	ExceptionType string `json:"exception_type"`
+	Reason        string `json:"reason"`
+}
