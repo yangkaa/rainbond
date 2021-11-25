@@ -32,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 //InitHandle 初始化handle
@@ -42,6 +43,7 @@ func InitHandle(conf option.Config,
 	kubeClient *kubernetes.Clientset,
 	rainbondClient versioned.Interface,
 	k8sClient k8sclient.Client,
+	metricClient *metrics.Clientset,
 ) error {
 	mq := api_db.MQManager{
 		EtcdClientArgs: etcdClientArgs,
@@ -79,7 +81,7 @@ func InitHandle(conf option.Config,
 	operationHandler = CreateOperationHandler(mqClient)
 	batchOperationHandler = CreateBatchOperationHandler(mqClient, statusCli, operationHandler)
 	defaultAppRestoreHandler = NewAppRestoreHandler()
-	defPodHandler = NewPodHandler(statusCli)
+	defPodHandler = NewPodHandler(statusCli, kubeClient, metricClient)
 	defClusterHandler = NewClusterHandler(kubeClient, conf.RbdNamespace)
 	defaultVolumeTypeHandler = CreateVolumeTypeManger(statusCli)
 	defaultEtcdHandler = NewEtcdHandler(etcdcli)

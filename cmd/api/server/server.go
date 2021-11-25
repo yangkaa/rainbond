@@ -23,8 +23,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	
-	
+
+
 	rainbondscheme "github.com/goodrain/rainbond/pkg/generated/clientset/versioned/scheme"
 	"github.com/goodrain/rainbond/api/controller"
 	"github.com/goodrain/rainbond/api/db"
@@ -43,6 +43,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 //Run start run
@@ -76,6 +77,10 @@ func Run(s *option.APIServer) error {
 		return err
 	}
 	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+	metricClient, err := metrics.NewForConfig(config)
 	if err != nil {
 		return err
 	}
@@ -121,7 +126,7 @@ func Run(s *option.APIServer) error {
 	//初始化 middleware
 	handler.InitProxy(s.Config)
 	//创建handle
-	if err := handler.InitHandle(s.Config, etcdClientArgs, cli, etcdcli, clientset, rainbondClient, k8sClient); err != nil {
+	if err := handler.InitHandle(s.Config, etcdClientArgs, cli, etcdcli, clientset, rainbondClient, k8sClient, metricClient); err != nil {
 		logrus.Errorf("init all handle error, %v", err)
 		return err
 	}

@@ -216,4 +216,5 @@ type AppRestoreInterface interface {
 // PodInterface defines api methods about k8s pods.
 type PodInterface interface {
 	PodDetail(w http.ResponseWriter, r *http.Request)
+	InstancesMonitor(w http.ResponseWriter, r *http.Request)
 }

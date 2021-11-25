@@ -116,6 +116,7 @@ require (
 	k8s.io/kubernetes v1.13.0
 	sigs.k8s.io/controller-runtime v0.7.0
 	sigs.k8s.io/yaml v1.2.0
+	k8s.io/metrics v0.20.4
 )
 
 // Pinned to kubernetes-1.20.0
