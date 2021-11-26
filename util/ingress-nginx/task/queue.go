@@ -118,12 +118,6 @@ func (t *Queue) worker() {
 		ts := time.Now().UnixNano()
 
 		item := key.(Element)
-		if t.lastSync > item.Timestamp {
-			glog.V(3).Infof("skipping %v sync (%v > %v)", item.Key, t.lastSync, item.Timestamp)
-			t.queue.Forget(key)
-			t.queue.Done(key)
-			continue
-		}
 
 		glog.V(3).Infof("syncing %v", item.Key)
 		if err := t.sync(key); err != nil {
