@@ -218,10 +218,10 @@ func createTCPDefaultPluginContainer(as *typesv1.AppService, pluginID string, en
 }
 
 func setSidecarContainerLifecycle(as *typesv1.AppService, con *corev1.Container, pluginConfig *api_model.ResourceSpec) {
-	if strings.ToLower(as.ExtensionSet["DISABLE_SIDECAR_CHECK"]) != "true" {
+	if strings.ToLower(as.ExtensionSet["disable_sidecar_check"]) != "true" {
 		var port int
-		if as.ExtensionSet["SIDECAR_CHECK_PORT"] != "" {
-			cport, _ := strconv.Atoi(as.ExtensionSet["SIDECAR_CHECK_PORT"])
+		if as.ExtensionSet["sidecar_check_port"] != "" {
+			cport, _ := strconv.Atoi(as.ExtensionSet["sidecar_check_port"])
 			if cport != 0 {
 				port = cport
 			}
@@ -445,6 +445,10 @@ func createPluginResources(memory int, cpu int) v1.ResourceRequirements {
 
 func createTCPUDPMeshRecources(as *typesv1.AppService) v1.ResourceRequirements {
 	var memory = 128
+	setMemory, err := strconv.Atoi(os.Getenv("DEFAULT_MESH_MEMORY"))
+	if err == nil && setMemory != 0 {
+		memory = setMemory
+	}
 	var cpu int64
 	if limit, ok := as.ExtensionSet["tcpudp_mesh_cpu"]; ok {
 		limitint, _ := strconv.Atoi(limit)
