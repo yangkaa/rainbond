@@ -22,7 +22,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/shirou/gopsutil/disk"
-	"runtime"
+	os_runtime "runtime"
 	"sort"
 	"strings"
 	"time"
@@ -433,7 +433,7 @@ func (t *TenantAction) initClusterResource(ctx context.Context) error {
 			crs.AllCPU += node.Status.Allocatable.Cpu().MilliValue()
 		}
 		var diskstauts *disk.UsageStat
-		if runtime.GOOS != "windows" {
+		if os_runtime.GOOS != "windows" {
 			diskstauts, _ = disk.Usage("/grdata")
 		} else {
 			diskstauts, _ = disk.Usage(`z:\\`)
