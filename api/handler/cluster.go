@@ -103,7 +103,8 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 			usedNodeList[i] = node
 		}
 	}
-
+	existComponents := make(map[string]struct{})
+	existApplications := make(map[string]struct{})
 	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR, all_pods int64
 	nodeAllocatableResourceList := make(map[string]*model.NodeResource, len(usedNodeList))
 	var maxAllocatableMemory *model.NodeResource
@@ -117,6 +118,12 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		all_pods += int64(len(pods))
 		nodeAllocatableResource := model.NewResource(node.Status.Allocatable)
 		for _, pod := range pods {
+			if componentID, ok := pod.Labels["service_id"]; ok {
+				existComponents[componentID] = struct{}{}
+			}
+			if appID, ok := pod.Labels["app_id"]; ok {
+				existApplications[appID] = struct{}{}
+			}
 			nodeAllocatableResource.AllowedPodNumber--
 			for _, c := range pod.Spec.Containers {
 				nodeAllocatableResource.Memory -= c.Resources.Requests.Memory().Value()
@@ -184,6 +191,8 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		NotReadyManageNode:               notReadyManageNode,
 		EtcdNode:                         etcdNode,
 		NotReadyEtcdNode:                 notReadyEtcdNode,
+		Applications:                     int64(len(existApplications)),
+		Components:                       int64(len(existComponents)),
 	}
 
 	result.AllNode = len(nodes)

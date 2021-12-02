@@ -33,6 +33,8 @@ type ClusterResource struct {
 	ReqDisk                          uint64        `json:"req_disk"`
 	MaxAllocatableMemoryNodeResource *NodeResource `json:"max_allocatable_memory_node_resource"`
 	Pods                             int64         `json:"pods"`
+	Components                       int64         `json:"components"`
+	Applications                     int64         `json:"applications"`
 }
 
 // NodeResource is a collection of compute resource.
