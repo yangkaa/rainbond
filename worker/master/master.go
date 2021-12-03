@@ -281,6 +281,14 @@ func (m *Controller) Scrape(ch chan<- prometheus.Metric, scrapeDurationDesc *pro
 			m.memoryUse.WithLabelValues(service.TenantID, service.AppID, service.ServiceID, "running").Set(float64(service.GetMemoryRequest()))
 			m.cpuUse.WithLabelValues(service.TenantID, service.AppID, service.ServiceID, "running").Set(float64(service.GetCPURequest()))
 		}
+		if service.IsClosed(){
+			if m.memoryUse.DeleteLabelValues(service.TenantID, service.AppID, service.ServiceID, "running"){
+				logrus.Infof("remove memory usage for [%s/%s/%s]", service.TenantID, service.AppID, service.ServiceID)
+			}
+			if m.cpuUse.DeleteLabelValues(service.TenantID, service.AppID, service.ServiceID, "running") {
+				logrus.Infof("remove cpu usage for [%s/%s/%s]", service.TenantID, service.AppID, service.ServiceID)
+			}
+		}
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, time.Since(scrapeTime).Seconds(), "collect.memory")
 	scrapeTime = time.Now()
