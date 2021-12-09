@@ -20,7 +20,7 @@ package conversion
 
 import (
 	"fmt"
-	"github.com/goodrain/rainbond/api/app_governance_mode/adaptor"
+	"github.com/goodrain/rainbond/api/handler/app_governance_mode/adaptor"
 	"github.com/sirupsen/logrus"
 	"strings"
 

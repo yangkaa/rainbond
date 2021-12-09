@@ -1,14 +1,10 @@
-package kubernetesnative
-
-import (
-	"github.com/goodrain/rainbond/api/app_governance_mode/adaptor"
-)
+package adaptor
 
 type kubernetesNativeMode struct {
 }
 
-// New Kubernetes Native Mode Handler
-func New() adaptor.AppGoveranceModeHandler {
+// NewKubernetesNativeMode -
+func NewKubernetesNativeMode() AppGoveranceModeHandler {
 	return &kubernetesNativeMode{}
 }
 
