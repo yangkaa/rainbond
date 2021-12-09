@@ -1,11 +1,13 @@
 package buildin
 
-import appgovernancemode "github.com/goodrain/rainbond/api/handler/app_governance_mode"
+import (
+	 "github.com/goodrain/rainbond/api/handler/app_governance_mode/adaptor"
+)
 
 type buildInServiceMeshMode struct{}
 
 // New Build In ServiceMeshMode Handler
-func New() appgovernancemode.AppGoveranceModeHandler {
+func New() adaptor.AppGoveranceModeHandler {
 	return &buildInServiceMeshMode{}
 }
 

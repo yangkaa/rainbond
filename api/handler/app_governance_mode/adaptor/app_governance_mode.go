@@ -1,4 +1,4 @@
-package appgovernancemode
+package adaptor
 
 import (
 	"github.com/goodrain/rainbond/api/handler/app_governance_mode/build_in"

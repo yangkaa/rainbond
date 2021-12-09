@@ -2,7 +2,7 @@ package istio
 
 import (
 	"context"
-	appgovernancemode "github.com/goodrain/rainbond/api/handler/app_governance_mode"
+	"github.com/goodrain/rainbond/api/handler/app_governance_mode/adaptor"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"os"
@@ -14,7 +14,7 @@ type istioServiceMeshMode struct {
 }
 
 // New Istio Goverance Mode Handler
-func New(kubeClient clientset.Interface) appgovernancemode.AppGoveranceModeHandler{
+func New(kubeClient clientset.Interface) adaptor.AppGoveranceModeHandler {
 	return &istioServiceMeshMode{
 		kubeClient: kubeClient,
 	}
