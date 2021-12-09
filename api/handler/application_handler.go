@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/goodrain/rainbond/api/handler/app_governance_mode/adaptor"
+	"github.com/goodrain/rainbond/api/app_governance_mode/adaptor"
 	"io/ioutil"
 	"os"
 	"sort"
@@ -195,7 +195,7 @@ func (a *ApplicationAction) UpdateApp(ctx context.Context, app *dbmodel.Applicat
 		app.AppName = req.AppName
 	}
 	if req.GovernanceMode != "" {
-		if !governance_mode.IsGovernanceModeValid(req.GovernanceMode) {
+		if !adaptor.IsGovernanceModeValid(req.GovernanceMode) {
 			logrus.Errorf("governance mode '%s' is invalid", req.GovernanceMode)
 			return nil, bcode.ErrInvalidGovernanceMode
 		}

@@ -1,9 +1,9 @@
 package adaptor
 
 import (
-	"github.com/goodrain/rainbond/api/handler/app_governance_mode/build_in"
-	"github.com/goodrain/rainbond/api/handler/app_governance_mode/istio"
-	kubernetesnative "github.com/goodrain/rainbond/api/handler/app_governance_mode/kubernetes_native"
+	"github.com/goodrain/rainbond/api/app_governance_mode/build_in"
+	"github.com/goodrain/rainbond/api/app_governance_mode/istio"
+	kubernetesnative "github.com/goodrain/rainbond/api/app_governance_mode/kubernetes_native"
 	"github.com/goodrain/rainbond/api/util/bcode"
 	"github.com/goodrain/rainbond/db/model"
 	clientset "k8s.io/client-go/kubernetes"
