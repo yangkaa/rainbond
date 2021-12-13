@@ -108,8 +108,10 @@ func (h *Helm) locateChart(chart, version string) (string, error) {
 	}
 
 	chartCache := path.Join(h.settings.RepositoryCache, chart, version)
+	logrus.Infof("chartCache is %s", chartCache)
 	cp := path.Join(chartCache, repoAndName[1]+"-"+version+".tgz")
 	if f, err := os.Open(cp); err == nil {
+		logrus.Infof("open cp success %s", cp)
 		defer f.Close()
 
 		// check if the chart file is up to date.
