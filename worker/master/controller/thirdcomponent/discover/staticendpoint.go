@@ -48,7 +48,7 @@ func (s *staticEndpoint) DiscoverOne(ctx context.Context) ([]*v1alpha1.ThirdComp
 			}
 		} else {
 			for _, port := range component.Spec.Ports {
-				address := v1alpha1.NewEndpointAddress(ep.Address, port.Port)
+				address := v1alpha1.NewEndpointAddress(ep.GetIP(), port.Port)
 				if address != nil {
 					endpoints = append(endpoints, &v1alpha1.ThirdComponentEndpointStatus{
 						Address: *address,
