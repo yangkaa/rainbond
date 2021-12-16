@@ -242,6 +242,10 @@ func CreateSocketAddress(protocol, address string, port uint32) *core.Address {
 	if strings.HasPrefix(address, "http://") {
 		address = strings.Split(address, "http://")[1]
 	}
+	if strings.Contains(address, ":") {
+		sp := strings.Split(address, ":")
+		address = sp[0]
+	}
 	return &core.Address{
 		Address: &core.Address_SocketAddress{
 			SocketAddress: &core.SocketAddress{
@@ -321,6 +325,10 @@ func CreateRouteWithHostRewrite(host, clusterName, prefix string, headers []*rou
 		}
 		if strings.HasPrefix(host, "http://") {
 			host = strings.Split(host, "http://")[1]
+		}
+		if strings.Contains(host, ":") {
+			sp := strings.Split(host, ":")
+			host = sp[0]
 		}
 		hostRewriteSpecifier = &route.RouteAction_HostRewrite{
 			HostRewrite: host,
