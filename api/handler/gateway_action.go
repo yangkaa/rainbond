@@ -324,7 +324,7 @@ func (g *GatewayAction) UpdateCertificate(req apimodel.AddHTTPRuleStruct, httpRu
 
 // AddTCPRule adds tcp rule.
 func (g *GatewayAction) AddTCPRule(req *apimodel.AddTCPRuleStruct) error {
-	if g.IsPortUsedAtGatewayNodes(string(req.Port)){
+	if g.IsPortUsedAtGatewayNodes(req.Port){
 		return bcode.ErrPortConflict
 	}
 	return g.dbmanager.DB().Transaction(func(tx *gorm.DB) error {
@@ -345,7 +345,7 @@ func (g *GatewayAction) AddTCPRule(req *apimodel.AddTCPRuleStruct) error {
 	})
 }
 
-func (g *GatewayAction) IsPortUsedAtGatewayNodes(port string) bool {
+func (g *GatewayAction) IsPortUsedAtGatewayNodes(port int) bool {
 	rainbondcluster := &rainbondv1alpha1.RainbondCluster{}
 	err := g.k8sClient.Get(context.Background(), types.NamespacedName{Name: "rainbondcluster", Namespace: "rbd-system"}, rainbondcluster)
 	if err != nil {
@@ -355,7 +355,7 @@ func (g *GatewayAction) IsPortUsedAtGatewayNodes(port string) bool {
 	gateWayNodes := rainbondcluster.Spec.NodesForGateway
 	logrus.Infof("gateWayNodes is %+v", gateWayNodes)
 	for _, node := range gateWayNodes {
-		address := net.JoinHostPort(node.InternalIP, port)
+		address := net.JoinHostPort(node.InternalIP, fmt.Sprintf("%d", port))
 		conn, err := net.DialTimeout("tcp", address, 1*time.Second)
 		if err != nil {
 			logrus.Errorf("detect conn err %v", err)
@@ -371,7 +371,7 @@ func (g *GatewayAction) IsPortUsedAtGatewayNodes(port string) bool {
 
 // CreateTCPRule Create tcp rules through transactions
 func (g *GatewayAction) CreateTCPRule(tx *gorm.DB, req *apimodel.AddTCPRuleStruct) error {
-	if g.IsPortUsedAtGatewayNodes(string(req.Port)){
+	if g.IsPortUsedAtGatewayNodes(req.Port){
 		return bcode.ErrPortConflict
 	}
 	// add tcp rule
@@ -402,7 +402,7 @@ func (g *GatewayAction) CreateTCPRule(tx *gorm.DB, req *apimodel.AddTCPRuleStruc
 
 // UpdateTCPRule updates a tcp rule
 func (g *GatewayAction) UpdateTCPRule(req *apimodel.UpdateTCPRuleStruct, minPort int) error {
-	if g.IsPortUsedAtGatewayNodes(string(req.Port)){
+	if g.IsPortUsedAtGatewayNodes(req.Port){
 		return bcode.ErrPortConflict
 	}
 	// begin transaction
