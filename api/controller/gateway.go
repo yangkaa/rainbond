@@ -149,8 +149,7 @@ func (g *GatewayStruct) updateHTTPRule(w http.ResponseWriter, r *http.Request) {
 	h := handler.GetGatewayHandler()
 	err := h.UpdateHTTPRule(&req)
 	if err != nil {
-		httputil.ReturnError(r, w, 500, fmt.Sprintf("Unexpected error occorred while "+
-			"updating http rule: %v", err))
+		httputil.ReturnBcodeError(r, w, err)
 		return
 	}
 
@@ -210,6 +209,7 @@ func (g *GatewayStruct) AddTCPRule(w http.ResponseWriter, r *http.Request) {
 		if h.TCPIPPortExists(req.IP, req.Port) {
 			values["port"] = []string{fmt.Sprintf("The ip %s port(%v) already exists", req.IP, req.Port)}
 		}
+
 	}
 	if len(req.RuleExtensions) > 0 {
 		for _, re := range req.RuleExtensions {
@@ -229,8 +229,7 @@ func (g *GatewayStruct) AddTCPRule(w http.ResponseWriter, r *http.Request) {
 	}
 	err := h.AddTCPRule(&req)
 	if err != nil {
-		httputil.ReturnError(r, w, 500, fmt.Sprintf("Unexpected error occorred while "+
-			"adding tcp rule: %v", err))
+		httputil.ReturnBcodeError(r, w, err)
 		return
 	}
 	httputil.ReturnSuccess(r, w, "success")
@@ -268,8 +267,7 @@ func (g *GatewayStruct) updateTCPRule(w http.ResponseWriter, r *http.Request) {
 
 	err := h.UpdateTCPRule(&req, g.cfg.MinExtPort)
 	if err != nil {
-		httputil.ReturnError(r, w, 500, fmt.Sprintf("Unexpected error occorred while "+
-			"updating tcp rule: %v", err))
+		httputil.ReturnBcodeError(r, w, err)
 		return
 	}
 

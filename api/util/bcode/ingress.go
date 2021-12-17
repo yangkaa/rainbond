@@ -4,4 +4,5 @@ package bcode
 var (
 	ErrIngressHTTPRuleNotFound = newByMessage(404, 11200, "http rule not found")
 	ErrIngressTCPRuleNotFound  = newByMessage(404, 11201, "tcp rule not found")
+	ErrPortConflict            = newByMessage(400, 11202, "port conflict")
 )

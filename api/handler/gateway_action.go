@@ -21,7 +21,11 @@ package handler
 import (
 	"context"
 	"fmt"
+	rainbondv1alpha1 "github.com/goodrain/rainbond-operator/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/types"
+	"net"
 	"os"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sort"
 	"strconv"
 	"strings"
@@ -41,17 +45,19 @@ import (
 
 // GatewayAction -
 type GatewayAction struct {
-	dbmanager db.Manager
-	mqclient  client.MQClient
-	etcdCli   *clientv3.Client
+	dbmanager      db.Manager
+	mqclient       client.MQClient
+	etcdCli        *clientv3.Client
+	k8sClient      k8sclient.Client
 }
 
 //CreateGatewayManager creates gateway manager.
-func CreateGatewayManager(dbmanager db.Manager, mqclient client.MQClient, etcdCli *clientv3.Client) *GatewayAction {
+func CreateGatewayManager(dbmanager db.Manager, mqclient client.MQClient, etcdCli *clientv3.Client,k8sClient k8sclient.Client) *GatewayAction {
 	return &GatewayAction{
-		dbmanager: dbmanager,
-		mqclient:  mqclient,
-		etcdCli:   etcdCli,
+		dbmanager:      dbmanager,
+		mqclient:       mqclient,
+		etcdCli:        etcdCli,
+		k8sClient:      k8sClient,
 	}
 }
 
@@ -318,6 +324,9 @@ func (g *GatewayAction) UpdateCertificate(req apimodel.AddHTTPRuleStruct, httpRu
 
 // AddTCPRule adds tcp rule.
 func (g *GatewayAction) AddTCPRule(req *apimodel.AddTCPRuleStruct) error {
+	if g.IsPortUsedAtGatewayNodes(string(req.Port)){
+		return bcode.ErrPortConflict
+	}
 	return g.dbmanager.DB().Transaction(func(tx *gorm.DB) error {
 		if err := g.CreateTCPRule(tx, req); err != nil {
 			return err
@@ -336,8 +345,35 @@ func (g *GatewayAction) AddTCPRule(req *apimodel.AddTCPRuleStruct) error {
 	})
 }
 
+func (g *GatewayAction) IsPortUsedAtGatewayNodes(port string) bool {
+	rainbondcluster := &rainbondv1alpha1.RainbondCluster{}
+	err := g.k8sClient.Get(context.Background(), types.NamespacedName{Name: "rbd-system"}, rainbondcluster)
+	if err != nil {
+		logrus.Errorf("check port: get rainbondcluster failed %v", err)
+		return true
+	}
+	gateWayNodes := rainbondcluster.Spec.NodesForGateway
+	logrus.Infof("gateWayNodes is %+v", gateWayNodes)
+	for _, node := range gateWayNodes {
+		address := net.JoinHostPort(node.InternalIP, port)
+		conn, err := net.DialTimeout("tcp", address, 1*time.Second)
+		if err != nil {
+			logrus.Errorf("detect conn err %v", err)
+			continue
+		}
+		if conn != nil {
+			_ = conn.Close()
+			return true
+		}
+	}
+	return false
+}
+
 // CreateTCPRule Create tcp rules through transactions
 func (g *GatewayAction) CreateTCPRule(tx *gorm.DB, req *apimodel.AddTCPRuleStruct) error {
+	if g.IsPortUsedAtGatewayNodes(string(req.Port)){
+		return bcode.ErrPortConflict
+	}
 	// add tcp rule
 	tcpRule := &model.TCPRule{
 		UUID:          req.TCPRuleID,
@@ -366,6 +402,9 @@ func (g *GatewayAction) CreateTCPRule(tx *gorm.DB, req *apimodel.AddTCPRuleStruc
 
 // UpdateTCPRule updates a tcp rule
 func (g *GatewayAction) UpdateTCPRule(req *apimodel.UpdateTCPRuleStruct, minPort int) error {
+	if g.IsPortUsedAtGatewayNodes(string(req.Port)){
+		return bcode.ErrPortConflict
+	}
 	// begin transaction
 	tx := db.GetManager().Begin()
 	defer func() {
