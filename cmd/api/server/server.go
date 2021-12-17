@@ -23,9 +23,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	
-	
-	rainbondscheme "github.com/goodrain/rainbond/pkg/generated/clientset/versioned/scheme"
+
 	"github.com/goodrain/rainbond/api/controller"
 	"github.com/goodrain/rainbond/api/db"
 	"github.com/goodrain/rainbond/api/discover"
@@ -34,6 +32,8 @@ import (
 	"github.com/goodrain/rainbond/cmd/api/option"
 	"github.com/goodrain/rainbond/event"
 	"github.com/goodrain/rainbond/pkg/generated/clientset/versioned"
+	rainbondscheme "github.com/goodrain/rainbond/pkg/generated/clientset/versioned/scheme"
+	rainbondiov1alpha1 "github.com/goodrain/rainbond-operator/api/v1alpha1"
 	etcdutil "github.com/goodrain/rainbond/util/etcd"
 	k8sutil "github.com/goodrain/rainbond/util/k8s"
 	"github.com/goodrain/rainbond/worker/client"
@@ -85,6 +85,7 @@ func Run(s *option.APIServer) error {
 	scheme := runtime.NewScheme()
 	clientgoscheme.AddToScheme(scheme)
 	rainbondscheme.AddToScheme(scheme)
+	rainbondiov1alpha1.AddToScheme(scheme)
 	k8sClient, err := k8sclient.New(config, k8sclient.Options{
 		Scheme: scheme,
 	})
