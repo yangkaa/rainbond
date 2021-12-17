@@ -347,7 +347,7 @@ func (g *GatewayAction) AddTCPRule(req *apimodel.AddTCPRuleStruct) error {
 
 func (g *GatewayAction) IsPortUsedAtGatewayNodes(port string) bool {
 	rainbondcluster := &rainbondv1alpha1.RainbondCluster{}
-	err := g.k8sClient.Get(context.Background(), types.NamespacedName{Name: "rbd-system"}, rainbondcluster)
+	err := g.k8sClient.Get(context.Background(), types.NamespacedName{Name: "rbd-system", Namespace: "rbd-system"}, rainbondcluster)
 	if err != nil {
 		logrus.Errorf("check port: get rainbondcluster failed %v", err)
 		return true
