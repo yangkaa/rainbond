@@ -20,6 +20,7 @@ package parser
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"runtime"
 	"strconv"
@@ -106,6 +107,15 @@ func (d *SourceCodeParse) Parse() ParseErrorList {
 		return d.errors
 	}
 	gitFunc := func() ParseErrorList {
+		gitCloneTimeout := 5
+		if os.Getenv("GIT_CLONE_TIMEOUT") != "" {
+			gct, err := strconv.Atoi(os.Getenv("GIT_CLONE_TIMEOUT"))
+			if err != nil {
+				logrus.Errorf("set git clone timeout [%v] failed", os.Getenv("GIT_CLONE_TIMEOUT"))
+			} else {
+				gitCloneTimeout = gct
+			}
+		}
 		//get code
 		if !util.DirIsEmpty(buildInfo.GetCodeHome()) {
 			if err := sources.RemoveDir(buildInfo.GetCodeHome()); err != nil {
@@ -114,7 +124,7 @@ func (d *SourceCodeParse) Parse() ParseErrorList {
 			}
 		}
 		csi.RepositoryURL = buildInfo.RepostoryURL
-		rs, err := sources.GitClone(csi, buildInfo.GetCodeHome(), d.logger, 5)
+		rs, err := sources.GitClone(csi, buildInfo.GetCodeHome(), d.logger, gitCloneTimeout)
 		if err != nil {
 			if err == transport.ErrAuthenticationRequired || err == transport.ErrAuthorizationFailed {
 				if buildInfo.GetProtocol() == "ssh" {

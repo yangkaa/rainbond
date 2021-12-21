@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -165,7 +166,16 @@ func (i *SourceCodeBuildItem) Run(timeout time.Duration) error {
 		}
 	default:
 		//default git
-		rs, err := sources.GitCloneOrPull(i.CodeSouceInfo, rbi.GetCodeHome(), i.Logger, 5)
+		gitCloneTimeout := 5
+		if os.Getenv("GIT_CLONE_TIMEOUT") != "" {
+			gct, err := strconv.Atoi(os.Getenv("GIT_CLONE_TIMEOUT"))
+			if err != nil {
+				logrus.Errorf("set git clone timeout [%v] failed", os.Getenv("GIT_CLONE_TIMEOUT"))
+			} else {
+				gitCloneTimeout = gct
+			}
+		}
+		rs, err := sources.GitCloneOrPull(i.CodeSouceInfo, rbi.GetCodeHome(), i.Logger, gitCloneTimeout)
 		if err != nil {
 			logrus.Errorf("pull git code error: %s", err.Error())
 			i.Logger.Error(fmt.Sprintf("拉取代码失败，请确保代码可以被正常下载"), map[string]string{"step": "builder-exector", "status": "failure"})
