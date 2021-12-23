@@ -101,3 +101,13 @@ func (t *ClusterController) MavenSettingDetail(w http.ResponseWriter, r *http.Re
 	}
 	httputil.ReturnSuccess(r, w, c)
 }
+
+// GetExceptionNodeInfo -
+func (t *ClusterController) GetExceptionNodeInfo(w http.ResponseWriter, r *http.Request) {
+	nodes, err := handler.GetClusterHandler().GetExceptionNodeInfo(r.Context())
+	if err != nil {
+		httputil.ReturnError(r, w, 500, err.Error())
+		return
+	}
+	httputil.ReturnSuccess(r, w, nodes)
+}

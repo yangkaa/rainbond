@@ -30,6 +30,7 @@ type ClusterInterface interface {
 	MavenSettingUpdate(w http.ResponseWriter, r *http.Request)
 	MavenSettingDelete(w http.ResponseWriter, r *http.Request)
 	MavenSettingDetail(w http.ResponseWriter, r *http.Request)
+	GetExceptionNodeInfo(w http.ResponseWriter, r *http.Request)
 }
 
 //TenantInterface interface
@@ -115,6 +116,7 @@ type LogInterface interface {
 	TenantLogByAction(w http.ResponseWriter, r *http.Request)
 	Events(w http.ResponseWriter, r *http.Request)
 	EventLog(w http.ResponseWriter, r *http.Request)
+	GetLatestExceptionEvents(w http.ResponseWriter, r *http.Request)
 }
 
 //PluginInterface plugin interface
@@ -214,4 +216,5 @@ type AppRestoreInterface interface {
 // PodInterface defines api methods about k8s pods.
 type PodInterface interface {
 	PodDetail(w http.ResponseWriter, r *http.Request)
+	InstancesMonitor(w http.ResponseWriter, r *http.Request)
 }

@@ -9,6 +9,11 @@ type ClusterResource struct {
 	AllNode                          int           `json:"all_node"`
 	NotReadyNode                     int           `json:"notready_node"`
 	ComputeNode                      int           `json:"compute_node"`
+	NotReadyComputeNode              int           `json:"notready_compute_node"`
+	ManageNode                       int           `json:"manage_node"`
+	NotReadyManageNode               int           `json:"notready_manage_node"`
+	EtcdNode                         int           `json:"etcd_node"`
+	NotReadyEtcdNode                 int           `json:"notready_etcd_node"`
 	Tenant                           int           `json:"tenant"`
 	CapCPU                           int           `json:"cap_cpu"`
 	CapMem                           int           `json:"cap_mem"`
@@ -27,6 +32,9 @@ type ClusterResource struct {
 	CapDisk                          uint64        `json:"cap_disk"`
 	ReqDisk                          uint64        `json:"req_disk"`
 	MaxAllocatableMemoryNodeResource *NodeResource `json:"max_allocatable_memory_node_resource"`
+	Pods                             int64         `json:"pods"`
+	Components                       int64         `json:"components"`
+	Applications                     int64         `json:"applications"`
 }
 
 // NodeResource is a collection of compute resource.
@@ -65,4 +73,11 @@ func (r *NodeResource) Add(rl corev1.ResourceList) {
 			r.EphemeralStorage += rQuant.Value()
 		}
 	}
+}
+
+// ExceptionNode -
+type ExceptionNode struct {
+	Name          string `json:"name"`
+	ExceptionType string `json:"exception_type"`
+	Reason        string `json:"reason"`
 }

@@ -240,13 +240,18 @@ func (r *RuntimeServer) GetTenantResources(context.Context, *pb.Empty) (*pb.Tena
 	for _, re := range res {
 		var tr pb.TenantResource
 		runningApps := r.store.GetTenantRunningApp(re.Namespace)
+		runningApplications := make(map[string]struct{})
 		for _, app := range runningApps {
 			if app.ServiceKind == model.ServiceKindThirdParty {
 				tr.RunningAppThirdNum++
 			} else if app.ServiceKind == model.ServiceKindInternal {
 				tr.RunningAppInternalNum++
 			}
+			if _, ok := runningApplications[app.AppID]; !ok{
+				runningApplications[app.AppID] = struct{}{}
+			}
 		}
+		tr.RunningApplications = int64(len(runningApplications))
 		tr.RunningAppNum = int64(len(runningApps))
 		tr.CpuLimit = re.CPULimit
 		tr.CpuRequest = re.CPURequest

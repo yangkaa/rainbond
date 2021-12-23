@@ -42,6 +42,17 @@ var EventTypeReadinessProbeFailed EventType = "ReadinessProbeFailed"
 // EventTypeAbnormalRecovery -
 var EventTypeAbnormalRecovery EventType = "AbnormalRecovery"
 
+// GetEventTypes -
+func GetEventTypes()[]string{
+	return []string{
+		EventTypeOOMKilled.String(),
+		EventTypeAbnormalExited.String(),
+		EventTypeLivenessProbeFailed.String(),
+		EventTypeReadinessProbeFailed.String(),
+		EventTypeAbnormalRecovery.String(),
+	}
+}
+
 // SortableEventType implements sort.Interface for []EventType
 type SortableEventType []EventType
 

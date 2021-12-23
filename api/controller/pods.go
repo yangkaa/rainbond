@@ -112,3 +112,15 @@ func (p *PodController) PodDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	httputil.ReturnSuccess(r, w, pd)
 }
+
+// InstancesMonitor -
+func (p *PodController) InstancesMonitor(w http.ResponseWriter, r *http.Request) {
+	nodeName := r.URL.Query().Get("node_name")
+	query := r.URL.Query().Get("query")
+	pods, err := handler.GetPodHandler().InstancesMonitor(nodeName, query)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("error getting instances monitor: %v", err))
+		return
+	}
+	httputil.ReturnSuccess(r, w, pods)
+}

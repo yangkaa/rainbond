@@ -62,6 +62,7 @@ func (v2 *V2) Routes() chi.Router {
 	r.Put("/volume-options/{volume_type}", controller.UpdateVolumeType)
 	r.Mount("/enterprise/{enterprise_id}", v2.enterpriseRouter())
 	r.Mount("/monitor", v2.monitorRouter())
+	r.Get("/instances/monitor", controller.GetManager().InstancesMonitor)
 	return r
 }
 
@@ -83,12 +84,14 @@ func (v2 *V2) eventsRouter() chi.Router {
 	r.Get("/", controller.GetManager().Events)
 	// get target's event content
 	r.Get("/{eventID}/log", controller.GetManager().EventLog)
+	r.Get("/exception", controller.GetManager().GetLatestExceptionEvents)
 	return r
 }
 
 func (v2 *V2) clusterRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", controller.GetManager().GetClusterInfo)
+	r.Get("/exception", controller.GetManager().GetExceptionNodeInfo)
 	r.Get("/builder/mavensetting", controller.GetManager().MavenSettingList)
 	r.Post("/builder/mavensetting", controller.GetManager().MavenSettingAdd)
 	r.Get("/builder/mavensetting/{name}", controller.GetManager().MavenSettingDetail)
