@@ -21,6 +21,7 @@ package store
 import (
 	"context"
 	"fmt"
+	betav1 "k8s.io/api/networking/v1beta1"
 	"os"
 	"sync"
 	"time"
@@ -206,8 +207,13 @@ func NewStore(
 	store.informers.ConfigMap = infFactory.Core().V1().ConfigMaps().Informer()
 	store.listers.ConfigMap = infFactory.Core().V1().ConfigMaps().Lister()
 
-	store.informers.Ingress = infFactory.Extensions().V1beta1().Ingresses().Informer()
-	store.listers.Ingress = infFactory.Networking().V1().Ingresses().Lister()
+	if k8sutil.IsHighVersion() {
+		store.informers.Ingress = infFactory.Networking().V1().Ingresses().Informer()
+		store.listers.Ingress = infFactory.Networking().V1().Ingresses().Lister()
+	} else {
+		store.informers.Ingress = infFactory.Networking().V1beta1().Ingresses().Informer()
+		store.listers.BetaIngress = infFactory.Networking().V1beta1().Ingresses().Lister()
+	}
 
 	store.informers.ReplicaSet = infFactory.Apps().V1().ReplicaSets().Informer()
 	store.listers.ReplicaSets = infFactory.Apps().V1().ReplicaSets().Lister()
@@ -473,7 +479,22 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		if serviceID != "" && createrID != "" {
 			appservice, err := a.getAppService(serviceID, version, createrID, true)
 			if err == conversion.ErrServiceNotFound {
-				a.conf.KubeClient.ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(context.Background(), ingress.Name, metav1.DeleteOptions{})
+				a.conf.KubeClient.NetworkingV1().Ingresses(ingress.Namespace).Delete(context.Background(), ingress.Name, metav1.DeleteOptions{})
+			}
+			if appservice != nil {
+				appservice.SetIngress(ingress)
+				return
+			}
+		}
+	}
+	if ingress, ok := obj.(*betav1.Ingress); ok {
+		serviceID := ingress.Labels["service_id"]
+		version := ingress.Labels["version"]
+		createrID := ingress.Labels["creater_id"]
+		if serviceID != "" && createrID != "" {
+			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			if err == conversion.ErrServiceNotFound {
+				a.conf.KubeClient.NetworkingV1beta1().Ingresses(ingress.Namespace).Delete(context.Background(), ingress.Name, metav1.DeleteOptions{})
 			}
 			if appservice != nil {
 				appservice.SetIngress(ingress)
@@ -589,6 +610,19 @@ func (a *appRuntimeStore) OnUpdate(oldObj, newObj interface{}) {
 			oldComponent, _ := a.getAppService(serviceID, version, createrID, true)
 			if oldComponent != nil {
 				oldComponent.DeleteIngress(oldIngress)
+			}
+		}
+	}
+	if ingress, ok := newObj.(*betav1.Ingress); ok {
+		oldIngress := oldObj.(*betav1.Ingress)
+		if oldIngress.Labels["service_id"] != ingress.Labels["service_id"] {
+			logrus.Infof("ingress %s change owner component", oldIngress.Name)
+			serviceID := oldIngress.Labels["service_id"]
+			version := oldIngress.Labels["version"]
+			createrID := oldIngress.Labels["creater_id"]
+			oldComponent, _ := a.getAppService(serviceID, version, createrID, true)
+			if oldComponent != nil {
+				oldComponent.DeleteBetaIngress(oldIngress)
 			}
 		}
 	}
@@ -839,17 +873,26 @@ func (a *appRuntimeStore) UpdateGetAppService(serviceID string) *v1.AppService {
 				}
 			}
 		}
-		if ingresses := appService.GetIngress(true); ingresses != nil {
-			for _, ingress := range ingresses {
-				in, err := a.listers.Ingress.Ingresses(ingress.Namespace).Get(ingress.Name)
-				if err != nil && k8sErrors.IsNotFound(err) {
-					appService.DeleteIngress(ingress)
-				}
-				if in != nil {
-					appService.SetIngress(in)
-				}
+		ingresses, betaIngresses := appService.GetIngress(true)
+		for _, ingress := range ingresses {
+			in, err := a.listers.Ingress.Ingresses(ingress.Namespace).Get(ingress.Name)
+			if err != nil && k8sErrors.IsNotFound(err) {
+				appService.DeleteIngress(ingress)
+			}
+			if in != nil {
+				appService.SetIngress(in)
 			}
 		}
+		for _, ingress := range betaIngresses {
+			in, err := a.listers.BetaIngress.Ingresses(ingress.Namespace).Get(ingress.Name)
+			if err != nil && k8sErrors.IsNotFound(err) {
+				appService.DeleteBetaIngress(ingress)
+			}
+			if in != nil {
+				appService.SetIngress(in)
+			}
+		}
+
 		if secrets := appService.GetSecrets(true); secrets != nil {
 			for _, secret := range secrets {
 				se, err := a.listers.Secret.Secrets(secret.Namespace).Get(secret.Name)
@@ -1186,7 +1229,7 @@ func (a *appRuntimeStore) GetTenantResourceList() []TenantResource {
 func (a *appRuntimeStore) GetTenantRunningApp(tenantID string) (list []*v1.AppService) {
 	a.appServices.Range(func(k, v interface{}) bool {
 		appService, _ := v.(*v1.AppService)
-		if appService != nil && (appService.TenantID == tenantID || tenantID == corev1.NamespaceAll) && !appService.IsClosed() {
+		if appService != nil && (appService.TenantID == tenantID || tenantID == corev1.NamespaceAll || appService.GetNamespace() == tenantID) && !appService.IsClosed() {
 			list = append(list, appService)
 		}
 		return true
@@ -1406,7 +1449,7 @@ func (a *appRuntimeStore) GetAppResources(appID string) (int64, int64, error) {
 	for _, pod := range pods {
 		for _, c := range pod.Spec.Containers {
 			cpu += c.Resources.Requests.Cpu().MilliValue()
-			memory += c.Resources.Limits.Memory().Value() / 1024 / 1024
+			memory += c.Resources.Requests.Memory().Value() / 1024 / 1024
 		}
 	}
 
@@ -1535,7 +1578,7 @@ func filterOutNotRainbondNamespace(ns *corev1.Namespace) bool {
 		if ns.Labels == nil {
 			return false
 		}
-		return ns.Labels["creator"] == "Rainbond"
+		return ns.Labels["creator"] == "Rainbond" || ns.Labels[constants.ResourceManagedByLabel] == constants.Rainbond
 	}()
 	return curVersion || oldVersion
 }
