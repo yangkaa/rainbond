@@ -111,13 +111,13 @@ func (c *Cadvisor) toScrape() *prometheus.ScrapeConfig {
 		},
 		MetricRelabelConfigs: []*prometheus.RelabelConfig{
 			{
-				SourceLabels: []model.LabelName{"name"},
+				SourceLabels: []model.LabelName{"service_id"},
 				Regex:        prometheus.MustNewRegexp("k8s_(.*)_(.*)_(.*)_(.*)_(.*)"),
 				TargetLabel:  "service_id",
 				Replacement:  "${1}",
 			},
 			{
-				SourceLabels: []model.LabelName{"name"},
+				SourceLabels: []model.LabelName{"service_id"},
 				//k8s_POD_709dfaa8d9b9498a827fd5c503e0d1a1-deployment-8679ff667-j8fj8_5201d8a00fa743c18eb6553778f77c84_d6670db0-00a7-4d2c-a92e-18a19541268d_0
 				Regex:       prometheus.MustNewRegexp("k8s_POD_(.*)-deployment-(.*)"),
 				TargetLabel: "service_id",
