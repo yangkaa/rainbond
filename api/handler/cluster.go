@@ -59,7 +59,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		logrus.Debugf("cluster info cache is timeout, will calculate a new value")
 	}
 
-	nodes, err := c.listNodes(ctx)
+	nodes, err := c.listNodes(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("[GetClusterInfo] list nodes: %v", err)
 	}
@@ -85,10 +85,17 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR int64
 	nodeAllocatableResourceList := make(map[string]*model.NodeResource, len(usedNodeList))
 	var maxAllocatableMemory *model.NodeResource
+	delay, _ := strconv.Atoi(os.Getenv("CLUSTER_INFO_DELAY"))
+	if delay == 0 {
+		delay = 100
+	}
+	count := 0
 	for i := range usedNodeList {
+		count += 1
+		time.Sleep(time.Millisecond * time.Duration(delay))
 		node := usedNodeList[i]
-
-		pods, err := c.listPods(ctx, node.Name)
+		logrus.Debugf("Node [%v] The [%v] times Delay: [%v]", node.Name, count, delay)
+		pods, err := c.listPods(context.Background(), node.Name)
 		if err != nil {
 			return nil, fmt.Errorf("list pods: %v", err)
 		}
