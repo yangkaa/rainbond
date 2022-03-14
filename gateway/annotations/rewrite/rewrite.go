@@ -70,6 +70,21 @@ func (r1 *Config) Equal(r2 *Config) bool {
 	if r1.UseRegex != r2.UseRegex {
 		return false
 	}
+	if len(r1.Rewrites) != len(r2.Rewrites) {
+		return false
+	}
+	for _, r1r := range r1.Rewrites {
+		flag := false
+		for _, r2r := range r2.Rewrites {
+			if r1r.Regex == r2r.Regex && r1r.Replacement == r2r.Replacement && r1r.Flag == r2r.Flag {
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			return false
+		}
+	}
 
 	return true
 }

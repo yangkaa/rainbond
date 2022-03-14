@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/goodrain/rainbond/gateway/annotations/parser"
 	"io/ioutil"
 	"net"
 	"os"
@@ -31,13 +32,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/goodrain/rainbond/gateway/cluster"
-
 	"github.com/eapache/channels"
 	"github.com/goodrain/rainbond/cmd/gateway/option"
 	"github.com/goodrain/rainbond/gateway/annotations"
 	"github.com/goodrain/rainbond/gateway/annotations/l4"
 	"github.com/goodrain/rainbond/gateway/annotations/rewrite"
+	"github.com/goodrain/rainbond/gateway/cluster"
 	"github.com/goodrain/rainbond/gateway/controller/config"
 	"github.com/goodrain/rainbond/gateway/defaults"
 	"github.com/goodrain/rainbond/gateway/util"
@@ -601,6 +601,16 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 						location = &v1.Location{
 							Path:          path.Path,
 							NameCondition: map[string]*v1.Condition{},
+						}
+						i, err := rewrite.NewParser(s).Parse(ing)
+						if err == nil {
+							if cfg, ok := i.(*rewrite.Config); ok {
+								location.Rewrite.Rewrites = cfg.Rewrites
+							}
+						}
+						pathRewrite, _ := parser.GetBoolAnnotation("path-rewrite", ing)
+						if pathRewrite {
+							location.PathRewrite = true
 						}
 						srvLocMap[locKey] = location
 						vs.Locations = append(vs.Locations, location)

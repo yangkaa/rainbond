@@ -233,7 +233,7 @@ func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv 
 				NameCondition:    loc.NameCondition,
 				Proxy:            loc.Proxy,
 				Rewrite:          loc.Rewrite,
-				PathRewrite:      false,
+				PathRewrite:      loc.PathRewrite,
 				DisableProxyPass: loc.DisableProxyPass,
 			}
 			server.Locations = append(server.Locations, location)
@@ -255,6 +255,21 @@ func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv 
 			ProxyStreamNextUpstreamTries:   3,
 		}
 		server.Listen = strings.Join(vs.Listening, " ")
+		for _, loc := range vs.Locations {
+			location := &model.Location{
+				DisableAccessLog: o.ocfg.AccessLogPath == "",
+				// TODO: Distinguish between server output logs
+				AccessLogPath:    o.ocfg.AccessLogPath,
+				EnableMetrics:    true,
+				Path:             loc.Path,
+				NameCondition:    loc.NameCondition,
+				Proxy:            loc.Proxy,
+				Rewrite:          loc.Rewrite,
+				PathRewrite:      loc.PathRewrite,
+				DisableProxyPass: loc.DisableProxyPass,
+			}
+			server.Locations = append(server.Locations, location)
+		}
 		l4srv = append(l4srv, server)
 	}
 
