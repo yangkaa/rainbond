@@ -24,13 +24,15 @@ import (
 	appsv1 "k8s.io/client-go/listers/apps/v1"
 	autoscalingv2 "k8s.io/client-go/listers/autoscaling/v2beta2"
 	corev1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/listers/extensions/v1beta1"
+	betav1 "k8s.io/client-go/listers/networking/v1beta1"
+	networkingv1 "k8s.io/client-go/listers/networking/v1"
 	storagev1 "k8s.io/client-go/listers/storage/v1"
 )
 
 //Lister kube-api client cache
 type Lister struct {
-	Ingress                 v1beta1.IngressLister
+	Ingress                 networkingv1.IngressLister
+	BetaIngress             betav1.IngressLister
 	Service                 corev1.ServiceLister
 	Secret                  corev1.SecretLister
 	StatefulSet             appsv1.StatefulSetLister

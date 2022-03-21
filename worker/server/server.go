@@ -159,7 +159,12 @@ func (r *RuntimeServer) getRainbondAppStatus(app *model.Application) (*pb.AppSta
 }
 
 func (r *RuntimeServer) getHelmAppStatus(app *model.Application) (*pb.AppStatus, error) {
-	helmApp, err := r.store.GetHelmApp(app.TenantID, app.AppName)
+	// TODO: Query only once in the upper layer and pass in the namespace
+	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(app.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	helmApp, err := r.store.GetHelmApp(tenant.Namespace, app.AppName)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +189,7 @@ func (r *RuntimeServer) getHelmAppStatus(app *model.Application) (*pb.AppStatus,
 	selector = selector.Add(*instanceReq)
 	managedReq, _ := labels.NewRequirement(constants.ResourceManagedByLabel, selection.Equals, []string{"Helm"})
 	selector = selector.Add(*managedReq)
-	pods, err := r.store.ListPods(app.TenantID, selector)
+	pods, err := r.store.ListPods(tenant.Namespace, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +221,11 @@ func (r *RuntimeServer) getHelmAppStatus(app *model.Application) (*pb.AppStatus,
 //if TenantId is "" will return the sum of the all tenant
 func (r *RuntimeServer) GetTenantResource(ctx context.Context, re *pb.TenantRequest) (*pb.TenantResource, error) {
 	var tr pb.TenantResource
-	res := r.store.GetTenantResource(re.TenantId)
+	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(re.TenantId)
+	if err != nil {
+		return nil, err
+	}
+	res := r.store.GetTenantResource(tenant.Namespace)
 	runningApps := r.store.GetTenantRunningApp(re.TenantId)
 	for _, app := range runningApps {
 		if app.ServiceKind == model.ServiceKindThirdParty {
@@ -286,6 +295,7 @@ func (r *RuntimeServer) GetAppPods(ctx context.Context, re *pb.ServiceRequest) (
 				ContainerName: container.Name,
 				MemoryLimit:   container.Resources.Limits.Memory().Value(),
 				CpuRequest:    container.Resources.Requests.Cpu().MilliValue(),
+				MemoryRequest: container.Resources.Requests.Memory().Value(),
 			}
 			for _, vm := range container.VolumeMounts {
 				volumes = append(volumes, vm.Name)
@@ -429,8 +439,16 @@ func (r *RuntimeServer) GetDeployInfo(ctx context.Context, re *pb.ServiceRequest
 			}
 			deployinfo.Secrets = secretsinfo
 		}
-		if ingresses := appService.GetIngress(false); ingresses != nil {
+		ingresses, betaIngresses := appService.GetIngress(false)
+		if ingresses != nil {
 			ingress := make(map[string]string, len(ingresses))
+			for _, s := range ingresses {
+				ingress[s.Name] = s.Name
+			}
+			deployinfo.Ingresses = ingress
+		}
+		if betaIngresses != nil {
+			ingress := make(map[string]string, len(betaIngresses))
 			for _, s := range ingresses {
 				ingress[s.Name] = s.Name
 			}
@@ -695,13 +713,16 @@ func (r *RuntimeServer) ListAppServices(ctx context.Context, in *pb.AppReq) (*pb
 	if err != nil {
 		return nil, err
 	}
-
+	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(app.TenantID)
+	if err != nil {
+		return nil, err
+	}
 	selector := labels.NewSelector()
 	instanceReq, _ := labels.NewRequirement(constants.ResourceInstanceLabel, selection.Equals, []string{app.AppName})
 	selector = selector.Add(*instanceReq)
 	managedReq, _ := labels.NewRequirement(constants.ResourceManagedByLabel, selection.Equals, []string{"Helm"})
 	selector = selector.Add(*managedReq)
-	services, err := r.store.ListServices(app.TenantID, selector)
+	services, err := r.store.ListServices(tenant.Namespace, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -782,8 +803,11 @@ func (r *RuntimeServer) ListHelmAppRelease(ctx context.Context, req *pb.AppReq) 
 	if err != nil {
 		return nil, err
 	}
-
-	h, err := helm.NewHelm(app.TenantID, r.conf.Helm.RepoFile, r.conf.Helm.RepoCache)
+	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(app.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	h, err := helm.NewHelm(tenant.Namespace, r.conf.Helm.RepoFile, r.conf.Helm.RepoCache)
 	if err != nil {
 		return nil, err
 	}

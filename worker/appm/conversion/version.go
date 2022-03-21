@@ -20,6 +20,7 @@ package conversion
 
 import (
 	"fmt"
+	"github.com/goodrain/rainbond/builder/sources"
 	"net"
 	"os"
 	"sort"
@@ -70,14 +71,15 @@ func TenantServiceVersion(as *v1.AppService, dbmanager db.Manager) error {
 	}
 	nodeSelector := createNodeSelector(as, dbmanager)
 	tolerations := createToleration(nodeSelector)
+	injectLabels := getInjectLabels(as)
 	podtmpSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: as.GetCommonLabels(map[string]string{
 				"name":    as.ServiceAlias,
 				"version": as.DeployVersion,
-			}),
+			}, injectLabels),
 			Annotations: createPodAnnotations(as),
-			Name:        as.ServiceID + "-pod-spec",
+			Name:        as.GetK8sWorkloadName() + "-pod-spec",
 		},
 		Spec: corev1.PodSpec{
 			ImagePullSecrets: setImagePullSecrets(),
@@ -141,13 +143,16 @@ func getMainContainer(as *v1.AppService, version *dbmodel.VersionInfo, dv *volum
 	if imagename == "" {
 		if version.DeliveredType == "slug" {
 			imagename = builder.RUNNERIMAGENAME
+			if err := sources.ImagesPullAndPush(builder.RUNNERIMAGENAME, builder.ONLINERUNNERIMAGENAME, "", "", nil); err != nil {
+				logrus.Errorf("[getMainContainer] get runner image failed: %v", err)
+			}
 		} else {
 			imagename = version.DeliveredPath
 		}
 	}
 
 	c := &corev1.Container{
-		Name:           as.ServiceID,
+		Name:           as.K8sComponentName,
 		Image:          imagename,
 		Args:           args,
 		Ports:          ports,
@@ -219,7 +224,7 @@ func createEnv(as *v1.AppService, dbmanager db.Manager, envVarSecrets []*corev1.
 			envsAll = append(envsAll, es...)
 		}
 
-		serviceAliases, err := dbmanager.TenantServiceDao().GetServiceAliasByIDs(relationIDs)
+		serviceAliases, err := dbmanager.TenantServiceDao().GetWorkloadNameByIDs(relationIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -229,9 +234,9 @@ func createEnv(as *v1.AppService, dbmanager db.Manager, envVarSecrets []*corev1.
 			if Depend != "" {
 				Depend += ","
 			}
-			Depend += fmt.Sprintf("%s:%s", sa.ServiceAlias, sa.ServiceID)
+			Depend += fmt.Sprintf("%s-%s:%s", sa.K8sApp, sa.K8sComponentName, sa.ComponentID)
 
-			if bootSeqDepServiceIDs != "" && strings.Contains(bootSeqDepServiceIDs, sa.ServiceID) {
+			if bootSeqDepServiceIDs != "" && strings.Contains(bootSeqDepServiceIDs, sa.ComponentID) {
 				startupSequenceDependencies = append(startupSequenceDependencies, sa.ServiceAlias)
 			}
 		}
@@ -309,10 +314,12 @@ func createEnv(as *v1.AppService, dbmanager db.Manager, envVarSecrets []*corev1.
 	}
 
 	//set default env
+	envs = append(envs, corev1.EnvVar{Name: "NAMESPACE", Value: as.GetNamespace()})
 	envs = append(envs, corev1.EnvVar{Name: "TENANT_ID", Value: as.TenantID})
 	envs = append(envs, corev1.EnvVar{Name: "SERVICE_ID", Value: as.ServiceID})
 	envs = append(envs, corev1.EnvVar{Name: "MEMORY_SIZE", Value: envutil.GetMemoryType(as.ContainerMemory)})
-	envs = append(envs, corev1.EnvVar{Name: "SERVICE_NAME", Value: as.ServiceAlias})
+	envs = append(envs, corev1.EnvVar{Name: "SERVICE_NAME", Value: as.GetK8sWorkloadName()})
+	envs = append(envs, corev1.EnvVar{Name: "SERVICE_ALIAS", Value: as.ServiceAlias})
 	envs = append(envs, corev1.EnvVar{Name: "SERVICE_POD_NUM", Value: strconv.Itoa(as.Replicas)})
 	envs = append(envs, corev1.EnvVar{Name: "HOST_IP", ValueFrom: &corev1.EnvVarSource{
 		FieldRef: &corev1.ObjectFieldSelector{
@@ -497,7 +504,7 @@ func createResources(as *v1.AppService) corev1.ResourceRequirements {
 			cpuRequest = int64(requestint)
 		}
 	}
-	if as.ContainerCPU > 0 && cpuRequest == 0 && cpuLimit == 0{
+	if as.ContainerCPU > 0 && cpuRequest == 0 && cpuLimit == 0 {
 		cpuLimit = int64(as.ContainerCPU)
 		cpuRequest = int64(as.ContainerCPU)
 	}
@@ -698,7 +705,7 @@ func createAffinity(as *v1.AppService, dbmanager db.Manager) *corev1.Affinity {
 					LabelSelector: metav1.SetAsLabelSelector(map[string]string{
 						"name": l.LabelValue,
 					}),
-					Namespaces: []string{as.TenantID},
+					Namespaces: []string{as.GetNamespace()},
 				})
 			}
 			if l.LabelKey == dbmodel.LabelKeyServiceAntyAffinity {
@@ -707,7 +714,7 @@ func createAffinity(as *v1.AppService, dbmanager db.Manager) *corev1.Affinity {
 						LabelSelector: metav1.SetAsLabelSelector(map[string]string{
 							"name": l.LabelValue,
 						}),
-						Namespaces: []string{as.TenantID},
+						Namespaces: []string{as.GetNamespace()},
 					})
 			}
 		}

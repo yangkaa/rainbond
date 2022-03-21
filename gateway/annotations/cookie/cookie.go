@@ -21,10 +21,11 @@ package cookie
 import (
 	"github.com/goodrain/rainbond/gateway/annotations/parser"
 	"github.com/goodrain/rainbond/gateway/annotations/resolver"
-	extensions "k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 )
 
+// Config -
 type Config struct {
 	Cookie map[string]string `json:"cookie"`
 }
@@ -33,12 +34,13 @@ type cookie struct {
 	r resolver.Resolver
 }
 
+// NewParser -
 func NewParser(r resolver.Resolver) parser.IngressAnnotation {
 	return cookie{r}
 }
 
-func (c cookie) Parse(ing *extensions.Ingress) (interface{}, error) {
-	co, err := parser.GetStringAnnotation("cookie", ing)
+func (c cookie) Parse(meta *metav1.ObjectMeta) (interface{}, error) {
+	co, err := parser.GetStringAnnotation("cookie", meta)
 	if err != nil {
 		return nil, err
 	}

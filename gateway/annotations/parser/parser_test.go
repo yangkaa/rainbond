@@ -20,17 +20,17 @@ import (
 	"testing"
 
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func buildIngress() *extensions.Ingress {
-	return &extensions.Ingress{
+func buildIngress() *networkingv1.Ingress {
+	return &networkingv1.Ingress{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "foo",
 			Namespace: api.NamespaceDefault,
 		},
-		Spec: extensions.IngressSpec{},
+		Spec: networkingv1.IngressSpec{},
 	}
 }
 
@@ -59,7 +59,7 @@ func TestGetBoolAnnotation(t *testing.T) {
 	for _, test := range tests {
 		data[GetAnnotationWithPrefix(test.field)] = test.value
 
-		u, err := GetBoolAnnotation(test.field, ing)
+		u, err := GetBoolAnnotation(test.field, &ing.ObjectMeta)
 		if test.expErr {
 			if err == nil {
 				t.Errorf("%v: expected error but retuned nil", test.name)
@@ -99,7 +99,7 @@ func TestGetStringAnnotation(t *testing.T) {
 	for _, test := range tests {
 		data[GetAnnotationWithPrefix(test.field)] = test.value
 
-		s, err := GetStringAnnotation(test.field, ing)
+		s, err := GetStringAnnotation(test.field, &ing.ObjectMeta)
 		if test.expErr {
 			if err == nil {
 				t.Errorf("%v: expected error but retuned nil", test.name)
@@ -139,7 +139,7 @@ func TestGetIntAnnotation(t *testing.T) {
 	for _, test := range tests {
 		data[GetAnnotationWithPrefix(test.field)] = test.value
 
-		s, err := GetIntAnnotation(test.field, ing)
+		s, err := GetIntAnnotation(test.field, &ing.ObjectMeta)
 		if test.expErr {
 			if err == nil {
 				t.Errorf("%v: expected error but retuned nil", test.name)
@@ -170,7 +170,7 @@ func TestGetStringAnnotationWithPrefix(t *testing.T) {
 	}
 	ing.SetAnnotations(data)
 
-	m, err := GetStringAnnotationWithPrefix("set-header-", ing)
+	m, err := GetStringAnnotationWithPrefix("set-header-", &ing.ObjectMeta)
 	if err != nil {
 		t.Fatal(err)
 	}
