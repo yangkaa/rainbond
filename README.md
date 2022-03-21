@@ -7,10 +7,6 @@
 
 [Website](http://www.rainbond.com?channel=github) • [Documentation](https://www.rainbond.com/docs?channel=github)
 
-| ![notification](./docs/bell-outline-badge.svg) What is NEW!                                                                           |
-| ------------------------------------------------------------------------------------------------------------------------------------- |
-| December 13, 2021 ,Rainbond 5.5.0 version is officially released [View Release](https://www.rainbond.com/docs/community/change/5.4.0-5.5.0?channel=github)        |
-
 ## Rainbond Introduction
 
 <b>Cloud native and easy-to-use application management platform</b>
@@ -22,8 +18,6 @@ Rainbond is a cloud native and easy-to-use application management platform, a be
 <b>For Developers：</b> Develop, test and operate enterprise business applications based on Rainbond，You can get a full range of cloud native technology capabilities out of the box. Including but not limited to continuous integration, service governance, architecture support, multi-dimensional application observation, and traffic management.
 
 <b>For Delivery engineer：</b> Build a product version management system based on Rainbond and build a standardized customer delivery environment, so that the traditional delivery process can be automated, simplified and manageable.
-
-[Request Demo](https://cloud.goodrain.com/enterprise-server/trial)
 
 #### With Rainbond you can:
 
@@ -57,8 +51,11 @@ Wechat scans the code to join the Rainbond Community Group.
 
 <img width="300px" src="https://static.goodrain.com/wechat/WechatQRCode.gif"/>
 
-
 DingTalk Search Group : 31096419
+
+Add a WeChat assistant to enter the Rainbond Community Group:
+
+<img width="300px" src="https://static.goodrain.com/wechat/weChat.jpg"/>
 
 ## Related repositorys
 
@@ -67,6 +64,10 @@ DingTalk Search Group : 31096419
 - [Rainbond-Operator](https://github.com/goodrain/rainbond-operator)
 - [Rainbond-Builder](https://github.com/goodrain/builder)
 - [Rainbond-Docs](https://github.com/goodrain/rainbond-docs)
+
+## Contributing
+
+Check out [CONTRIBUTING](https://github.com/goodrain/rainbond/blob/V5.4/CONTRIBUTING.md) to see how to develop with Rainbond.
 
 ## License
 

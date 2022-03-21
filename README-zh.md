@@ -6,10 +6,6 @@
 
 [项目官网](http://www.rainbond.com?channel=github) • [文档](https://www.rainbond.com/docs?channel=github)
 
-| ![notification](./docs/bell-outline-badge.svg) What is NEW!                                                      |
-| ---------------------------------------------------------------------------------------------------------------- |
-| 2021 年 12 月 13 日 Rainbond 5.5.0 发布 [查看发布文案](https://www.rainbond.com/docs/community/change/5.4.0-5.5.0?channel=github)        |
-
 ## Rainbond 初识
 
 <b>云原生且易用的应用管理平台</b>
@@ -21,8 +17,6 @@ Rainbond 是云原生且易用的云原生应用管理平台，云原生应用�
 <b>对于开发者：</b> 基于 Rainbond 开发、测试和运维企业业务应用，开箱即用的获得全方位的云原生技术能力。包括但不仅限于持续集成、服务治理、架构支撑、多维度应用观测、流量管理。
 
 <b>对于交付人员：</b> 基于 Rainbond 搭建产品版本化管理体系，搭建标准化客户交付环境，使传统的交付流程可以自动化、简单化和可管理。
-
-[我要试用](https://cloud.goodrain.com/enterprise-server/trial)
 
 ### 价值场景
 
@@ -103,6 +97,10 @@ Rainbond 完成与龙芯、飞腾、麒麟操作系统等为代表的国产化�
 
 钉钉搜索群号加入Rainbond技术交流群: `31096419`
 
+添加微信小助手进入Rainbond交流群:
+
+<img width="300px" src="https://static.goodrain.com/wechat/weChat.jpg"/>
+
 ## 参与贡献
 
 我们非常欢迎你参与 Rainbond 社区关于平台使用经验、标准化应用、插件分享等领域的贡献和分享。
@@ -118,6 +116,10 @@ Rainbond 完成与龙芯、飞腾、麒麟操作系统等为代表的国产化�
 - [Rainbond-Operator](https://github.com/goodrain/rainbond-operator) Rainbond 安装运维项目
 - [Rainbond-Builder](https://github.com/goodrain/builder) Rainbond 源码构建工具集
 - [Rainbond-Docs](https://github.com/goodrain/rainbond-docs) Rainbond 文档
+
+## 贡献
+
+参考 [贡献指南](https://github.com/goodrain/rainbond/blob/V5.4/CONTRIBUTING.md) ，查看如何开发 Rainbond 
 
 ## License
 
