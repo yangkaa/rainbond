@@ -18,6 +18,10 @@
 
 package model
 
+import (
+	"fmt"
+)
+
 // Endpoint is a persistent object for table 3rd_party_svc_endpoints.
 type Endpoint struct {
 	Model
@@ -25,8 +29,6 @@ type Endpoint struct {
 	ServiceID string `gorm:"column:service_id;size:32;not null" json:"service_id"`
 	IP        string `gorm:"column:ip;not null" json:"ip"`
 	Port      int    `gorm:"column:port;size:65535" json:"port"`
-	//use pointer type, zero values won't be saved into database
-	IsOnline *bool `gorm:"column:is_online;default:true" json:"is_online"`
 }
 
 // TableName returns table name of Endpoint.
@@ -34,11 +36,22 @@ func (Endpoint) TableName() string {
 	return "tenant_service_3rd_party_endpoints"
 }
 
+// GetAddress -
+func (e *Endpoint) GetAddress() string {
+	if e.Port == 0 {
+		return e.IP
+	}
+	return fmt.Sprintf("%s:%d", e.IP, e.Port)
+}
+
 // DiscorveryType type of service discovery center.
 type DiscorveryType string
 
 // DiscorveryTypeEtcd etcd
 var DiscorveryTypeEtcd DiscorveryType = "etcd"
+
+// DiscorveryTypeKubernetes kubernetes service
+var DiscorveryTypeKubernetes DiscorveryType = "kubernetes"
 
 func (d DiscorveryType) String() string {
 	return string(d)
@@ -55,6 +68,9 @@ type ThirdPartySvcDiscoveryCfg struct {
 	Key       string `gorm:"key"`
 	Username  string `gorm:"username"`
 	Password  string `gorm:"password"`
+	//for kubernetes service
+	Namespace   string `gorm:"namespace"`
+	ServiceName string `gorm:"serviceName"`
 }
 
 // TableName returns table name of ThirdPartySvcDiscoveryCfg.

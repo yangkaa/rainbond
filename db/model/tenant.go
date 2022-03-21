@@ -23,6 +23,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/goodrain/rainbond/util/commonutil"
 )
 
 //Model 默认字段
@@ -65,6 +67,7 @@ type Tenants struct {
 	EID         string `gorm:"column:eid"`
 	LimitMemory int    `gorm:"column:limit_memory"`
 	Status      string `gorm:"column:status;default:'normal'"`
+	Namespace   string `gorm:"column:namespace;size:32;unique_index"`
 }
 
 //TableName 返回租户表名称
@@ -80,6 +83,9 @@ var ServiceKindThirdParty ServiceKind = "third_party"
 
 // ServiceKindInternal means internal service
 var ServiceKindInternal ServiceKind = "internal"
+
+// ServiceKindCustom means custom component define
+var ServiceKindCustom ServiceKind = "custom.componentdefinition."
 
 func (s ServiceKind) String() string {
 	return string(s)
@@ -160,9 +166,11 @@ type TenantServices struct {
 	// 服务描述
 	Comment string `gorm:"column:comment" json:"comment"`
 	// 容器CPU权重
-	ContainerCPU int `gorm:"column:container_cpu;default:500" json:"container_cpu"`
+	// default is 0, This means that CPU resources are not limited
+	ContainerCPU int `gorm:"column:container_cpu;default:0" json:"container_cpu"`
 	// 容器最大内存
-	ContainerMemory int `gorm:"column:container_memory;default:128" json:"container_memory"`
+	// default is 0, This means that Memory resources are not limited
+	ContainerMemory int `gorm:"column:container_memory;default:0" json:"container_memory"`
 	// container GPU, The amount of video memory applied for GPU. The unit is MiB
 	// default is 0, That means no GPU is required
 	ContainerGPU int `gorm:"column:container_gpu;default:0" json:"container_gpu"`
@@ -189,10 +197,20 @@ type TenantServices struct {
 	UpdateTime time.Time `gorm:"column:update_time" json:"update_time"`
 	// 服务创建类型cloud云市服务,assistant云帮服务
 	ServiceOrigin string `gorm:"column:service_origin;default:'assistant'" json:"service_origin"`
-	// kind of service. option: internal, third_party
+	// kind of service. option: internal, third_party, custom
 	Kind string `gorm:"column:kind;default:'internal'" json:"kind"`
 	// service bind appID
 	AppID string `gorm:"column:app_id" json:"app_id"`
+	// Component name in cluster
+	K8sComponentName string `gorm:"column:k8s_component_name" json:"k8s_component_name"`
+}
+
+// ComponentWorkload -
+type ComponentWorkload struct {
+	K8sApp           string `gorm:"column:k8s_app"`
+	K8sComponentName string `gorm:"column:k8s_component_name"`
+	ComponentID      string `gorm:"column:service_id"`
+	ServiceAlias     string `gorm:"column:service_alias"`
 }
 
 //Image 镜像
@@ -304,6 +322,8 @@ type TenantServicesDelete struct {
 	Kind string `gorm:"column:kind;default:'internal'" json:"kind"`
 	// service bind appID
 	AppID string `gorm:"column:app_id" json:"app_id"`
+	// Component name in cluster
+	K8sComponentName string `gorm:"column:k8s_component_name" json:"k8s_component_name"`
 }
 
 //TableName 表名
@@ -333,6 +353,11 @@ func (t *TenantServicesPort) Key() string {
 //TableName 表名
 func (t *TenantServicesPort) TableName() string {
 	return "tenant_services_port"
+}
+
+// IsOpen checks if the port is opened.
+func (t *TenantServicesPort) IsOpen() bool {
+	return commonutil.BoolValue(t.IsOuterService) || commonutil.BoolValue(t.IsInnerService)
 }
 
 //TenantServiceLBMappingPort stream应用端口映射情况
@@ -466,6 +491,7 @@ type TenantServiceVolume struct {
 	AllowExpansion bool `gorm:"column:allow_expansion" json:"allow_expansion"`
 	// VolumeProviderName 使用的存储驱动别名
 	VolumeProviderName string `gorm:"column:volume_provider_name" json:"volume_provider_name"`
+	Mode               *int32 `gorm:"column:mode" json:"mode"`
 }
 
 //TableName 表名

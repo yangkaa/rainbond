@@ -1,5 +1,6 @@
-FROM goodrainapps/alpine:3.4
-
+ARG BASE_IMAGE_VERSION
+FROM goodrainapps/alpine:${BASE_IMAGE_VERSION}
+ARG RELEASE_DESC
 ENV PORT 7070
 
 ADD rainbond-webcli /usr/bin/rainbond-webcli

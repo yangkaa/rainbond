@@ -92,7 +92,7 @@ func conversionServicePlugin(as *typesv1.AppService, dbmanager db.Manager) ([]v1
 			logrus.Warnf("Can't not get pod for plugin(plugin_id=%s)", pluginR.PluginID)
 			continue
 		}
-		envs, err := createPluginEnvs(pluginR.PluginID, as.TenantID, as.ServiceAlias, mainContainer.Env, pluginR.VersionID, as.ServiceID, dbmanager)
+		envs, err := createPluginEnvs(pluginR.PluginID, as.GetNamespace(), as.ServiceAlias, mainContainer.Env, pluginR.VersionID, as.ServiceID, dbmanager)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -208,11 +208,12 @@ func createTCPDefaultPluginContainer(as *typesv1.AppService, pluginID string, en
 	envs = append(envs, v1.EnvVar{Name: "XDS_HOST_PORT", Value: xdsHostPort})
 
 	container := v1.Container{
-		Name:      "default-tcpmesh-" + as.ServiceID[len(as.ServiceID)-20:],
+		Name:      "default-tcpmesh-" + as.GetK8sWorkloadName(),
 		Env:       envs,
-		Image:     typesv1.GetTCPMeshImageName(),
+		Image:     typesv1.GetOnlineTCPMeshImageName(),
 		Resources: createTCPUDPMeshRecources(as),
 	}
+
 	setSidecarContainerLifecycle(as, &container, pluginConfig)
 	return container
 }
@@ -258,10 +259,11 @@ func createProbeMeshInitContainer(as *typesv1.AppService, pluginID, serviceAlias
 	envs = append(envs, xdsHostIPEnv(xdsHost))
 	envs = append(envs, v1.EnvVar{Name: "API_HOST_PORT", Value: apiHostPort})
 	envs = append(envs, v1.EnvVar{Name: "XDS_HOST_PORT", Value: xdsHostPort})
+
 	return v1.Container{
-		Name:      "probe-mesh-" + as.ServiceID[len(as.ServiceID)-20:],
+		Name:      "probe-mesh-" + as.GetK8sWorkloadName(),
 		Env:       envs,
-		Image:     typesv1.GetProbeMeshImageName(),
+		Image:     typesv1.GetOnlineProbeMeshImageName(),
 		Resources: createTCPUDPMeshRecources(as),
 	}
 }
@@ -440,7 +442,7 @@ func createPluginEnvs(pluginID, tenantID, serviceAlias string, mainEnvs []v1.Env
 }
 
 func createPluginResources(memory int, cpu int) v1.ResourceRequirements {
-	return createResourcesByDefaultCPU(memory, int64(cpu), int64(cpu))
+	return createResourcesBySetting(memory, int64(cpu), int64(cpu), 0)
 }
 
 func createTCPUDPMeshRecources(as *typesv1.AppService) v1.ResourceRequirements {
@@ -462,12 +464,12 @@ func createTCPUDPMeshRecources(as *typesv1.AppService) v1.ResourceRequirements {
 			memory = requestint
 		}
 	}
-	return createResourcesByDefaultCPU(memory, cpu, func() int64 {
+	return createResourcesBySetting(memory, cpu, func() int64 {
 		if cpu < 120 {
 			return 120
 		}
 		return cpu
-	}())
+	}(), 0)
 }
 
 func xdsHostIPEnv(xdsHost string) corev1.EnvVar {

@@ -21,10 +21,11 @@ package header
 import (
 	"github.com/goodrain/rainbond/gateway/annotations/parser"
 	"github.com/goodrain/rainbond/gateway/annotations/resolver"
-	extensions "k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 )
 
+// Config -
 type Config struct {
 	Header map[string]string `json:"header"`
 }
@@ -33,12 +34,13 @@ type header struct {
 	r resolver.Resolver
 }
 
+// NewParser -
 func NewParser(r resolver.Resolver) parser.IngressAnnotation {
 	return header{r}
 }
 
-func (h header) Parse(ing *extensions.Ingress) (interface{}, error) {
-	hr, err := parser.GetStringAnnotation("header", ing)
+func (h header) Parse(meta *metav1.ObjectMeta) (interface{}, error) {
+	hr, err := parser.GetStringAnnotation("header", meta)
 	if err != nil {
 		return nil, err
 	}

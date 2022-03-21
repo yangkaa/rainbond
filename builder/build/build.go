@@ -21,10 +21,12 @@ package build
 import (
 	"context"
 	"fmt"
+	"github.com/goodrain/rainbond/db"
 	"strings"
 
 	"github.com/goodrain/rainbond/builder"
 	"github.com/goodrain/rainbond/builder/parser/code"
+	"github.com/goodrain/rainbond/builder/sources"
 	"github.com/goodrain/rainbond/event"
 	"k8s.io/client-go/kubernetes"
 
@@ -43,6 +45,7 @@ func init() {
 	buildcreaters[code.Python] = slugBuilder
 	buildcreaters[code.Nodejs] = slugBuilder
 	buildcreaters[code.Golang] = slugBuilder
+	buildcreaters[code.OSS] = slugBuilder
 }
 
 var buildcreaters map[code.Lang]CreaterBuild
@@ -82,6 +85,7 @@ type Request struct {
 	CacheDir      string
 	TGZDir        string
 	RepositoryURL string
+	CodeSouceInfo sources.CodeSourceInfo
 	Branch        string
 	ServiceAlias  string
 	ServiceID     string
@@ -125,5 +129,19 @@ func GetBuild(lang code.Lang) (Build, error) {
 
 //CreateImageName create image name
 func CreateImageName(serviceID, deployversion string) string {
-	return strings.ToLower(fmt.Sprintf("%s/%s:%s", builder.REGISTRYDOMAIN, serviceID, deployversion))
+	imageName := strings.ToLower(fmt.Sprintf("%s/%s:%s", builder.REGISTRYDOMAIN, serviceID, deployversion))
+	component, err := db.GetManager().TenantServiceDao().GetServiceByID(serviceID)
+	if err != nil {
+		return imageName
+	}
+	app, err := db.GetManager().ApplicationDao().GetByServiceID(serviceID)
+	if err != nil {
+		return imageName
+	}
+	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(component.TenantID)
+	if err != nil {
+		return imageName
+	}
+	workloadName := fmt.Sprintf("%s-%s-%s", tenant.Namespace, app.K8sApp, component.K8sComponentName)
+	return strings.ToLower(fmt.Sprintf("%s/%s:%s", builder.REGISTRYDOMAIN, workloadName, deployversion))
 }

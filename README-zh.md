@@ -1,15 +1,10 @@
 <img src="https://grstatic.oss-cn-shanghai.aliyuncs.com/images/rainbond%20log_full.png" width="60%">
 
 [![GitHub stars](https://img.shields.io/github/stars/goodrain/rainbond.svg?style=flat-square)](https://github.com/goodrain/rainbond/stargazers)
-![Rainbond version](https://img.shields.io/badge/version-v5.3-brightgreen.svg)
+![Rainbond version](https://img.shields.io/badge/version-v5.5-brightgreen.svg)
 [![GoDoc](https://godoc.org/github.com/goodrain/rainbond?status.svg)](https://godoc.org/github.com/goodrain/rainbond)
 
-[项目官网](http://www.rainbond.com) • [文档](https://www.rainbond.com/docs/)
-
-| ![notification](./docs/bell-outline-badge.svg) What is NEW!                                                      |
-| ---------------------------------------------------------------------------------------------------------------- |
-| 2021 年 2 月 21 日 Rainbond 5.3.0 正式发布 [查看发布文案](https://www.rainbond.com/docs/upgrade/5.3.0-upgrade/)  |
-| 2020 年 8 月 24 日 Rainbond 5.2 稳定版正式发布 [查看发布文案](https://mp.weixin.qq.com/s/q1sgEaBPaepsuUOfk1un-w) |
+[项目官网](http://www.rainbond.com?channel=github) • [文档](https://www.rainbond.com/docs?channel=github)
 
 ## Rainbond 初识
 
@@ -22,8 +17,6 @@ Rainbond 是云原生且易用的云原生应用管理平台，云原生应用�
 <b>对于开发者：</b> 基于 Rainbond 开发、测试和运维企业业务应用，开箱即用的获得全方位的云原生技术能力。包括但不仅限于持续集成、服务治理、架构支撑、多维度应用观测、流量管理。
 
 <b>对于交付人员：</b> 基于 Rainbond 搭建产品版本化管理体系，搭建标准化客户交付环境，使传统的交付流程可以自动化、简单化和可管理。
-
-[我要试用](https://cloud.goodrain.com/enterprise-server/trial)
 
 ### 价值场景
 
@@ -82,33 +75,37 @@ Rainbond 完成与龙芯、飞腾、麒麟操作系统等为代表的国产化�
 | Kubernetes 多云管理          | 多集群接入；集群监控视图；自动化调度                                                         | 集群自动化接入；公有云 Kubernetes 服务接入；自动化资源生成与维护。                                                      |
 | 国产易用的云原生 PaaS        | 支持常见国产 CPU 和操作系统，支持 Windows 操作系统过度到国产操作系统。                       | 异构资源调度；异构操作系统应用编排。                                                                                    |
 
-[Rainbond 功能特性说明](https://www.rainbond.com/docs/quick-start/edition/)
-[Rainbond 开发计划](https://www.rainbond.com/docs/quick-start/roadmap/)
+[Rainbond 功能特性说明](https://www.rainbond.com/docs/quick-start/edition?channel=github)
+[Rainbond 开发计划](https://www.rainbond.com/docs/quick-start/roadmap?channel=github)
 
 ## 快速开始
 
-1.  [快速安装 Rainbond 集群](https://www.rainbond.com/docs/quick-start/rainbond_install/)
-2.  [创建第一个应用（组件）](https://www.rainbond.com/docs/user-manual/app-creation/)
-3.  [观看教程视频，快速学习 Rainbond](https://www.rainbond.com/video.html)
-4.  [搭建 ServiceMesh 微服务架构](https://www.rainbond.com/docs/advanced-scenarios/micro/)
+1. [快速安装 Rainbond 集群](https://www.rainbond.com/docs/quick-start/rainbond_install?channel=github)
+2. [创建第一个应用（组件）](https://www.rainbond.com/docs/get-start/create-app-from-source?channel=github)
+3. [搭建 ServiceMesh 微服务架构](https://www.rainbond.com/docs/get-start/create-dependency?channel=github)
+4. [观看教程视频，快速学习 Rainbond](https://www.rainbond.com/video.html?channel=github)
 
 ## 参与社区
 
 [Rainbond 开源社区](https://t.goodrain.com) 欢迎你在社区中查阅或贡献 Rainbond 的用例用法。
 
-[Rainbond 项目官网](https://www.rainbond.com) 查阅关于 Rainbond 的更多信息。
+[Rainbond 项目官网](https://www.rainbond.com?channel=github) 查阅关于 Rainbond 的更多信息。
 
-<center><img width="200px" src="https://static.goodrain.com/images/cloud/weichart.png"/></center>
-<center>添加项目作者微信</center>
+微信扫码关注Rainbond公众号，添加群助手进入Rainbond交流群喔！
 
-<center><img width="200px" src="https://static.goodrain.com/images/dingding.jpeg"/></center>
-<center>加入社区用户钉钉群</center>
+<img width="300px" src="https://static.goodrain.com/wechat/WechatQRCode.gif"/>
+
+钉钉搜索群号加入Rainbond技术交流群: `31096419`
+
+添加微信小助手进入Rainbond交流群:
+
+<img width="300px" src="https://static.goodrain.com/wechat/weChat.jpg"/>
 
 ## 参与贡献
 
 我们非常欢迎你参与 Rainbond 社区关于平台使用经验、标准化应用、插件分享等领域的贡献和分享。
 
-若你是正在使用 Rainbond 的用户，且对 Rainbond 有深入的了解和技术路线的认同，在你的企业内部有较大的需求，我们非常欢迎你 [参与 Rainbond 项目开发贡献](https://www.rainbond.com/docs/contribution/)
+若你是正在使用 Rainbond 的用户，且对 Rainbond 有深入的了解和技术路线的认同，在你的企业内部有较大的需求，我们非常欢迎你 [参与 Rainbond 项目开发贡献](https://www.rainbond.com/docs/community/contribution?channel=github)
 
 ## 相关项目
 
@@ -119,6 +116,10 @@ Rainbond 完成与龙芯、飞腾、麒麟操作系统等为代表的国产化�
 - [Rainbond-Operator](https://github.com/goodrain/rainbond-operator) Rainbond 安装运维项目
 - [Rainbond-Builder](https://github.com/goodrain/builder) Rainbond 源码构建工具集
 - [Rainbond-Docs](https://github.com/goodrain/rainbond-docs) Rainbond 文档
+
+## 贡献
+
+参考 [贡献指南](https://github.com/goodrain/rainbond/blob/V5.4/CONTRIBUTING.md) ，查看如何开发 Rainbond 
 
 ## License
 

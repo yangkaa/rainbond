@@ -27,11 +27,15 @@ import (
 
 	"github.com/eapache/channels"
 	"github.com/goodrain/rainbond/cmd/worker/option"
+	"github.com/goodrain/rainbond/db"
 	"github.com/goodrain/rainbond/db/model"
 	discover "github.com/goodrain/rainbond/discover.v2"
+	"github.com/goodrain/rainbond/pkg/apis/rainbond/v1alpha1"
+	"github.com/goodrain/rainbond/pkg/helm"
 	"github.com/goodrain/rainbond/util"
+	"github.com/goodrain/rainbond/util/constants"
 	etcdutil "github.com/goodrain/rainbond/util/etcd"
-	"github.com/goodrain/rainbond/util/k8s"
+	k8sutil "github.com/goodrain/rainbond/util/k8s"
 	"github.com/goodrain/rainbond/worker/appm/store"
 	"github.com/goodrain/rainbond/worker/appm/thirdparty/discovery"
 	v1 "github.com/goodrain/rainbond/worker/appm/types/v1"
@@ -40,16 +44,22 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/client-go/kubernetes"
 )
 
 //RuntimeServer app runtime grpc server
 type RuntimeServer struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	logger *logrus.Entry
+
 	store     store.Storer
 	conf      option.Config
 	server    *grpc.Server
@@ -69,6 +79,7 @@ func CreaterRuntimeServer(conf option.Config,
 		conf:      conf,
 		ctx:       ctx,
 		cancel:    cancel,
+		logger:    logrus.WithField("WHO", "RuntimeServer"),
 		server:    grpc.NewServer(),
 		hostIP:    conf.HostIP,
 		store:     store,
@@ -113,20 +124,96 @@ func (r *RuntimeServer) GetAppStatusDeprecated(ctx context.Context, re *pb.Servi
 
 // GetAppStatus returns the status of application based on the given appId.
 func (r *RuntimeServer) GetAppStatus(ctx context.Context, in *pb.AppStatusReq) (*pb.AppStatus, error) {
-	status, err := r.store.GetAppStatus(in.AppId)
+	app, err := db.GetManager().ApplicationDao().GetAppByID(in.AppId)
 	if err != nil {
 		return nil, err
 	}
 
-	cpu, memory, err := r.store.GetAppResources(in.AppId)
+	if app.AppType == model.AppTypeHelm {
+		return r.getHelmAppStatus(app)
+	}
+
+	return r.getRainbondAppStatus(app)
+}
+
+func (r *RuntimeServer) getRainbondAppStatus(app *model.Application) (*pb.AppStatus, error) {
+	status, err := r.store.GetAppStatus(app.AppID)
+	if err != nil {
+		return nil, err
+	}
+
+	cpu, memory, err := r.store.GetAppResources(app.AppID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.AppStatus{
-		Status: status,
-		Cpu:    cpu,
-		Memory: memory,
+		Status:    status.String(),
+		SetCPU:    true,
+		Cpu:       cpu,
+		SetMemory: true,
+		Memory:    memory,
+		AppId:     app.AppID,
+		AppName:   app.AppName,
+	}, nil
+}
+
+func (r *RuntimeServer) getHelmAppStatus(app *model.Application) (*pb.AppStatus, error) {
+	// TODO: Query only once in the upper layer and pass in the namespace
+	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(app.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	helmApp, err := r.store.GetHelmApp(tenant.Namespace, app.AppName)
+	if err != nil {
+		return nil, err
+	}
+
+	phase := string(v1alpha1.HelmAppStatusPhaseDetecting)
+	if string(helmApp.Status.Phase) != "" {
+		phase = string(helmApp.Status.Phase)
+	}
+
+	var conditions []*pb.AppStatusCondition
+	for _, cdt := range helmApp.Status.Conditions {
+		conditions = append(conditions, &pb.AppStatusCondition{
+			Type:    string(cdt.Type),
+			Status:  cdt.Status == corev1.ConditionTrue,
+			Reason:  cdt.Reason,
+			Message: cdt.Message,
+		})
+	}
+
+	selector := labels.NewSelector()
+	instanceReq, _ := labels.NewRequirement(constants.ResourceInstanceLabel, selection.Equals, []string{app.AppName})
+	selector = selector.Add(*instanceReq)
+	managedReq, _ := labels.NewRequirement(constants.ResourceManagedByLabel, selection.Equals, []string{"Helm"})
+	selector = selector.Add(*managedReq)
+	pods, err := r.store.ListPods(tenant.Namespace, selector)
+	if err != nil {
+		return nil, err
+	}
+
+	var cpu, memory int64
+	for _, pod := range pods {
+		for _, c := range pod.Spec.Containers {
+			cpu += c.Resources.Requests.Cpu().MilliValue()
+			memory += c.Resources.Requests.Memory().Value() / 1024 / 1024
+		}
+	}
+
+	return &pb.AppStatus{
+		Status:     string(helmApp.Status.Status),
+		Phase:      phase,
+		Cpu:        cpu,
+		SetCPU:     cpu > 0,
+		Memory:     memory,
+		SetMemory:  memory > 0,
+		Version:    helmApp.Status.CurrentVersion,
+		Overrides:  helmApp.Status.Overrides,
+		Conditions: conditions,
+		AppId:      app.AppID,
+		AppName:    app.AppName,
 	}, nil
 }
 
@@ -134,7 +221,11 @@ func (r *RuntimeServer) GetAppStatus(ctx context.Context, in *pb.AppStatusReq) (
 //if TenantId is "" will return the sum of the all tenant
 func (r *RuntimeServer) GetTenantResource(ctx context.Context, re *pb.TenantRequest) (*pb.TenantResource, error) {
 	var tr pb.TenantResource
-	res := r.store.GetTenantResource(re.TenantId)
+	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(re.TenantId)
+	if err != nil {
+		return nil, err
+	}
+	res := r.store.GetTenantResource(tenant.Namespace)
 	runningApps := r.store.GetTenantRunningApp(re.TenantId)
 	for _, app := range runningApps {
 		if app.ServiceKind == model.ServiceKindThirdParty {
@@ -158,13 +249,18 @@ func (r *RuntimeServer) GetTenantResources(context.Context, *pb.Empty) (*pb.Tena
 	for _, re := range res {
 		var tr pb.TenantResource
 		runningApps := r.store.GetTenantRunningApp(re.Namespace)
+		runningApplications := make(map[string]struct{})
 		for _, app := range runningApps {
 			if app.ServiceKind == model.ServiceKindThirdParty {
 				tr.RunningAppThirdNum++
 			} else if app.ServiceKind == model.ServiceKindInternal {
 				tr.RunningAppInternalNum++
 			}
+			if _, ok := runningApplications[app.AppID]; !ok{
+				runningApplications[app.AppID] = struct{}{}
+			}
 		}
+		tr.RunningApplications = int64(len(runningApplications))
 		tr.RunningAppNum = int64(len(runningApps))
 		tr.CpuLimit = re.CPULimit
 		tr.CpuRequest = re.CPURequest
@@ -199,6 +295,7 @@ func (r *RuntimeServer) GetAppPods(ctx context.Context, re *pb.ServiceRequest) (
 				ContainerName: container.Name,
 				MemoryLimit:   container.Resources.Limits.Memory().Value(),
 				CpuRequest:    container.Resources.Requests.Cpu().MilliValue(),
+				MemoryRequest: container.Resources.Requests.Memory().Value(),
 			}
 			for _, vm := range container.VolumeMounts {
 				volumes = append(volumes, vm.Name)
@@ -212,7 +309,7 @@ func (r *RuntimeServer) GetAppPods(ctx context.Context, re *pb.ServiceRequest) (
 			PodVolumes: volumes,
 		}
 		podStatus := &pb.PodStatus{}
-		wutil.DescribePodStatus(r.clientset, pod, podStatus, k8s.DefListEventsByPod)
+		wutil.DescribePodStatus(r.clientset, pod, podStatus, k8sutil.DefListEventsByPod)
 		sapod.PodStatus = podStatus.Type.String()
 		if app.DistinguishPod(pod) {
 			newpods = append(newpods, sapod)
@@ -281,15 +378,6 @@ func translateTimestampSince(timestamp metav1.Time) string {
 	return duration.HumanDuration(time.Since(timestamp.Time))
 }
 
-// formatEventSource formats EventSource as a comma separated string excluding Host when empty
-func formatEventSource(es corev1.EventSource) string {
-	EventSourceString := []string{es.Component}
-	if len(es.Host) > 0 {
-		EventSourceString = append(EventSourceString, es.Host)
-	}
-	return strings.Join(EventSourceString, ", ")
-}
-
 // DescribeEvents -
 func DescribeEvents(el *corev1.EventList) []*pb.PodEvent {
 	if len(el.Items) == 0 {
@@ -351,8 +439,16 @@ func (r *RuntimeServer) GetDeployInfo(ctx context.Context, re *pb.ServiceRequest
 			}
 			deployinfo.Secrets = secretsinfo
 		}
-		if ingresses := appService.GetIngress(false); ingresses != nil {
+		ingresses, betaIngresses := appService.GetIngress(false)
+		if ingresses != nil {
 			ingress := make(map[string]string, len(ingresses))
+			for _, s := range ingresses {
+				ingress[s.Name] = s.Name
+			}
+			deployinfo.Ingresses = ingress
+		}
+		if betaIngresses != nil {
+			ingress := make(map[string]string, len(betaIngresses))
 			for _, s := range ingresses {
 				ingress[s.Name] = s.Name
 			}
@@ -411,63 +507,51 @@ func (r *RuntimeServer) ListThirdPartyEndpoints(ctx context.Context, re *pb.Serv
 	if as == nil {
 		return new(pb.ThirdPartyEndpoints), nil
 	}
-	var pbeps []*pb.ThirdPartyEndpoint
-	// The same IP may correspond to two endpoints, which are internal and external endpoints.
-	// So it is need to filter the same IP.
-	exists := make(map[string]bool)
-	addEndpoint := func(tpe *pb.ThirdPartyEndpoint) {
-		if !exists[fmt.Sprintf("%s:%d", tpe.Ip, tpe.Port)] {
-			pbeps = append(pbeps, tpe)
-			exists[fmt.Sprintf("%s:%d", tpe.Ip, tpe.Port)] = true
-		}
-	}
-	for _, ep := range as.GetEndpoints(false) {
-		if ep.Subsets == nil || len(ep.Subsets) == 0 {
-			logrus.Debugf("Key: %s; empty subsets", fmt.Sprintf("%s/%s", ep.Namespace, ep.Name))
-			continue
-		}
-		for _, subset := range ep.Subsets {
-			for _, port := range subset.Ports {
-				for _, address := range subset.Addresses {
-					ip := address.IP
-					if ip == "1.1.1.1" {
-						if len(as.GetServices(false)) > 0 {
-							ip = as.GetServices(false)[0].Annotations["domain"]
-						}
-					}
-					addEndpoint(&pb.ThirdPartyEndpoint{
-						Uuid: port.Name,
-						Sid:  ep.GetLabels()["service_id"],
-						Ip:   ip,
-						Port: port.Port,
-						Status: func() string {
-							return "healthy"
-						}(),
-					})
+
+	endpoints := r.listThirdEndpoints(as)
+
+	var items []*pb.ThirdPartyEndpoint
+	for _, ep := range endpoints {
+		items = append(items, &pb.ThirdPartyEndpoint{
+			Name:        ep.Name,
+			ComponentID: as.ServiceID,
+			Address:     string(ep.Address),
+			Status: func() string {
+				switch ep.Status {
+				case v1alpha1.EndpointReady:
+					return "healthy"
+				case v1alpha1.EndpointNotReady:
+					return "notready"
+				case v1alpha1.EndpointUnhealthy:
+					return "unhealthy"
+				default:
+					return "-" // offline
 				}
-				for _, address := range subset.NotReadyAddresses {
-					ip := address.IP
-					if ip == "1.1.1.1" {
-						if len(as.GetServices(false)) > 0 {
-							ip = as.GetServices(false)[0].Annotations["domain"]
-						}
-					}
-					addEndpoint(&pb.ThirdPartyEndpoint{
-						Uuid: port.Name,
-						Sid:  ep.GetLabels()["service_id"],
-						Ip:   ip,
-						Port: port.Port,
-						Status: func() string {
-							return "unhealthy"
-						}(),
-					})
-				}
-			}
-		}
+			}(),
+		})
 	}
 	return &pb.ThirdPartyEndpoints{
-		Obj: pbeps,
+		Items: items,
 	}, nil
+}
+
+func (r *RuntimeServer) listThirdEndpoints(as *v1.AppService) []*v1alpha1.ThirdComponentEndpointStatus {
+	logger := r.logger.WithField("Method", "listThirdComponentEndpoints").
+		WithField("ComponentID", as.ServiceID)
+
+	workload := as.GetWorkload()
+	if workload == nil {
+		// workload not found
+		return nil
+	}
+
+	component, ok := workload.(*v1alpha1.ThirdComponent)
+	if !ok {
+		logger.Warningf("expect thirdcomponents.rainbond.io, but got %s", workload.GetObjectKind())
+		return nil
+	}
+
+	return component.Status.Endpoints
 }
 
 // AddThirdPartyEndpoint creates a create event.
@@ -502,7 +586,7 @@ func (r *RuntimeServer) UpdThirdPartyEndpoint(ctx context.Context, re *pb.UpdThi
 		Port:     int(re.Port),
 		IsOnline: re.IsOnline,
 	}
-	if re.IsOnline == false {
+	if !re.IsOnline {
 		r.updateCh.In() <- discovery.Event{
 			Type: discovery.DeleteEvent,
 			Obj:  rbdep,
@@ -592,7 +676,7 @@ func (r *RuntimeServer) GetAppVolumeStatus(ctx context.Context, re *pb.ServiceRe
 		}
 
 		podStatus := &pb.PodStatus{}
-		wutil.DescribePodStatus(r.clientset, pod, podStatus, k8s.DefListEventsByPod)
+		wutil.DescribePodStatus(r.clientset, pod, podStatus, k8sutil.DefListEventsByPod)
 
 		for _, volume := range pod.Spec.Volumes {
 			volumeName := volume.Name
@@ -621,4 +705,180 @@ func (r *RuntimeServer) GetAppVolumeStatus(ctx context.Context, re *pb.ServiceRe
 	}
 
 	return ret, nil
+}
+
+// ListAppServices -
+func (r *RuntimeServer) ListAppServices(ctx context.Context, in *pb.AppReq) (*pb.AppServices, error) {
+	app, err := db.GetManager().ApplicationDao().GetAppByID(in.AppId)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(app.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	selector := labels.NewSelector()
+	instanceReq, _ := labels.NewRequirement(constants.ResourceInstanceLabel, selection.Equals, []string{app.AppName})
+	selector = selector.Add(*instanceReq)
+	managedReq, _ := labels.NewRequirement(constants.ResourceManagedByLabel, selection.Equals, []string{"Helm"})
+	selector = selector.Add(*managedReq)
+	services, err := r.store.ListServices(tenant.Namespace, selector)
+	if err != nil {
+		return nil, err
+	}
+
+	appServices := r.convertServices(services)
+
+	return &pb.AppServices{
+		Services: appServices,
+	}, nil
+}
+
+func (r *RuntimeServer) convertServices(services []*corev1.Service) []*pb.AppService {
+	var appServices []*pb.AppService
+	for _, svc := range services {
+		if svc.Spec.ClusterIP == "None" {
+			// ignore headless service
+			continue
+		}
+
+		var ports []*pb.AppService_Port
+		for _, port := range svc.Spec.Ports {
+			ports = append(ports, &pb.AppService_Port{
+				Port:     port.Port,
+				Protocol: string(port.Protocol),
+			})
+		}
+		selector := labels.NewSelector()
+		for key, val := range svc.Spec.Selector {
+			req, _ := labels.NewRequirement(key, selection.Equals, []string{val})
+			selector = selector.Add(*req)
+		}
+
+		var oldPods, newPods []*pb.AppService_Pod
+		pods, err := r.store.ListPods(svc.Namespace, selector)
+		if err != nil {
+			logrus.Warningf("parse services: %v", err)
+		} else {
+			for _, pod := range pods {
+				podStatus := &pb.PodStatus{}
+				wutil.DescribePodStatus(r.clientset, pod, podStatus, k8sutil.DefListEventsByPod)
+				po := &pb.AppService_Pod{
+					Name:   pod.Name,
+					Status: podStatus.TypeStr,
+				}
+
+				rss, err := r.store.ListReplicaSets(svc.Namespace, selector)
+				if err != nil {
+					logrus.Warningf("[RuntimeServer] convert services: list replica sets: %v", err)
+				}
+
+				if isOldPod(pod, rss) {
+					oldPods = append(oldPods, po)
+				} else {
+					newPods = append(newPods, po)
+				}
+			}
+		}
+
+		address := svc.Spec.ClusterIP
+		if address == "" || address == "None" {
+			address = svc.Name + "." + svc.Namespace
+		}
+
+		appServices = append(appServices, &pb.AppService{
+			Name:    svc.Name,
+			Address: address,
+			Ports:   ports,
+			OldPods: oldPods,
+			Pods:    newPods,
+		})
+	}
+	return appServices
+}
+
+// ListHelmAppRelease -
+func (r *RuntimeServer) ListHelmAppRelease(ctx context.Context, req *pb.AppReq) (*pb.HelmAppReleases, error) {
+	app, err := db.GetManager().ApplicationDao().GetAppByID(req.AppId)
+	if err != nil {
+		return nil, err
+	}
+	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(app.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	h, err := helm.NewHelm(tenant.Namespace, r.conf.Helm.RepoFile, r.conf.Helm.RepoCache)
+	if err != nil {
+		return nil, err
+	}
+
+	rels, err := h.History(app.AppName)
+	if err != nil {
+		return nil, err
+	}
+
+	var releases []*pb.HelmAppRelease
+	for _, rel := range rels {
+		releases = append(releases, &pb.HelmAppRelease{
+			Revision:    int32(rel.Revision),
+			Updated:     rel.Updated.String(),
+			Status:      rel.Status,
+			Chart:       rel.Chart,
+			AppVersion:  rel.AppVersion,
+			Description: rel.Description,
+		})
+	}
+
+	logrus.Debugf("%d releases were found for app %s", len(releases), app.AppName+"/"+app.TenantID)
+
+	return &pb.HelmAppReleases{
+		HelmAppRelease: releases,
+	}, nil
+}
+
+func isOldPod(pod *corev1.Pod, rss []*appv1.ReplicaSet) bool {
+	if len(rss) == 0 {
+		return false
+	}
+
+	var newrs *appv1.ReplicaSet
+	for _, rs := range rss {
+		if newrs == nil {
+			newrs = rs
+			continue
+		}
+		if newrs.ObjectMeta.CreationTimestamp.Before(&rs.ObjectMeta.CreationTimestamp) {
+			newrs = rs
+		}
+	}
+	return pod.ObjectMeta.CreationTimestamp.Before(&newrs.ObjectMeta.CreationTimestamp)
+}
+
+// ListAppStatuses returns the statuses of application based on the given appIds.
+func (r *RuntimeServer) ListAppStatuses(ctx context.Context, in *pb.AppStatusesReq) (*pb.AppStatuses, error) {
+	apps, err := db.GetManager().ApplicationDao().ListByAppIDs(in.AppIds)
+	if err != nil {
+		return nil, err
+	}
+	var appStatuses []*pb.AppStatus
+	for _, app := range apps {
+		if app.AppType == model.AppTypeHelm {
+			helmAppStatus, err := r.getHelmAppStatus(app)
+			if err != nil {
+				logrus.Errorf("get helm app (%s)[%s] failed", app.AppName, app.AppID)
+				continue
+			}
+			appStatuses = append(appStatuses, helmAppStatus)
+			continue
+		}
+		appStatus, err := r.getRainbondAppStatus(app)
+		if err != nil {
+			logrus.Errorf("get rainbond app (%s)[%s] failed", app.AppName, app.AppID)
+			continue
+		}
+		appStatuses = append(appStatuses, appStatus)
+	}
+	return &pb.AppStatuses{
+		AppStatuses: appStatuses,
+	}, nil
 }

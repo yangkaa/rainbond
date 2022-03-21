@@ -24,7 +24,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/eapache/channels"
 	"github.com/goodrain/rainbond/cmd/worker/option"
 	"github.com/goodrain/rainbond/mq/api/grpc/pb"
 	"github.com/goodrain/rainbond/mq/client"
@@ -59,11 +58,10 @@ type TaskManager struct {
 func NewTaskManager(cfg option.Config,
 	store store.Storer,
 	controllermanager *controller.Manager,
-	garbageCollector *gc.GarbageCollector,
-	startCh *channels.RingChannel) *TaskManager {
+	garbageCollector *gc.GarbageCollector) *TaskManager {
 
 	ctx, cancel := context.WithCancel(context.Background())
-	handleManager := handle.NewManager(ctx, cfg, store, controllermanager, garbageCollector, startCh)
+	handleManager := handle.NewManager(ctx, cfg, store, controllermanager, garbageCollector)
 	healthStatus["status"] = "health"
 	healthStatus["info"] = "worker service health"
 	return &TaskManager{
@@ -104,9 +102,7 @@ func (t *TaskManager) Do() {
 		case <-t.ctx.Done():
 			return
 		default:
-			ctx, cancel := context.WithCancel(t.ctx)
-			data, err := t.client.Dequeue(ctx, &pb.DequeueRequest{Topic: client.WorkerTopic, ClientHost: hostname + "-worker"})
-			cancel()
+			data, err := t.client.Dequeue(t.ctx, &pb.DequeueRequest{Topic: client.WorkerTopic, ClientHost: hostname + "-worker"})
 			if err != nil {
 				if grpc1.ErrorDesc(err) == context.DeadlineExceeded.Error() {
 					continue

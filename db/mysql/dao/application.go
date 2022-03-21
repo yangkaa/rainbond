@@ -4,6 +4,8 @@ import (
 	"github.com/goodrain/rainbond/api/util/bcode"
 	"github.com/goodrain/rainbond/db/model"
 	"github.com/jinzhu/gorm"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // ApplicationDaoImpl -
@@ -83,4 +85,23 @@ func (a *ApplicationDaoImpl) DeleteApp(appID string) error {
 		return err
 	}
 	return a.DB.Delete(&app).Error
+}
+
+// ListByAppIDs -
+func (a *ApplicationDaoImpl) ListByAppIDs(appIDs []string) ([]*model.Application, error) {
+	var datas []*model.Application
+	if err := a.DB.Where("app_id in (?)", appIDs).Find(&datas).Error; err != nil {
+		return nil, errors.Wrap(err, "list app by app_ids")
+	}
+	return datas, nil
+}
+
+// IsK8sAppDuplicate Verify whether the k8s app under the same team are duplicate
+func (a *ApplicationDaoImpl) IsK8sAppDuplicate(tenantID, AppID, k8sApp string) bool {
+	var count int64
+	if err := a.DB.Model(&model.Application{}).Where("tenant_id=? and app_id <>? and k8s_app=?", tenantID, AppID, k8sApp).Count(&count).Error; err != nil {
+		logrus.Errorf("judge K8s App Duplicate failed %v", err)
+		return true
+	}
+	return count > 0
 }

@@ -19,10 +19,11 @@ package rewrite
 import (
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/goodrain/rainbond/gateway/annotations/parser"
 	"github.com/goodrain/rainbond/gateway/annotations/resolver"
 	"github.com/sirupsen/logrus"
-	extensions "k8s.io/api/extensions/v1beta1"
 )
 
 // Config describes the per location redirect config
@@ -70,6 +71,21 @@ func (r1 *Config) Equal(r2 *Config) bool {
 	if r1.UseRegex != r2.UseRegex {
 		return false
 	}
+	if len(r1.Rewrites) != len(r2.Rewrites) {
+		return false
+	}
+	for _, r1r := range r1.Rewrites {
+		flag := false
+		for _, r2r := range r2.Rewrites {
+			if r1r.Regex == r2r.Regex && r1r.Replacement == r2r.Replacement && r1r.Flag == r2r.Flag {
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			return false
+		}
+	}
 
 	return true
 }
@@ -85,26 +101,26 @@ func NewParser(r resolver.Resolver) parser.IngressAnnotation {
 
 // ParseAnnotations parses the annotations contained in the ingress
 // rule used to rewrite the defined paths
-func (a rewrite) Parse(ing *extensions.Ingress) (interface{}, error) {
+func (a rewrite) Parse(meta *metav1.ObjectMeta) (interface{}, error) {
 	var err error
 	config := &Config{}
 
-	rewrites, err := parser.GetStringAnnotationWithPrefix("rewrite-", ing)
+	rewrites, err := parser.GetStringAnnotationWithPrefix("rewrite-", meta)
 	config.Rewrites = convert(rewrites)
 
-	config.Target, _ = parser.GetStringAnnotation("rewrite-target", ing)
-	config.SSLRedirect, err = parser.GetBoolAnnotation("ssl-redirect", ing)
+	config.Target, _ = parser.GetStringAnnotation("rewrite-target", meta)
+	config.SSLRedirect, err = parser.GetBoolAnnotation("ssl-redirect", meta)
 	if err != nil {
 		config.SSLRedirect = a.r.GetDefaultBackend().SSLRedirect
 	}
 
-	config.ForceSSLRedirect, err = parser.GetBoolAnnotation("force-ssl-redirect", ing)
+	config.ForceSSLRedirect, err = parser.GetBoolAnnotation("force-ssl-redirect", meta)
 	if err != nil {
 		config.ForceSSLRedirect = a.r.GetDefaultBackend().ForceSSLRedirect
 	}
 
-	config.AppRoot, _ = parser.GetStringAnnotation("app-root", ing)
-	config.UseRegex, _ = parser.GetBoolAnnotation("use-regex", ing)
+	config.AppRoot, _ = parser.GetStringAnnotation("app-root", meta)
+	config.UseRegex, _ = parser.GetBoolAnnotation("use-regex", meta)
 
 	return config, nil
 }

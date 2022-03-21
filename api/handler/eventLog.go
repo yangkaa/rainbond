@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/goodrain/rainbond/api/model"
@@ -35,6 +36,7 @@ import (
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	eventdb "github.com/goodrain/rainbond/eventlog/db"
 	"github.com/goodrain/rainbond/util/constants"
+	"github.com/goodrain/rainbond/worker/master/podevent"
 )
 
 //LogAction  log action struct
@@ -59,6 +61,48 @@ func (l *LogAction) GetEvents(target, targetID string, page, size int) ([]*dbmod
 		return db.GetManager().ServiceEventDao().GetEventsByTenantID(targetID, (page-1)*size, size)
 	}
 	return db.GetManager().ServiceEventDao().GetEventsByTarget(target, targetID, (page-1)*size, size)
+}
+
+// GetLatestExceptionEvents get the latest exception events
+func (l *LogAction) GetLatestExceptionEvents(interval int) ([]*model.PodExceptionEvent, error) {
+	createTime := time.Now().Add(time.Second * time.Duration(interval) * (-1))
+	eventTypes := podevent.GetEventTypes()
+	events, err := db.GetManager().ServiceEventDao().GetExceptionEventsByTime(eventTypes, createTime)
+	if err != nil {
+		return nil, err
+	}
+	var serviceIDs []string
+	for _, event := range events {
+		if event.ServiceID == "" {
+			continue
+		}
+		serviceIDs = append(serviceIDs, event.ServiceID)
+	}
+
+	services, err := db.GetManager().TenantServiceDao().GetServiceByIDs(serviceIDs)
+	if err != nil {
+		return nil, err
+	}
+	componentAppRels := make(map[string]string)
+	for _, service := range services {
+		componentAppRels[service.ServiceID] = service.AppID
+	}
+
+	var podExceptionEvents []*model.PodExceptionEvent
+	for _, event := range events {
+		if event.ServiceID == "" {
+			continue
+		}
+		counts := db.GetManager().ServiceEventDao().CountEvents(event.TenantID, event.ServiceID, event.OptType)
+		podExceptionEvents = append(podExceptionEvents, &model.PodExceptionEvent{
+			EventType:   event.OptType,
+			EventNums:   counts,
+			TenantID:    event.TenantID,
+			AppID:       componentAppRels[event.ServiceID],
+			ComponentID: event.ServiceID,
+		})
+	}
+	return podExceptionEvents, nil
 }
 
 //GetLogList get log list

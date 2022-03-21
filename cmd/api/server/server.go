@@ -24,6 +24,8 @@ import (
 	"os/signal"
 	"syscall"
 
+
+	rainbondscheme "github.com/goodrain/rainbond/pkg/generated/clientset/versioned/scheme"
 	"github.com/goodrain/rainbond/api/controller"
 	"github.com/goodrain/rainbond/api/db"
 	"github.com/goodrain/rainbond/api/discover"
@@ -31,12 +33,17 @@ import (
 	"github.com/goodrain/rainbond/api/server"
 	"github.com/goodrain/rainbond/cmd/api/option"
 	"github.com/goodrain/rainbond/event"
+	"github.com/goodrain/rainbond/pkg/generated/clientset/versioned"
 	etcdutil "github.com/goodrain/rainbond/util/etcd"
 	k8sutil "github.com/goodrain/rainbond/util/k8s"
 	"github.com/goodrain/rainbond/worker/client"
-	"k8s.io/client-go/kubernetes"
-
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 //Run start run
@@ -64,6 +71,7 @@ func Run(s *option.APIServer) error {
 	if err := db.CreateEventManager(s.Config); err != nil {
 		logrus.Debugf("create event manager error, %v", err)
 	}
+
 	config, err := k8sutil.NewRestConfig(s.KubeConfigPath)
 	if err != nil {
 		return err
@@ -72,6 +80,23 @@ func Run(s *option.APIServer) error {
 	if err != nil {
 		return err
 	}
+	metricClient, err := metrics.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+	rainbondClient := versioned.NewForConfigOrDie(config)
+
+	// k8s runtime client
+	scheme := runtime.NewScheme()
+	clientgoscheme.AddToScheme(scheme)
+	rainbondscheme.AddToScheme(scheme)
+	k8sClient, err := k8sclient.New(config, k8sclient.Options{
+		Scheme: scheme,
+	})
+	if err != nil {
+		return errors.WithMessage(err, "create k8s client")
+	}
+
 	if err := event.NewManager(event.EventConfig{
 		EventLogServers: s.Config.EventLogServers,
 		DiscoverArgs:    etcdClientArgs,
@@ -85,6 +110,7 @@ func Run(s *option.APIServer) error {
 		EtcdCaFile:    s.Config.EtcdCaFile,
 		EtcdCertFile:  s.Config.EtcdCertFile,
 		EtcdKeyFile:   s.Config.EtcdKeyFile,
+		NonBlock:      s.Config.Debug,
 	})
 	if err != nil {
 		logrus.Errorf("create app status client error, %v", err)
@@ -100,7 +126,7 @@ func Run(s *option.APIServer) error {
 	//初始化 middleware
 	handler.InitProxy(s.Config)
 	//创建handle
-	if err := handler.InitHandle(s.Config, etcdClientArgs, cli, etcdcli, clientset); err != nil {
+	if err := handler.InitHandle(s.Config, etcdClientArgs, cli, etcdcli, clientset, rainbondClient, k8sClient, metricClient); err != nil {
 		logrus.Errorf("init all handle error, %v", err)
 		return err
 	}

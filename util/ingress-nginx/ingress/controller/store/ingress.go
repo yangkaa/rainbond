@@ -17,7 +17,6 @@ limitations under the License.
 package store
 
 import (
-	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -27,7 +26,7 @@ type IngressLister struct {
 }
 
 // ByKey returns the Ingress matching key in the local Ingress store.
-func (il IngressLister) ByKey(key string) (*extensions.Ingress, error) {
+func (il IngressLister) ByKey(key string) (interface{}, error) {
 	i, exists, err := il.GetByKey(key)
 	if err != nil {
 		return nil, err
@@ -35,5 +34,5 @@ func (il IngressLister) ByKey(key string) (*extensions.Ingress, error) {
 	if !exists {
 		return nil, NotExistsError(key)
 	}
-	return i.(*extensions.Ingress), nil
+	return i, nil
 }

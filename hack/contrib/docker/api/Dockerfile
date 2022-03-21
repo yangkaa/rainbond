@@ -1,5 +1,7 @@
-FROM goodrainapps/alpine:3.4
-LABEL author=zengqg@goodrain.com
+ARG BASE_IMAGE_VERSION
+FROM goodrainapps/alpine:${BASE_IMAGE_VERSION}
+ARG RELEASE_DESC
+
 ADD rainbond-api /run/rainbond-api
 ADD entrypoint.sh /run/entrypoint.sh
 WORKDIR /run

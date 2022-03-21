@@ -99,8 +99,8 @@ func PodNums(w http.ResponseWriter, r *http.Request) {
 // PodDetail -
 func (p *PodController) PodDetail(w http.ResponseWriter, r *http.Request) {
 	podName := chi.URLParam(r, "pod_name")
-	serviceID := r.Context().Value(ctxutil.ContextKey("service_id")).(string)
-	pd, err := handler.GetPodHandler().PodDetail(serviceID, podName)
+	tenant := r.Context().Value(ctxutil.ContextKey("tenant")).(*model.Tenants)
+	pd, err := handler.GetPodHandler().PodDetail(tenant.Namespace, podName)
 	if err != nil {
 		logrus.Errorf("error getting pod detail: %v", err)
 		if err == server.ErrPodNotFound {
@@ -111,4 +111,16 @@ func (p *PodController) PodDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httputil.ReturnSuccess(r, w, pd)
+}
+
+// InstancesMonitor -
+func (p *PodController) InstancesMonitor(w http.ResponseWriter, r *http.Request) {
+	nodeName := r.URL.Query().Get("node_name")
+	query := r.URL.Query().Get("query")
+	pods, err := handler.GetPodHandler().InstancesMonitor(nodeName, query)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("error getting instances monitor: %v", err))
+		return
+	}
+	httputil.ReturnSuccess(r, w, pods)
 }

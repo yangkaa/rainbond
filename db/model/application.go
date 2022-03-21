@@ -5,20 +5,30 @@ const (
 	GovernanceModeBuildInServiceMesh = "BUILD_IN_SERVICE_MESH"
 	// GovernanceModeKubernetesNativeService means the governance mode is KUBERNETES_NATIVE_SERVICE
 	GovernanceModeKubernetesNativeService = "KUBERNETES_NATIVE_SERVICE"
+	// GovernanceModeIstioServiceMesh means the governance mode is ISTIO_SERVICE_MESH
+	GovernanceModeIstioServiceMesh = "ISTIO_SERVICE_MESH"
 )
 
-// IsGovernanceModeValid checks if the governanceMode is valid.
-func IsGovernanceModeValid(governanceMode string) bool {
-	return governanceMode == GovernanceModeBuildInServiceMesh || governanceMode == GovernanceModeKubernetesNativeService
-}
+// app type
+const (
+	AppTypeRainbond = "rainbond"
+	AppTypeHelm     = "helm"
+)
 
 // Application -
 type Application struct {
 	Model
-	AppName        string `gorm:"column:app_name" json:"app_name"`
-	AppID          string `gorm:"column:app_id" json:"app_id"`
-	TenantID       string `gorm:"column:tenant_id" json:"tenant_id"`
-	GovernanceMode string `gorm:"column:governance_mode;default:'BUILD_IN_SERVICE_MESH'" json:"governance_mode"`
+	EID             string `gorm:"column:eid" json:"eid"`
+	TenantID        string `gorm:"column:tenant_id" json:"tenant_id"`
+	AppName         string `gorm:"column:app_name" json:"app_name"`
+	AppID           string `gorm:"column:app_id" json:"app_id"`
+	AppType         string `gorm:"column:app_type;default:'rainbond'" json:"app_type"`
+	AppStoreName    string `gorm:"column:app_store_name" json:"app_store_name"`
+	AppStoreURL     string `gorm:"column:app_store_url" json:"app_store_url"`
+	AppTemplateName string `gorm:"column:app_template_name" json:"app_template_name"`
+	Version         string `gorm:"column:version" json:"version"`
+	GovernanceMode  string `gorm:"column:governance_mode;default:'BUILD_IN_SERVICE_MESH'" json:"governance_mode"`
+	K8sApp          string `gorm:"column:k8s_app" json:"k8s_app"`
 }
 
 // TableName return tableName "application"

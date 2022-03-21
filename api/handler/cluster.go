@@ -29,6 +29,7 @@ type ClusterHandler interface {
 	MavenSettingDelete(ctx context.Context, name string) *util.APIHandleError
 	MavenSettingDetail(ctx context.Context, name string) (*MavenSetting, *util.APIHandleError)
 	GetComputeNodeNums(ctx context.Context) (int64, error)
+	GetExceptionNodeInfo(ctx context.Context) ([]*model.ExceptionNode, error)
 }
 
 // NewClusterHandler -
@@ -64,6 +65,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		return nil, fmt.Errorf("[GetClusterInfo] list nodes: %v", err)
 	}
 
+	var computeNode, manageNode, etcdNode, notReadyComputeNode, notReadyManageNode, notReadyEtcdNode int
 	var healthCapCPU, healthCapMem, unhealthCapCPU, unhealthCapMem int64
 	usedNodeList := make([]*corev1.Node, len(nodes))
 	for i := range nodes {
@@ -72,17 +74,38 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 			logrus.Debugf("[GetClusterInfo] node(%s) not ready", node.GetName())
 			unhealthCapCPU += node.Status.Allocatable.Cpu().Value()
 			unhealthCapMem += node.Status.Allocatable.Memory().Value()
+			if isComputeNode(node) {
+				computeNode++
+				notReadyComputeNode++
+			}
+			if isManageNode(node) {
+				manageNode++
+				notReadyManageNode++
+			}
+			if isEtcdNode(node) {
+				etcdNode++
+				notReadyEtcdNode++
+			}
 			continue
 		}
-
+		if isComputeNode(node) {
+			computeNode++
+		}
+		if isManageNode(node) {
+			manageNode++
+		}
+		if isEtcdNode(node) {
+			etcdNode++
+		}
 		healthCapCPU += node.Status.Allocatable.Cpu().Value()
 		healthCapMem += node.Status.Allocatable.Memory().Value()
 		if node.Spec.Unschedulable == false {
 			usedNodeList[i] = node
 		}
 	}
-
-	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR int64
+	existComponents := make(map[string]struct{})
+	existApplications := make(map[string]struct{})
+	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR, all_pods int64
 	nodeAllocatableResourceList := make(map[string]*model.NodeResource, len(usedNodeList))
 	var maxAllocatableMemory *model.NodeResource
 	for i := range usedNodeList {
@@ -92,9 +115,15 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		if err != nil {
 			return nil, fmt.Errorf("list pods: %v", err)
 		}
-
+		all_pods += int64(len(pods))
 		nodeAllocatableResource := model.NewResource(node.Status.Allocatable)
 		for _, pod := range pods {
+			if componentID, ok := pod.Labels["service_id"]; ok {
+				existComponents[componentID] = struct{}{}
+			}
+			if appID, ok := pod.Labels["app_id"]; ok {
+				existApplications[appID] = struct{}{}
+			}
 			nodeAllocatableResource.AllowedPodNumber--
 			for _, c := range pod.Spec.Containers {
 				nodeAllocatableResource.Memory -= c.Resources.Requests.Memory().Value()
@@ -152,10 +181,18 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		HealthReqMem:                     int(healthmemR) / 1024 / 1024,
 		UnhealthReqCPU:                   float32(unhealthCPUR) / 1000,
 		UnhealthReqMem:                   int(unhealthMemR) / 1024 / 1024,
-		ComputeNode:                      len(nodes),
+		ComputeNode:                      computeNode,
+		NotReadyComputeNode:              notReadyComputeNode,
 		CapDisk:                          diskCap,
 		ReqDisk:                          reqDisk,
 		MaxAllocatableMemoryNodeResource: maxAllocatableMemory,
+		Pods:                             all_pods,
+		ManageNode:                       manageNode,
+		NotReadyManageNode:               notReadyManageNode,
+		EtcdNode:                         etcdNode,
+		NotReadyEtcdNode:                 notReadyEtcdNode,
+		Applications:                     int64(len(existApplications)),
+		Components:                       int64(len(existComponents)),
 	}
 
 	result.AllNode = len(nodes)
@@ -207,12 +244,32 @@ func (c *clusterAction) listNodes(ctx context.Context) ([]*corev1.Node, error) {
 }
 
 func isComputeNode(node *corev1.Node) bool {
+	if worker, ok := node.Labels["node-role.kubernetes.io/worker"]; ok && worker == "true" {
+		return true
+	}
 	for lableKey, _ := range node.Labels {
 		if strings.Contains(lableKey, "node-role.kubernetes.io/master") {
 			return false
 		}
 	}
 	return true
+}
+
+func isManageNode(node *corev1.Node) bool {
+	if controlplane, ok := node.Labels["node-role.kubernetes.io/controlplane"]; ok && controlplane == "true" {
+		return true
+	}
+	if _, ok := node.Labels["node-role.kubernetes.io/master"]; ok {
+		return true
+	}
+	return false
+}
+
+func isEtcdNode(node *corev1.Node) bool {
+	if etcd, ok := node.Labels["node-role.kubernetes.io/etcd"]; ok && etcd == "true" {
+		return true
+	}
+	return false
 }
 
 func isNodeReady(node *corev1.Node) bool {
@@ -222,6 +279,18 @@ func isNodeReady(node *corev1.Node) bool {
 		}
 	}
 	return false
+}
+
+func getExceptionNodeReason(node *corev1.Node) (exceptionType, reason string) {
+	for _, cond := range node.Status.Conditions {
+		if cond.Type == corev1.NodeReady && cond.Status == corev1.ConditionTrue {
+			continue
+		}
+		if cond.Status == corev1.ConditionTrue {
+			return string(cond.Type), cond.Reason
+		}
+	}
+	return "", ""
 }
 
 func containsTaints(node *corev1.Node) bool {
@@ -357,4 +426,25 @@ func (c *clusterAction) MavenSettingDetail(ctx context.Context, name string) (*M
 		UpdateTime: sm.Annotations["updateTime"],
 		Content:    sm.Data["mavensetting"],
 	}, nil
+}
+
+// GetExceptionNodeInfo -
+func (c *clusterAction) GetExceptionNodeInfo(ctx context.Context) ([]*model.ExceptionNode, error) {
+	nodes, err := c.listNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var exceptionNodes []*model.ExceptionNode
+	for _, node := range nodes {
+		exceptionType, reason := getExceptionNodeReason(node)
+		if exceptionType == "" {
+			continue
+		}
+		exceptionNodes = append(exceptionNodes, &model.ExceptionNode{
+			Name:          node.Name,
+			ExceptionType: exceptionType,
+			Reason:        reason,
+		})
+	}
+	return exceptionNodes, nil
 }

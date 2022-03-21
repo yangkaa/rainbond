@@ -1,5 +1,5 @@
 syntax = "proto3";
-package pb;
+option go_package = "worker/server/pb";
 
 service AppRuntimeSync {
   // Deprecated: -
@@ -18,9 +18,16 @@ service AppRuntimeSync {
   rpc GetPodDetail(GetPodDetailReq) returns (PodDetail) {}
   rpc GetStorageClasses(Empty) returns (StorageClasses) {}
   rpc GetAppVolumeStatus(ServiceRequest) returns(ServiceVolumeStatusMessage){}
+  rpc ListAppServices(AppReq) returns(AppServices){}
+  rpc ListHelmAppRelease(AppReq) returns(HelmAppReleases){}
+  rpc ListAppStatuses(AppStatusesReq) returns(AppStatuses){}
 }
 
 message Empty {}
+
+message AppReq {
+  string app_id = 1;
+}
 
 message AppStatusReq {
   string app_id = 1;
@@ -72,6 +79,7 @@ message Container {
   string container_name = 1;
   int64 memory_limit = 2;
   int64 cpu_request = 3;
+  int64 memory_request = 4;
 }
 
 message DeployInfo {
@@ -96,6 +104,7 @@ message TenantResource {
   int64 running_app_num = 5;
   int64 running_app_third_num = 10;
   int64 running_app_internal_num = 11;
+  int64 running_applications = 12;
 }
 
 message TenantResourceList {
@@ -126,16 +135,14 @@ message DelThirdPartyEndpointsReq {
 }
 
 message ThirdPartyEndpoint {
-  string uuid = 1;
-  string sid = 2;
-  string ip = 3;
-  int32 port = 4;
-  string status = 5;
-  bool is_online = 6;
+  string name = 1;
+  string componentID = 2;
+  string address = 3;
+  string status = 4;
 }
 
 message ThirdPartyEndpoints {
-  repeated ThirdPartyEndpoint obj = 1;
+  repeated ThirdPartyEndpoint items = 1;
 }
 
 message ListPodsBySIDReq {
@@ -209,6 +216,7 @@ message PodDetail {
   repeated PodContainer init_containers = 8;
   repeated PodContainer containers = 9;
   repeated PodEvent events = 10;
+  string namespace = 11;
 }
 
 message StorageClasses {
@@ -245,15 +253,74 @@ message ServiceVolumeStatusMessage {
 
 message AppStatus {
   enum Status {
-    NIL = 0;
-    RUNNING = 1;
-    CLOSED = 2;
-    ABNORMAL = 3;
-    STARTING = 4;
-    STOPPING = 5;
+      NIL = 0;
+      RUNNING = 1;
+      CLOSED = 2;
+      ABNORMAL = 3;
+      STARTING = 4;
+      STOPPING = 5;
   }
 
-  Status status = 1;
-  int64 cpu = 2;
-  int64 memory = 3;
+  string status = 1;
+  int64  cpu = 2;
+  int64  memory = 3;
+  bool setCPU = 4;
+  bool setMemory = 5;
+  string phase = 6;
+  repeated string overrides = 7;
+  string version = 8;
+  repeated AppStatusCondition conditions=9;
+  int64 gpu = 10;
+  string app_id = 11;
+  string app_name = 12;
+}
+
+message AppStatusCondition {
+    string type = 1;
+    bool status = 2;
+    string reason = 3;
+    string message = 4;
+}
+
+message AppService {
+    message Pod {
+        string name=1;
+        string status=2;
+    }
+
+    message Port {
+        int32 port=1;
+        string protocol=2;
+    }
+
+    string name=1;
+    string address=2;
+    repeated Port ports=3;
+    repeated Pod pods=4;
+    repeated Pod oldPods=5;
+}
+
+message AppServices {
+  repeated AppService services=1;
+}
+
+message HelmAppReleases {
+  repeated HelmAppRelease helmAppRelease=1;
+}
+
+message HelmAppRelease {
+  int32 revision=1;
+  string updated=2;
+  string status=3;
+  string chart=4;
+  string appVersion=5;
+  string description=6;
+}
+
+message AppStatusesReq {
+  repeated string app_ids = 1;
+}
+
+message AppStatuses {
+  repeated AppStatus app_statuses = 1;
 }

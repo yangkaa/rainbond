@@ -32,7 +32,6 @@ import (
 	"github.com/goodrain/rainbond/util/ingress-nginx/ingress/errors"
 	"github.com/imdario/mergo"
 	"github.com/sirupsen/logrus"
-	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -74,14 +73,10 @@ func NewAnnotationExtractor(cfg resolver.Resolver) Extractor {
 }
 
 // Extract extracts the annotations from an Ingress
-func (e Extractor) Extract(ing *extensions.Ingress) *Ingress {
-	pia := &Ingress{
-		ObjectMeta: ing.ObjectMeta,
-	}
-
+func (e Extractor) Extract(meta *metav1.ObjectMeta) *Ingress {
 	data := make(map[string]interface{})
 	for name, annotationParser := range e.annotations {
-		val, err := annotationParser.Parse(ing)
+		val, err := annotationParser.Parse(meta)
 		if err != nil {
 			if errors.IsMissingAnnotations(err) {
 				continue
@@ -94,11 +89,11 @@ func (e Extractor) Extract(ing *extensions.Ingress) *Ingress {
 			_, alreadyDenied := data[DeniedKeyName]
 			if !alreadyDenied {
 				data[DeniedKeyName] = err
-				logrus.Errorf("error reading %v annotation in Ingress %v/%v: %v", name, ing.GetNamespace(), ing.GetName(), err)
+				logrus.Errorf("error reading %v annotation in Ingress %v/%v: %v", name, meta.GetNamespace(), meta.GetName(), err)
 				continue
 			}
 
-			logrus.Infof("error reading %v annotation in Ingress %v/%v: %v", name, ing.GetNamespace(), ing.GetName(), err)
+			logrus.Infof("error reading %v annotation in Ingress %v/%v: %v", name, meta.GetNamespace(), meta.GetName(), err)
 		}
 
 		if val != nil {
@@ -106,7 +101,10 @@ func (e Extractor) Extract(ing *extensions.Ingress) *Ingress {
 		}
 	}
 
-	err := mergo.MapWithOverwrite(pia, data)
+	pia := &Ingress{
+		ObjectMeta: *meta,
+	}
+	err := mergo.Map(pia, data)
 	if err != nil {
 		logrus.Errorf("unexpected error merging extracted annotations: %v", err)
 	}

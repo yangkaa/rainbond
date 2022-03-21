@@ -60,14 +60,14 @@ func (v *ConfigFileVolume) CreateVolume(define *Define) error {
 	cmap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      util.NewUUID(),
-			Namespace: v.as.TenantID,
+			Namespace: v.as.GetNamespace(),
 			Labels:    v.as.GetCommonLabels(),
 		},
 		Data: make(map[string]string),
 	}
 	cmap.Data[path.Base(v.svm.VolumePath)] = util.ParseVariable(cf.FileContent, configs)
 	v.as.SetConfigMap(cmap)
-	define.SetVolumeCMap(cmap, path.Base(v.svm.VolumePath), v.svm.VolumePath, false)
+	define.SetVolumeCMap(cmap, path.Base(v.svm.VolumePath), v.svm.VolumePath, false, v.svm.Mode)
 	return nil
 }
 
@@ -77,7 +77,7 @@ func (v *ConfigFileVolume) CreateDependVolume(define *Define) error {
 	for _, env := range v.envs {
 		configs[env.Name] = env.Value
 	}
-	_, err := v.dbmanager.TenantServiceVolumeDao().GetVolumeByServiceIDAndName(v.smr.DependServiceID, v.smr.VolumeName)
+	depVol, err := v.dbmanager.TenantServiceVolumeDao().GetVolumeByServiceIDAndName(v.smr.DependServiceID, v.smr.VolumeName)
 	if err != nil {
 		return fmt.Errorf("error getting TenantServiceVolume according to serviceID(%s) and volumeName(%s): %v",
 			v.smr.DependServiceID, v.smr.VolumeName, err)
@@ -90,7 +90,7 @@ func (v *ConfigFileVolume) CreateDependVolume(define *Define) error {
 	cmap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      util.NewUUID(),
-			Namespace: v.as.TenantID,
+			Namespace: v.as.GetNamespace(),
 			Labels:    v.as.GetCommonLabels(),
 		},
 		Data: make(map[string]string),
@@ -98,6 +98,6 @@ func (v *ConfigFileVolume) CreateDependVolume(define *Define) error {
 	cmap.Data[path.Base(v.smr.VolumePath)] = util.ParseVariable(cf.FileContent, configs)
 	v.as.SetConfigMap(cmap)
 
-	define.SetVolumeCMap(cmap, path.Base(v.smr.VolumePath), v.smr.VolumePath, false)
+	define.SetVolumeCMap(cmap, path.Base(v.smr.VolumePath), v.smr.VolumePath, false, depVol.Mode)
 	return nil
 }

@@ -30,6 +30,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/goodrain/rainbond/api/handler"
+	"github.com/goodrain/rainbond/api/model"
 	api_model "github.com/goodrain/rainbond/api/model"
 	"github.com/goodrain/rainbond/api/util/bcode"
 	ctxutil "github.com/goodrain/rainbond/api/util/ctx"
@@ -456,6 +457,10 @@ func (t *TenantStruct) AddTenant(w http.ResponseWriter, r *http.Request) {
 			id = ts.Body.TenantID
 		}
 		dbts.LimitMemory = ts.Body.LimitMemory
+		dbts.Namespace = dbts.UUID
+		if ts.Body.Namespace != "" {
+			dbts.Namespace = ts.Body.Namespace
+		}
 		if err := handler.GetServiceManager().CreateTenant(&dbts); err != nil {
 			if strings.HasSuffix(err.Error(), "is exist") {
 				httputil.ReturnError(r, w, 400, err.Error())
@@ -468,6 +473,7 @@ func (t *TenantStruct) AddTenant(w http.ResponseWriter, r *http.Request) {
 		rc["tenant_id"] = id
 		rc["tenang_name"] = name
 		rc["eid"] = ts.Body.Eid
+		rc["namespace"] = dbts.Namespace
 		httputil.ReturnSuccess(r, w, rc)
 		return
 	}
@@ -475,6 +481,10 @@ func (t *TenantStruct) AddTenant(w http.ResponseWriter, r *http.Request) {
 		//兼容旧接口
 		dbts.Name = ts.Body.TenantName
 		dbts.UUID = ts.Body.TenantID
+		dbts.Namespace = ts.Body.TenantID
+		if ts.Body.Namespace != "" {
+			dbts.Namespace = ts.Body.Namespace
+		}
 		if err := handler.GetServiceManager().CreateTenant(&dbts); err != nil {
 			if strings.HasSuffix(err.Error(), "is exist") {
 				httputil.ReturnError(r, w, 400, err.Error())
@@ -550,7 +560,7 @@ func (t *TenantStruct) GetTenants(w http.ResponseWriter, r *http.Request) {
 func (t *TenantStruct) DeleteTenant(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.Context().Value(ctxutil.ContextKey("tenant_id")).(string)
 
-	if err := handler.GetTenantManager().DeleteTenant(tenantID); err != nil {
+	if err := handler.GetTenantManager().DeleteTenant(r.Context(), tenantID); err != nil {
 		if err == handler.ErrTenantStillHasServices || err == handler.ErrTenantStillHasPlugins {
 			httputil.ReturnError(r, w, 400, err.Error())
 			return
@@ -665,14 +675,16 @@ func (t *TenantStruct) CreateService(w http.ResponseWriter, r *http.Request) {
 	handler.GetEtcdHandler().CleanServiceCheckData(ss.EtcdKey)
 
 	values := url.Values{}
-	if ss.Endpoints != nil && strings.TrimSpace(ss.Endpoints.Static) != "" {
-		if strings.Contains(ss.Endpoints.Static, "127.0.0.1") {
-			values["ip"] = []string{"The ip field is can't contains '127.0.0.1'"}
+	if ss.Endpoints != nil {
+		for _, endpoint := range ss.Endpoints.Static {
+			if strings.Contains(endpoint, "127.0.0.1") {
+				values["ip"] = []string{"The ip field is can't contains '127.0.0.1'"}
+			}
 		}
-	}
-	if len(values) > 0 {
-		httputil.ReturnValidationError(r, w, values)
-		return
+		if len(values) > 0 {
+			httputil.ReturnValidationError(r, w, values)
+			return
+		}
 	}
 
 	tenantID := r.Context().Value(ctxutil.ContextKey("tenant_id")).(string)
@@ -680,6 +692,7 @@ func (t *TenantStruct) CreateService(w http.ResponseWriter, r *http.Request) {
 	if err := handler.GetServiceManager().ServiceCreate(&ss); err != nil {
 		if strings.Contains(err.Error(), "is exist in tenant") {
 			httputil.ReturnError(r, w, 400, fmt.Sprintf("create service error, %v", err))
+			return
 		}
 		httputil.ReturnError(r, w, 500, fmt.Sprintf("create service error, %v", err))
 		return
@@ -712,12 +725,13 @@ func (t *TenantStruct) UpdateService(w http.ResponseWriter, r *http.Request) {
 	//     description: 统一返回格式
 	//目前提供三个元素的修改
 	rules := validator.MapData{
-		"container_cmd":    []string{},
-		"image_name":       []string{},
-		"container_memory": []string{},
-		"service_name":     []string{},
-		"extend_method":    []string{},
-		"app_id":           []string{},
+		"container_cmd":      []string{},
+		"image_name":         []string{},
+		"container_memory":   []string{},
+		"service_name":       []string{},
+		"extend_method":      []string{},
+		"app_id":             []string{},
+		"k8s_component_name": []string{},
 	}
 	data, ok := httputil.ValidatorRequestMapAndErrorResponse(r, w, rules, nil)
 	if !ok {
@@ -1005,7 +1019,7 @@ func (t *TenantStruct) DeleteSingleServiceInfo(w http.ResponseWriter, r *http.Re
 		handler.GetEtcdHandler().CleanAllServiceData(req.Keys)
 	}
 
-	if err := handler.GetServiceManager().TransServieToDelete(tenantID, serviceID); err != nil {
+	if err := handler.GetServiceManager().TransServieToDelete(r.Context(), tenantID, serviceID); err != nil {
 		if err == handler.ErrServiceNotClosed {
 			httputil.ReturnError(r, w, 400, fmt.Sprintf("Service must be closed"))
 			return
@@ -1524,7 +1538,7 @@ func (t *TenantStruct) PortOuterController(w http.ResponseWriter, r *http.Reques
 		rc["port"] = fmt.Sprintf("%v", vsPort.Port)
 	}
 
-	if err := handler.GetGatewayHandler().SendTask(map[string]interface{}{
+	if err := handler.GetGatewayHandler().SendTaskDeprecated(map[string]interface{}{
 		"service_id": serviceID,
 		"action":     "port-" + data.Body.Operation,
 		"port":       containerPort,
@@ -1583,7 +1597,7 @@ func (t *TenantStruct) PortInnerController(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	if err := handler.GetGatewayHandler().SendTask(map[string]interface{}{
+	if err := handler.GetGatewayHandler().SendTaskDeprecated(map[string]interface{}{
 		"service_id": serviceID,
 		"action":     "port-" + data.Body.Operation,
 		"port":       containerPort,
@@ -1928,5 +1942,22 @@ func (t *TenantStruct) TransPlugins(w http.ResponseWriter, r *http.Request) {
 	}
 	rc["result"] = "success"
 	httputil.ReturnSuccess(r, w, rc)
-	return
+}
+
+// CheckResourceName checks the resource name.
+func (t *TenantStruct) CheckResourceName(w http.ResponseWriter, r *http.Request) {
+	var req model.CheckResourceNameReq
+	if !httputil.ValidatorRequestStructAndErrorResponse(r, w, &req, nil) {
+		return
+	}
+
+	tenant := r.Context().Value(ctxutil.ContextKey("tenant")).(*dbmodel.Tenants)
+
+	res, err := handler.GetTenantManager().CheckResourceName(r.Context(), tenant.UUID, &req)
+	if err != nil {
+		httputil.ReturnBcodeError(r, w, err)
+		return
+	}
+
+	httputil.ReturnSuccess(r, w, res)
 }

@@ -210,6 +210,7 @@ func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv 
 			OptionValue: map[string]string{
 				"tenant_id":  vs.Namespace,
 				"service_id": vs.ServiceID,
+				"app_id":     vs.AppID,
 			},
 			ProxyStreamNextUpstream:        true,
 			ProxyStreamNextUpstreamTimeout: "600s",
@@ -226,14 +227,14 @@ func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv 
 			location := &model.Location{
 				DisableAccessLog: o.ocfg.AccessLogPath == "",
 				// TODO: Distinguish between server output logs
-				AccessLogPath:                  o.ocfg.AccessLogPath,
-				EnableMetrics:                  true,
-				Path:                           loc.Path,
-				NameCondition:                  loc.NameCondition,
-				Proxy:                          loc.Proxy,
-				Rewrite:                        loc.Rewrite,
-				PathRewrite:                    false,
-				DisableProxyPass:               loc.DisableProxyPass,
+				AccessLogPath:    o.ocfg.AccessLogPath,
+				EnableMetrics:    true,
+				Path:             loc.Path,
+				NameCondition:    loc.NameCondition,
+				Proxy:            loc.Proxy,
+				Rewrite:          loc.Rewrite,
+				PathRewrite:      loc.PathRewrite,
+				DisableProxyPass: loc.DisableProxyPass,
 			}
 			server.Locations = append(server.Locations, location)
 		}
@@ -246,6 +247,7 @@ func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv 
 			OptionValue: map[string]string{
 				"tenant_id":  vs.Namespace,
 				"service_id": vs.ServiceID,
+				"app_id":     vs.AppID,
 			},
 			UpstreamName:                   vs.PoolName,
 			ProxyStreamNextUpstream:        true,
@@ -253,6 +255,21 @@ func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv 
 			ProxyStreamNextUpstreamTries:   3,
 		}
 		server.Listen = strings.Join(vs.Listening, " ")
+		for _, loc := range vs.Locations {
+			location := &model.Location{
+				DisableAccessLog: o.ocfg.AccessLogPath == "",
+				// TODO: Distinguish between server output logs
+				AccessLogPath:    o.ocfg.AccessLogPath,
+				EnableMetrics:    true,
+				Path:             loc.Path,
+				NameCondition:    loc.NameCondition,
+				Proxy:            loc.Proxy,
+				Rewrite:          loc.Rewrite,
+				PathRewrite:      loc.PathRewrite,
+				DisableProxyPass: loc.DisableProxyPass,
+			}
+			server.Locations = append(server.Locations, location)
+		}
 		l4srv = append(l4srv, server)
 	}
 
@@ -271,7 +288,7 @@ func (o *OrService) UpdatePools(hpools []*v1.Pool, tpools []*v1.Pool) error {
 			logrus.Warningf("error updating upstream.default.tcp.conf")
 		}
 	}
-	if hpools == nil || len(hpools) == 0 {
+	if len(hpools) == 0 {
 		return nil
 	}
 	var backends []*model.Backend

@@ -38,3 +38,25 @@ type PodEvent struct {
 	Age     string `json:"age,omitempty"`
 	Message string `json:"message,omitempty"`
 }
+
+// PodExceptionEvent -
+type PodExceptionEvent struct {
+	EventType   string `json:"event_type"`
+	EventNums   int64  `json:"event_nums"`
+	TenantID    string `json:"tenant_id"`
+	AppID       string `json:"app_id"`
+	ComponentID string `json:"component_id"`
+}
+
+// PodResourceStatus -
+type PodResourceStatus struct {
+	Node          string `json:"node"`
+	TenantID      string `json:"tenant_id"`
+	AppID         string `json:"app_id"`
+	ComponentID   string `json:"component_id"`
+	Kind          string `json:"kind"`
+	Status        string `json:"status"`
+	CPUUsage      int64  `json:"cpu_usage"`
+	MemoryUsage   int64  `json:"memory_usage"`
+	PodNameSuffix string `json:"pod_name_suffix"`
+}

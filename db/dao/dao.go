@@ -75,6 +75,8 @@ type ApplicationDao interface {
 	GetAppByID(appID string) (*model.Application, error)
 	DeleteApp(appID string) error
 	GetByServiceID(sid string) (*model.Application, error)
+	ListByAppIDs(appIDs []string) ([]*model.Application, error)
+	IsK8sAppDuplicate(tenantID, AppID, k8sApp string) bool
 }
 
 //AppConfigGroupDao Application config group Dao
@@ -133,6 +135,7 @@ type TenantServiceDao interface {
 	GetServiceByServiceAlias(serviceAlias string) (*model.TenantServices, error)
 	GetServiceByIDs(serviceIDs []string) ([]*model.TenantServices, error)
 	GetServiceAliasByIDs(uids []string) ([]*model.TenantServices, error)
+	GetWorkloadNameByIDs(uids []string) ([]*model.ComponentWorkload, error)
 	GetServiceByTenantIDAndServiceAlias(tenantID, serviceName string) (*model.TenantServices, error)
 	SetTenantServiceStatus(serviceID, status string) error
 	GetServicesByTenantID(tenantID string) ([]*model.TenantServices, error)
@@ -155,6 +158,7 @@ type TenantServiceDao interface {
 	BindAppByServiceIDs(appID string, serviceIDs []string) error
 	CreateOrUpdateComponentsInBatch(components []*model.TenantServices) error
 	DeleteByComponentIDs(tenantID, appID string, componentIDs []string) error
+	IsK8sComponentNameDuplicate(appID, serviceID, k8sComponentName string) bool
 }
 
 //TenantServiceDeleteDao TenantServiceDeleteDao
@@ -428,6 +432,9 @@ type EventDao interface {
 	LatestFailurePodEvent(podName string) (*model.ServiceEvent, error)
 	UpdateReason(eventID string, reason string) error
 	SetEventStatus(ctx context.Context, status model.EventStatus) error
+	UpdateInBatch(events []*model.ServiceEvent) error
+	GetExceptionEventsByTime(eventTypes []string, createTime time.Time) ([]*model.ServiceEvent, error)
+	CountEvents(tenantID, serviceID string, eventType string) int64
 }
 
 //VersionInfoDao VersionInfoDao
@@ -446,6 +453,7 @@ type VersionInfoDao interface {
 	DeleteFailureVersionInfo(timePoint time.Time, status string, serviceIDList []string) error
 	SearchVersionInfo() ([]*model.VersionInfo, error)
 	ListByServiceIDStatus(serviceID string, finalStatus *bool) ([]*model.VersionInfo, error)
+	ListVersionsByComponentIDs(componentIDs []string) ([]*model.VersionInfo, error)
 }
 
 //RegionUserInfoDao UserRegionInfoDao
@@ -502,6 +510,7 @@ type RuleExtensionDao interface {
 	GetRuleExtensionByRuleID(ruleID string) ([]*model.RuleExtension, error)
 	DeleteRuleExtensionByRuleID(ruleID string) error
 	DeleteByRuleIDs(ruleIDs []string) error
+	CreateOrUpdateRuleExtensionsInBatch(exts []*model.RuleExtension) error
 }
 
 // HTTPRuleDao -
@@ -518,6 +527,16 @@ type HTTPRuleDao interface {
 	DeleteByComponentPort(componentID string, port int) error
 	DeleteByComponentIDs(componentIDs []string) error
 	CreateOrUpdateHTTPRuleInBatch(httpRules []*model.HTTPRule) error
+	ListByComponentIDs(componentIDs []string) ([]*model.HTTPRule, error)
+}
+
+// HTTPRuleRewriteDao -
+type HTTPRuleRewriteDao interface {
+	Dao
+	CreateOrUpdateHTTPRuleRewriteInBatch(httpRuleRewrites []*model.HTTPRuleRewrite) error
+	ListByHTTPRuleID(httpRuleID string) ([]*model.HTTPRuleRewrite, error)
+	DeleteByHTTPRuleID(httpRuleID string) error
+	DeleteByHTTPRuleIDs(httpRuleIDs []string) error
 }
 
 // TCPRuleDao -
@@ -542,7 +561,6 @@ type EndpointsDao interface {
 	GetByUUID(uuid string) (*model.Endpoint, error)
 	DelByUUID(uuid string) error
 	List(sid string) ([]*model.Endpoint, error)
-	ListIsOnline(sid string) ([]*model.Endpoint, error)
 	DeleteByServiceID(sid string) error
 }
 
@@ -552,6 +570,8 @@ type ThirdPartySvcDiscoveryCfgDao interface {
 	Dao
 	GetByServiceID(sid string) (*model.ThirdPartySvcDiscoveryCfg, error)
 	DeleteByServiceID(sid string) error
+	DeleteByComponentIDs(componentIDs []string) error
+	CreateOrUpdate3rdSvcDiscoveryCfgInBatch(cfgs []*model.ThirdPartySvcDiscoveryCfg) error
 }
 
 // GwRuleConfigDao is the interface that wraps the required methods to execute
@@ -561,6 +581,7 @@ type GwRuleConfigDao interface {
 	DeleteByRuleID(rid string) error
 	ListByRuleID(rid string) ([]*model.GwRuleConfig, error)
 	DeleteByRuleIDs(ruleIDs []string) error
+	CreateOrUpdateGwRuleConfigsInBatch(ruleConfigs []*model.GwRuleConfig) error
 }
 
 // TenantServceAutoscalerRulesDao -

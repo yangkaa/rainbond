@@ -19,8 +19,10 @@
 package model
 
 import (
-	dbmodel "github.com/goodrain/rainbond/db/model"
+	"strconv"
 	"strings"
+
+	dbmodel "github.com/goodrain/rainbond/db/model"
 )
 
 //AddHTTPRuleStruct is used to add http rule, certificate and rule extensions
@@ -38,6 +40,8 @@ type AddHTTPRuleStruct struct {
 	Certificate    string                 `json:"certificate"`
 	PrivateKey     string                 `json:"private_key"`
 	RuleExtensions []*RuleExtensionStruct `json:"rule_extensions"`
+	PathRewrite    bool                   `json:"path_rewrite"`
+	Rewrites       []*Rewrite             `json:"rewrites"`
 }
 
 // DbModel return database model
@@ -58,6 +62,7 @@ func (h *AddHTTPRuleStruct) DbModel(serviceID string) *dbmodel.HTTPRule {
 		Weight:        h.Weight,
 		IP:            h.IP,
 		CertificateID: h.CertificateID,
+		PathRewrite:   h.PathRewrite,
 	}
 }
 
@@ -76,6 +81,8 @@ type UpdateHTTPRuleStruct struct {
 	Certificate    string                 `json:"certificate"`
 	PrivateKey     string                 `json:"private_key"`
 	RuleExtensions []*RuleExtensionStruct `json:"rule_extensions"`
+	PathRewrite    bool                   `json:"path_rewrite"`
+	Rewrites       []*Rewrite             `json:"rewrites"`
 }
 
 //DeleteHTTPRuleStruct contains the id of http rule that will be deleted
@@ -171,6 +178,79 @@ type Body struct {
 	ProxyBuffering      string       `json:"proxy_buffering,omitempty" validate:"proxy_buffering|required"`
 }
 
+// HTTPRuleConfig -
+type HTTPRuleConfig struct {
+	RuleID              string       `json:"rule_id,omitempty" validate:"rule_id|required"`
+	ProxyConnectTimeout int          `json:"proxy_connect_timeout,omitempty" validate:"proxy_connect_timeout|required"`
+	ProxySendTimeout    int          `json:"proxy_send_timeout,omitempty" validate:"proxy_send_timeout|required"`
+	ProxyReadTimeout    int          `json:"proxy_read_timeout,omitempty" validate:"proxy_read_timeout|required"`
+	ProxyBodySize       int          `json:"proxy_body_size,omitempty" validate:"proxy_body_size|required"`
+	SetHeaders          []*SetHeader `json:"set_headers,omitempty" `
+	Rewrites            []*Rewrite   `json:"rewrite,omitempty"`
+	ProxyBufferSize     int          `json:"proxy_buffer_size,omitempty" validate:"proxy_buffer_size|numeric_between:1,65535"`
+	ProxyBufferNumbers  int          `json:"proxy_buffer_numbers,omitempty" validate:"proxy_buffer_size|numeric_between:1,65535"`
+	ProxyBuffering      string       `json:"proxy_buffering,omitempty" validate:"proxy_buffering|required"`
+}
+
+// DbModel return database model
+func (h *HTTPRuleConfig) DbModel() []*dbmodel.GwRuleConfig {
+	var configs []*dbmodel.GwRuleConfig
+	configs = append(configs, &dbmodel.GwRuleConfig{
+		RuleID: h.RuleID,
+		Key:    "proxy-connect-timeout",
+		Value:  strconv.Itoa(h.ProxyConnectTimeout),
+	})
+	configs = append(configs, &dbmodel.GwRuleConfig{
+		RuleID: h.RuleID,
+		Key:    "proxy-send-timeout",
+		Value:  strconv.Itoa(h.ProxySendTimeout),
+	})
+	configs = append(configs, &dbmodel.GwRuleConfig{
+		RuleID: h.RuleID,
+		Key:    "proxy-read-timeout",
+		Value:  strconv.Itoa(h.ProxyReadTimeout),
+	})
+	configs = append(configs, &dbmodel.GwRuleConfig{
+		RuleID: h.RuleID,
+		Key:    "proxy-body-size",
+		Value:  strconv.Itoa(h.ProxyBodySize),
+	})
+	configs = append(configs, &dbmodel.GwRuleConfig{
+		RuleID: h.RuleID,
+		Key:    "proxy-buffer-size",
+		Value:  strconv.Itoa(h.ProxyBufferSize),
+	})
+	configs = append(configs, &dbmodel.GwRuleConfig{
+		RuleID: h.RuleID,
+		Key:    "proxy-buffer-numbers",
+		Value:  strconv.Itoa(h.ProxyBufferNumbers),
+	})
+	configs = append(configs, &dbmodel.GwRuleConfig{
+		RuleID: h.RuleID,
+		Key:    "proxy-buffering",
+		Value:  h.ProxyBuffering,
+	})
+	setheaders := make(map[string]string)
+	for _, item := range h.SetHeaders {
+		if strings.TrimSpace(item.Key) == "" {
+			continue
+		}
+		if strings.TrimSpace(item.Value) == "" {
+			item.Value = "empty"
+		}
+		// filter same key
+		setheaders["set-header-"+item.Key] = item.Value
+	}
+	for k, v := range setheaders {
+		configs = append(configs, &dbmodel.GwRuleConfig{
+			RuleID: h.RuleID,
+			Key:    k,
+			Value:  v,
+		})
+	}
+	return configs
+}
+
 //SetHeader set header
 type SetHeader struct {
 	Key   string `json:"item_key"`
@@ -179,9 +259,9 @@ type SetHeader struct {
 
 // Rewrite is a embeded sturct of Body.
 type Rewrite struct {
-	Regex       string `json:"regex"`
-	Replacement string `json:"replacement"`
-	Flag        string `json:"flag" validate:"flag|in:last,break,redirect,permanent"`
+	Regex       string `json:"regex" validate:"regex|required"`
+	Replacement string `json:"replacement" validate:"replacement|required"`
+	Flag        string `json:"flag" validate:"flag|in:last,break,redirect,permanent|required"`
 }
 
 // UpdCertificateReq -

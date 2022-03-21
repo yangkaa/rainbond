@@ -7,7 +7,7 @@ import (
 
 	"github.com/goodrain/rainbond/gateway/annotations/parser"
 	api "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -53,15 +53,15 @@ func TestRbdStore_checkIngress(t *testing.T) {
 	for _, testCase := range testCases {
 		ing.SetAnnotations(testCase.data)
 		s := k8sStore{}
-		if s.checkIngress(ing) != testCase.expected {
+		if s.checkIngress(&ing.ObjectMeta) != testCase.expected {
 			t.Errorf("Expected %v for s.checkIngress(ing), but returned %v. data: %v", testCase.expected,
-				s.checkIngress(ing), testCase.data)
+				s.checkIngress(&ing.ObjectMeta), testCase.data)
 		}
 	}
 }
 
-func buildIngress() *extensions.Ingress {
-	return &extensions.Ingress{
+func buildIngress() *networkingv1.Ingress {
+	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foobar",
 			Namespace: api.NamespaceDefault,

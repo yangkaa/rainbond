@@ -20,7 +20,6 @@ package handler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -36,6 +35,7 @@ import (
 	"github.com/goodrain/rainbond/mq/client"
 	"github.com/goodrain/rainbond/util"
 	"github.com/jinzhu/gorm"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,7 +44,6 @@ type GatewayAction struct {
 	dbmanager db.Manager
 	mqclient  client.MQClient
 	etcdCli   *clientv3.Client
-	lockPort  map[int]time.Time
 }
 
 //CreateGatewayManager creates gateway manager.
@@ -53,27 +52,28 @@ func CreateGatewayManager(dbmanager db.Manager, mqclient client.MQClient, etcdCl
 		dbmanager: dbmanager,
 		mqclient:  mqclient,
 		etcdCli:   etcdCli,
-		lockPort:  make(map[int]time.Time),
 	}
 }
 
 // AddHTTPRule adds http rule to db if it doesn't exists.
 func (g *GatewayAction) AddHTTPRule(req *apimodel.AddHTTPRuleStruct) error {
-	if err := db.GetManager().DB().Transaction(func(tx *gorm.DB) error {
-		return g.CreateHTTPRule(tx, req)
-	}); err != nil {
-		return err
-	}
+	return db.GetManager().DB().Transaction(func(tx *gorm.DB) error {
+		if err := g.CreateHTTPRule(tx, req); err != nil {
+			return err
+		}
 
-	// Effective immediately
-	if err := g.SendTask(map[string]interface{}{
-		"service_id": req.ServiceID,
-		"action":     "add-http-rule",
-		"limit":      map[string]string{"domain": req.Domain},
-	}); err != nil {
-		logrus.Errorf("send runtime message about gateway failure %s", err.Error())
-	}
-	return nil
+		// Effective immediately
+		err := g.SendTaskDeprecated(map[string]interface{}{
+			"service_id": req.ServiceID,
+			"action":     "add-http-rule",
+			"limit":      map[string]string{"domain": req.Domain},
+		})
+		if err != nil {
+			return fmt.Errorf("send http rule task: %v", err)
+		}
+
+		return nil
+	})
 }
 
 // CreateHTTPRule Create http rules through transactions
@@ -94,9 +94,25 @@ func (g *GatewayAction) CreateHTTPRule(tx *gorm.DB, req *apimodel.AddHTTPRuleStr
 		Weight:        req.Weight,
 		IP:            req.IP,
 		CertificateID: req.CertificateID,
+		PathRewrite:   req.PathRewrite,
 	}
 	if err := db.GetManager().HTTPRuleDaoTransactions(tx).AddModel(httpRule); err != nil {
 		return fmt.Errorf("create http rule: %v", err)
+	}
+
+	if len(req.Rewrites) > 0 {
+		for _, rewrite := range req.Rewrites {
+			r := &model.HTTPRuleRewrite{
+				UUID:        util.NewUUID(),
+				HTTPRuleID:  httpRule.UUID,
+				Regex:       rewrite.Regex,
+				Replacement: rewrite.Replacement,
+				Flag:        rewrite.Flag,
+			}
+			if err := db.GetManager().HTTPRuleRewriteDaoTransactions(tx).AddModel(r); err != nil {
+				return fmt.Errorf("create http rule rewrite: %v", err)
+			}
+		}
 	}
 
 	if strings.Replace(req.CertificateID, " ", "", -1) != "" {
@@ -122,6 +138,7 @@ func (g *GatewayAction) CreateHTTPRule(tx *gorm.DB, req *apimodel.AddHTTPRuleStr
 			return fmt.Errorf("create rule extensions: %v", err)
 		}
 	}
+
 	return nil
 }
 
@@ -143,6 +160,29 @@ func (g *GatewayAction) UpdateHTTPRule(req *apimodel.UpdateHTTPRuleStruct) error
 		tx.Rollback()
 		return fmt.Errorf("HTTPRule dosen't exist based on uuid(%s)", req.HTTPRuleID)
 	}
+
+	// delete old http rule rewrites
+	if err := db.GetManager().HTTPRuleRewriteDaoTransactions(tx).DeleteByHTTPRuleID(rule.UUID); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if len(req.Rewrites) > 0 {
+		// add new http rule rewrites
+		for _, rewrite := range req.Rewrites {
+			r := &model.HTTPRuleRewrite{
+				UUID:        util.NewUUID(),
+				HTTPRuleID:  rule.UUID,
+				Regex:       rewrite.Regex,
+				Replacement: rewrite.Replacement,
+				Flag:        rewrite.Flag,
+			}
+			if err := db.GetManager().HTTPRuleRewriteDaoTransactions(tx).AddModel(r); err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+
 	if strings.Replace(req.CertificateID, " ", "", -1) != "" {
 		// add new certificate
 		cert := &model.Certificate{
@@ -197,6 +237,7 @@ func (g *GatewayAction) UpdateHTTPRule(req *apimodel.UpdateHTTPRuleStruct) error
 	rule.Header = req.Header
 	rule.Cookie = req.Cookie
 	rule.Weight = req.Weight
+	rule.PathRewrite = req.PathRewrite
 	if req.IP != "" {
 		rule.IP = req.IP
 	}
@@ -210,7 +251,7 @@ func (g *GatewayAction) UpdateHTTPRule(req *apimodel.UpdateHTTPRuleStruct) error
 		return err
 	}
 
-	if err := g.SendTask(map[string]interface{}{
+	if err := g.SendTaskDeprecated(map[string]interface{}{
 		"service_id": rule.ServiceID,
 		"action":     "update-http-rule",
 		"limit":      map[string]string{"domain": req.Domain},
@@ -218,14 +259,6 @@ func (g *GatewayAction) UpdateHTTPRule(req *apimodel.UpdateHTTPRuleStruct) error
 		logrus.Errorf("send runtime message about gateway failure %s", err.Error())
 	}
 	return nil
-}
-
-func (g *GatewayAction) isCertificateBeingUsed(certID string) (bool, error) {
-	rules, err := g.dbmanager.HTTPRuleDao().GetHTTPRulesByCertificateID(certID)
-	if err != nil {
-		return false, fmt.Errorf("list rules by certificate id: %v", err)
-	}
-	return len(rules) > 0, nil
 }
 
 // DeleteHTTPRule deletes http rule, including certificate and rule extensions
@@ -250,6 +283,12 @@ func (g *GatewayAction) DeleteHTTPRule(req *apimodel.DeleteHTTPRuleStruct) error
 		return err
 	}
 
+	// delete http rule rewrites
+	if err := db.GetManager().HTTPRuleRewriteDaoTransactions(tx).DeleteByHTTPRuleID(httpRule.UUID); err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	// delete rule extension
 	if err := g.dbmanager.RuleExtensionDaoTransactions(tx).DeleteRuleExtensionByRuleID(httpRule.UUID); err != nil {
 		tx.Rollback()
@@ -260,7 +299,7 @@ func (g *GatewayAction) DeleteHTTPRule(req *apimodel.DeleteHTTPRuleStruct) error
 		return err
 	}
 
-	if err := g.SendTask(map[string]interface{}{
+	if err := g.SendTaskDeprecated(map[string]interface{}{
 		"service_id": svcID,
 		"action":     "delete-http-rule",
 		"limit":      map[string]string{"domain": httpRule.Domain},
@@ -279,6 +318,9 @@ func (g *GatewayAction) DeleteHTTPRuleByServiceIDWithTransaction(sid string, tx 
 	}
 
 	for _, rule := range rules {
+		if err := db.GetManager().HTTPRuleRewriteDaoTransactions(tx).DeleteByHTTPRuleID(rule.UUID); err != nil {
+			return err
+		}
 		if err := g.dbmanager.RuleExtensionDaoTransactions(tx).DeleteRuleExtensionByRuleID(rule.UUID); err != nil {
 			return err
 		}
@@ -314,7 +356,7 @@ func (g *GatewayAction) UpdateCertificate(req apimodel.AddHTTPRuleStruct, httpRu
 		return err
 	}
 	if cert == nil {
-		return fmt.Errorf("Certificate doesn't exist based on certificateID(%s)", req.CertificateID)
+		return fmt.Errorf("certificate doesn't exist based on certificateID(%s)", req.CertificateID)
 	}
 
 	cert.CertificateName = fmt.Sprintf("cert-%s", util.NewUUID()[0:8])
@@ -325,19 +367,22 @@ func (g *GatewayAction) UpdateCertificate(req apimodel.AddHTTPRuleStruct, httpRu
 
 // AddTCPRule adds tcp rule.
 func (g *GatewayAction) AddTCPRule(req *apimodel.AddTCPRuleStruct) error {
-	if err := g.dbmanager.DB().Transaction(func(tx *gorm.DB) error {
-		return g.CreateTCPRule(tx, req)
-	}); err != nil {
-		return err
-	}
-	if err := g.SendTask(map[string]interface{}{
-		"service_id": req.ServiceID,
-		"action":     "add-tcp-rule",
-		"limit":      map[string]string{"tcp-address": fmt.Sprintf("%s:%d", req.IP, req.Port)},
-	}); err != nil {
-		logrus.Errorf("send runtime message about gateway failure %s", err.Error())
-	}
-	return nil
+	return g.dbmanager.DB().Transaction(func(tx *gorm.DB) error {
+		if err := g.CreateTCPRule(tx, req); err != nil {
+			return err
+		}
+
+		err := g.SendTaskDeprecated(map[string]interface{}{
+			"service_id": req.ServiceID,
+			"action":     "add-tcp-rule",
+			"limit":      map[string]string{"tcp-address": fmt.Sprintf("%s:%d", req.IP, req.Port)},
+		})
+		if err != nil {
+			return fmt.Errorf("send tcp rule task: %v", err)
+		}
+
+		return nil
+	})
 }
 
 // CreateTCPRule Create tcp rules through transactions
@@ -364,6 +409,7 @@ func (g *GatewayAction) CreateTCPRule(tx *gorm.DB, req *apimodel.AddTCPRuleStruc
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -426,7 +472,7 @@ func (g *GatewayAction) UpdateTCPRule(req *apimodel.UpdateTCPRuleStruct, minPort
 		logrus.Debugf("TCP rule id: %s;error end transaction %v", tcpRule.UUID, err)
 		return err
 	}
-	if err := g.SendTask(map[string]interface{}{
+	if err := g.SendTaskDeprecated(map[string]interface{}{
 		"service_id": tcpRule.ServiceID,
 		"action":     "update-tcp-rule",
 		"limit":      map[string]string{"tcp-address": fmt.Sprintf("%s:%d", tcpRule.IP, tcpRule.Port)},
@@ -474,7 +520,7 @@ func (g *GatewayAction) DeleteTCPRule(req *apimodel.DeleteTCPRuleStruct) error {
 		return err
 	}
 
-	if err := g.SendTask(map[string]interface{}{
+	if err := g.SendTaskDeprecated(map[string]interface{}{
 		"service_id": tcpRule.ServiceID,
 		"action":     "delete-tcp-rule",
 		"limit":      map[string]string{"tcp-address": fmt.Sprintf("%s:%d", tcpRule.IP, tcpRule.Port)},
@@ -530,18 +576,33 @@ func (g *GatewayAction) GetAvailablePort(ip string, lock bool) (int, error) {
 	for _, p := range roles {
 		ports = append(ports, p.Port)
 	}
-	for p, timeout := range g.lockPort {
-		if timeout.Before(time.Now()) {
-			delete(g.lockPort, p)
-		} else {
-			ports = append(ports, p)
+	resp, err := clientv3.KV(g.etcdCli).Get(context.TODO(), "/rainbond/gateway/lockports", clientv3.WithPrefix())
+	if err != nil {
+		logrus.Info("get lock ports failed")
+	}
+	for _, etcdValue := range resp.Kvs {
+		port, err := strconv.Atoi(string(etcdValue.Value))
+		if err != nil {
+			continue
 		}
+		ports = append(ports, port)
 	}
 	port := selectAvailablePort(ports)
 	if port != 0 {
 		if lock {
+			lease := clientv3.NewLease(g.etcdCli)
+			leaseResp, err := lease.Grant(context.Background(), 120)
+			if err != nil {
+				logrus.Info("set lease failed")
+				return port, nil
+			}
+			lockPortKey := fmt.Sprintf("/rainbond/gateway/lockports/%d", port)
+			_, err = g.etcdCli.Put(context.Background(), lockPortKey, fmt.Sprintf("%d", port), clientv3.WithLease(leaseResp.ID))
+			if err != nil {
+				logrus.Infof("set lock port key %s failed", lockPortKey)
+				return port, nil
+			}
 			logrus.Infof("select gateway port %d, lock it 2 min", port)
-			g.lockPort[port] = time.Now().Add(time.Minute * 2)
 		}
 		return port, nil
 	}
@@ -599,12 +660,12 @@ func (g *GatewayAction) TCPIPPortExists(host string, port int) bool {
 	return false
 }
 
-// SendTask sends apply rules task
-func (g *GatewayAction) SendTask(in map[string]interface{}) error {
+// SendTaskDeprecated sends apply rules task
+func (g *GatewayAction) SendTaskDeprecated(in map[string]interface{}) error {
 	sid := in["service_id"].(string)
 	service, err := db.GetManager().TenantServiceDao().GetServiceByID(sid)
 	if err != nil {
-		return fmt.Errorf("Unexpected error occurred while getting Service by ServiceID(%s): %v", sid, err)
+		return fmt.Errorf("unexpected error occurred while getting Service by ServiceID(%s): %v", sid, err)
 	}
 	body := make(map[string]interface{})
 	body["deploy_version"] = service.DeployVersion
@@ -617,7 +678,20 @@ func (g *GatewayAction) SendTask(in map[string]interface{}) error {
 		TaskBody: body,
 	})
 	if err != nil {
-		return fmt.Errorf("Unexpected error occurred while sending task: %v", err)
+		return fmt.Errorf("unexpected error occurred while sending task: %v", err)
+	}
+	return nil
+}
+
+// SendTask sends apply rules task
+func (g *GatewayAction) SendTask(task *ComponentIngressTask) error {
+	err := g.mqclient.SendBuilderTopic(client.TaskStruct{
+		Topic:    client.WorkerTopic,
+		TaskType: "apply_rule",
+		TaskBody: task,
+	})
+	if err != nil {
+		return errors.WithMessage(err, "send gateway task")
 	}
 	return nil
 }
@@ -707,7 +781,7 @@ func (g *GatewayAction) RuleConfig(req *apimodel.RuleConfigReq) error {
 		return err
 	}
 
-	if err := g.SendTask(map[string]interface{}{
+	if err := g.SendTaskDeprecated(map[string]interface{}{
 		"service_id": req.ServiceID,
 		"action":     "update-rule-config",
 		"event_id":   req.EventID,
@@ -758,7 +832,7 @@ func (g *GatewayAction) UpdCertificate(req *apimodel.UpdCertificateReq) error {
 
 	for _, rule := range rules {
 		eventID := util.NewUUID()
-		if err := g.SendTask(map[string]interface{}{
+		if err := g.SendTaskDeprecated(map[string]interface{}{
 			"service_id": rule.ServiceID,
 			"action":     "update-rule-config",
 			"event_id":   eventID,
@@ -860,8 +934,10 @@ func (g *GatewayAction) listHTTPRuleIDs(componentID string, port int) ([]string,
 // SyncHTTPRules -
 func (g *GatewayAction) SyncHTTPRules(tx *gorm.DB, components []*apimodel.Component) error {
 	var (
-		componentIDs []string
-		httpRules    []*model.HTTPRule
+		componentIDs     []string
+		httpRules        []*model.HTTPRule
+		ruleExtensions   []*model.RuleExtension
+		httpRuleRewrites []*model.HTTPRuleRewrite
 	)
 	for _, component := range components {
 		if component.HTTPRules == nil {
@@ -870,12 +946,64 @@ func (g *GatewayAction) SyncHTTPRules(tx *gorm.DB, components []*apimodel.Compon
 		componentIDs = append(componentIDs, component.ComponentBase.ComponentID)
 		for _, httpRule := range component.HTTPRules {
 			httpRules = append(httpRules, httpRule.DbModel(component.ComponentBase.ComponentID))
+
+			for _, rewrite := range httpRule.Rewrites {
+				httpRuleRewrites = append(httpRuleRewrites, &model.HTTPRuleRewrite{
+					UUID:        util.NewUUID(),
+					HTTPRuleID:  httpRule.HTTPRuleID,
+					Regex:       rewrite.Regex,
+					Replacement: rewrite.Replacement,
+					Flag:        rewrite.Flag,
+				})
+			}
+
+			for _, ext := range httpRule.RuleExtensions {
+				ruleExtensions = append(ruleExtensions, &model.RuleExtension{
+					UUID:   util.NewUUID(),
+					RuleID: httpRule.HTTPRuleID,
+					Key:    ext.Key,
+					Value:  ext.Value,
+				})
+			}
 		}
 	}
+
+	if err := g.syncHTTPRuleRewrites(tx, httpRules, httpRuleRewrites); err != nil {
+		return err
+	}
+
+	if err := g.syncRuleExtensions(tx, httpRules, ruleExtensions); err != nil {
+		return err
+	}
+
 	if err := db.GetManager().HTTPRuleDaoTransactions(tx).DeleteByComponentIDs(componentIDs); err != nil {
 		return err
 	}
 	return db.GetManager().HTTPRuleDaoTransactions(tx).CreateOrUpdateHTTPRuleInBatch(httpRules)
+}
+
+func (g *GatewayAction) syncHTTPRuleRewrites(tx *gorm.DB, httpRules []*model.HTTPRule, rewrites []*model.HTTPRuleRewrite) error {
+	var ruleIDs []string
+	for _, hr := range httpRules {
+		ruleIDs = append(ruleIDs, hr.UUID)
+	}
+
+	if err := db.GetManager().HTTPRuleRewriteDaoTransactions(tx).DeleteByHTTPRuleIDs(ruleIDs); err != nil {
+		return err
+	}
+	return db.GetManager().HTTPRuleRewriteDaoTransactions(tx).CreateOrUpdateHTTPRuleRewriteInBatch(rewrites)
+}
+
+func (g *GatewayAction) syncRuleExtensions(tx *gorm.DB, httpRules []*model.HTTPRule, exts []*model.RuleExtension) error {
+	var ruleIDs []string
+	for _, hr := range httpRules {
+		ruleIDs = append(ruleIDs, hr.UUID)
+	}
+
+	if err := db.GetManager().RuleExtensionDaoTransactions(tx).DeleteByRuleIDs(ruleIDs); err != nil {
+		return err
+	}
+	return db.GetManager().RuleExtensionDaoTransactions(tx).CreateOrUpdateRuleExtensionsInBatch(exts)
 }
 
 // SyncTCPRules -
@@ -897,4 +1025,35 @@ func (g *GatewayAction) SyncTCPRules(tx *gorm.DB, components []*apimodel.Compone
 		return err
 	}
 	return db.GetManager().TCPRuleDaoTransactions(tx).CreateOrUpdateTCPRuleInBatch(tcpRules)
+}
+
+// SyncRuleConfigs -
+func (g *GatewayAction) SyncRuleConfigs(tx *gorm.DB, components []*apimodel.Component) error {
+	var configs []*model.GwRuleConfig
+	var componentIDs []string
+	for _, component := range components {
+		componentIDs = append(componentIDs, component.ComponentBase.ComponentID)
+		if len(component.HTTPRuleConfigs) == 0 {
+			continue
+		}
+
+		for _, httpRuleConfig := range component.HTTPRuleConfigs {
+			configs = append(configs, httpRuleConfig.DbModel()...)
+		}
+	}
+
+	// http rule ids
+	rules, err := db.GetManager().HTTPRuleDao().ListByComponentIDs(componentIDs)
+	if err != nil {
+		return err
+	}
+	var ruleIDs []string
+	for _, rule := range rules {
+		ruleIDs = append(ruleIDs, rule.UUID)
+	}
+
+	if err := db.GetManager().GwRuleConfigDaoTransactions(tx).DeleteByRuleIDs(ruleIDs); err != nil {
+		return err
+	}
+	return db.GetManager().GwRuleConfigDaoTransactions(tx).CreateOrUpdateGwRuleConfigsInBatch(configs)
 }

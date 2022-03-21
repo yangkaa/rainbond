@@ -19,22 +19,26 @@
 package store
 
 import (
+	"github.com/goodrain/rainbond/pkg/generated/listers/rainbond/v1alpha1"
 	crdlisters "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1"
 	appsv1 "k8s.io/client-go/listers/apps/v1"
 	autoscalingv2 "k8s.io/client-go/listers/autoscaling/v2beta2"
 	corev1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/listers/extensions/v1beta1"
+	betav1 "k8s.io/client-go/listers/networking/v1beta1"
+	networkingv1 "k8s.io/client-go/listers/networking/v1"
 	storagev1 "k8s.io/client-go/listers/storage/v1"
 )
 
 //Lister kube-api client cache
 type Lister struct {
-	Ingress                 v1beta1.IngressLister
+	Ingress                 networkingv1.IngressLister
+	BetaIngress             betav1.IngressLister
 	Service                 corev1.ServiceLister
 	Secret                  corev1.SecretLister
 	StatefulSet             appsv1.StatefulSetLister
 	Deployment              appsv1.DeploymentLister
 	Pod                     corev1.PodLister
+	ReplicaSets             appsv1.ReplicaSetLister
 	ConfigMap               corev1.ConfigMapLister
 	Endpoints               corev1.EndpointsLister
 	Nodes                   corev1.NodeLister
@@ -42,4 +46,7 @@ type Lister struct {
 	Claims                  corev1.PersistentVolumeClaimLister
 	HorizontalPodAutoscaler autoscalingv2.HorizontalPodAutoscalerLister
 	CRD                     crdlisters.CustomResourceDefinitionLister
+	HelmApp                 v1alpha1.HelmAppLister
+	ComponentDefinition     v1alpha1.ComponentDefinitionLister
+	ThirdComponent          v1alpha1.ThirdComponentLister
 }

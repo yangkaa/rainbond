@@ -62,6 +62,7 @@ func (v2 *V2) Routes() chi.Router {
 	r.Put("/volume-options/{volume_type}", controller.UpdateVolumeType)
 	r.Mount("/enterprise/{enterprise_id}", v2.enterpriseRouter())
 	r.Mount("/monitor", v2.monitorRouter())
+	r.Get("/instances/monitor", controller.GetManager().InstancesMonitor)
 	return r
 }
 
@@ -83,12 +84,14 @@ func (v2 *V2) eventsRouter() chi.Router {
 	r.Get("/", controller.GetManager().Events)
 	// get target's event content
 	r.Get("/{eventID}/log", controller.GetManager().EventLog)
+	r.Get("/exception", controller.GetManager().GetLatestExceptionEvents)
 	return r
 }
 
 func (v2 *V2) clusterRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", controller.GetManager().GetClusterInfo)
+	r.Get("/exception", controller.GetManager().GetExceptionNodeInfo)
 	r.Get("/builder/mavensetting", controller.GetManager().MavenSettingList)
 	r.Post("/builder/mavensetting", controller.GetManager().MavenSettingAdd)
 	r.Get("/builder/mavensetting/{name}", controller.GetManager().MavenSettingDetail)
@@ -139,9 +142,12 @@ func (v2 *V2) tenantNameRouter() chi.Router {
 	r.Get("/event", controller.GetManager().Event)
 	r.Get("/chargesverify", controller.ChargesVerifyController)
 	//tenant app
+	r.Get("/pods/{pod_name}", controller.GetManager().PodDetail)
 	r.Post("/apps", controller.GetManager().CreateApp)
 	r.Post("/batch_create_apps", controller.GetManager().BatchCreateApp)
 	r.Get("/apps", controller.GetManager().ListApps)
+	r.Post("/checkResourceName", controller.GetManager().CheckResourceName)
+	r.Get("/appstatuses", controller.GetManager().ListAppStatuses)
 	r.Mount("/apps/{app_id}", v2.applicationRouter())
 	//get some service pod info
 	r.Get("/pods", controller.Pods)
@@ -302,6 +308,8 @@ func (v2 *V2) serviceRouter() chi.Router {
 	r.Put("/service-monitors/{name}", middleware.WrapEL(controller.GetManager().UpdateServiceMonitors, dbmodel.TargetTypeService, "update-app-service-monitor", dbmodel.SYNEVENTTYPE))
 	r.Delete("/service-monitors/{name}", middleware.WrapEL(controller.GetManager().DeleteServiceMonitors, dbmodel.TargetTypeService, "delete-app-service-monitor", dbmodel.SYNEVENTTYPE))
 
+	r.Get("/log", controller.GetManager().Log)
+
 	return r
 }
 
@@ -309,11 +317,15 @@ func (v2 *V2) applicationRouter() chi.Router {
 	r := chi.NewRouter()
 	// Init Application
 	r.Use(middleware.InitApplication)
+	// app governance mode
+	r.Get("/governance/check", controller.GetManager().CheckGovernanceMode)
 	// Operation application
 	r.Put("/", controller.GetManager().UpdateApp)
 	r.Delete("/", controller.GetManager().DeleteApp)
+	r.Put("/volumes", controller.GetManager().ChangeVolumes)
 	// Get services under application
 	r.Get("/services", controller.GetManager().ListServices)
+	// bind components
 	r.Put("/services", controller.GetManager().BatchBindService)
 	// Application configuration group
 	r.Post("/configgroups", controller.GetManager().AddConfigGroup)
@@ -321,6 +333,9 @@ func (v2 *V2) applicationRouter() chi.Router {
 
 	r.Put("/ports", controller.GetManager().BatchUpdateComponentPorts)
 	r.Put("/status", controller.GetManager().GetAppStatus)
+	// status
+	r.Post("/install", controller.GetManager().Install)
+	r.Get("/releases", controller.GetManager().ListHelmAppReleases)
 
 	r.Delete("/configgroups/{config_group_name}", controller.GetManager().DeleteConfigGroup)
 	r.Get("/configgroups", controller.GetManager().ListConfigGroups)

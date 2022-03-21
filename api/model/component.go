@@ -2,8 +2,9 @@ package model
 
 import (
 	"fmt"
-	dbmodel "github.com/goodrain/rainbond/db/model"
 	"time"
+
+	dbmodel "github.com/goodrain/rainbond/db/model"
 )
 
 // ComponentBase -
@@ -66,32 +67,34 @@ type ComponentBase struct {
 	// 服务创建类型cloud云市服务,assistant云帮服务
 	// in: body
 	// required: false
-	ServiceOrigin string `json:"service_origin" validate:"service_origin"`
-	Kind          string `json:"kind" validate:"kind|in:internal,third_party"`
+	ServiceOrigin    string `json:"service_origin" validate:"service_origin"`
+	Kind             string `json:"kind" validate:"kind|in:internal,third_party"`
+	K8sComponentName string `json:"k8s_component_name" validate:"k8s_component_name"`
 }
 
 // DbModel return database model
 func (c *ComponentBase) DbModel(tenantID, appID, deployVersion string) *dbmodel.TenantServices {
 	return &dbmodel.TenantServices{
-		TenantID:        tenantID,
-		ServiceID:       c.ComponentID,
-		ServiceAlias:    c.ComponentAlias,
-		ServiceName:     c.ComponentName,
-		ServiceType:     c.ExtendMethod,
-		Comment:         c.Comment,
-		ContainerCPU:    c.ContainerCPU,
-		ContainerMemory: c.ContainerMemory,
-		ContainerGPU:    c.ContainerGPU,
-		ExtendMethod:    c.ExtendMethod,
-		Replicas:        c.Replicas,
-		DeployVersion:   deployVersion,
-		Category:        c.Category,
-		EventID:         c.EventID,
-		Namespace:       tenantID,
-		ServiceOrigin:   c.ServiceOrigin,
-		Kind:            c.Kind,
-		AppID:           appID,
-		UpdateTime:      time.Now(),
+		TenantID:         tenantID,
+		ServiceID:        c.ComponentID,
+		ServiceAlias:     c.ComponentAlias,
+		ServiceName:      c.ComponentName,
+		ServiceType:      c.ExtendMethod,
+		Comment:          c.Comment,
+		ContainerCPU:     c.ContainerCPU,
+		ContainerMemory:  c.ContainerMemory,
+		ContainerGPU:     c.ContainerGPU,
+		ExtendMethod:     c.ExtendMethod,
+		Replicas:         c.Replicas,
+		DeployVersion:    deployVersion,
+		Category:         c.Category,
+		EventID:          c.EventID,
+		Namespace:        tenantID,
+		ServiceOrigin:    c.ServiceOrigin,
+		Kind:             c.Kind,
+		AppID:            appID,
+		UpdateTime:       time.Now(),
+		K8sComponentName: c.K8sComponentName,
 	}
 }
 
@@ -168,6 +171,7 @@ type ComponentVolume struct {
 	ReclaimPolicy      string `json:"reclaim_policy"`
 	AllowExpansion     bool   `json:"allow_expansion"`
 	VolumeProviderName string `json:"volume_provider_name"`
+	Mode               *int32 `json:"mode"`
 }
 
 // Key returns the key of ComponentVolume.
@@ -192,6 +196,7 @@ func (v *ComponentVolume) DbModel(componentID string) *dbmodel.TenantServiceVolu
 		ReclaimPolicy:      v.ReclaimPolicy,
 		AllowExpansion:     v.AllowExpansion,
 		VolumeProviderName: v.VolumeProviderName,
+		Mode:               v.Mode,
 	}
 }
 
@@ -239,11 +244,12 @@ type Component struct {
 	ComponentBase      ComponentBase                    `json:"component_base"`
 	HTTPRules          []AddHTTPRuleStruct              `json:"http_rules"`
 	TCPRules           []AddTCPRuleStruct               `json:"tcp_rules"`
+	HTTPRuleConfigs    []HTTPRuleConfig                 `json:"http_rule_configs"`
 	Monitors           []AddServiceMonitorRequestStruct `json:"monitors"`
 	Ports              []TenantServicesPort             `json:"ports"`
 	Relations          []TenantComponentRelation        `json:"relations"`
 	Envs               []ComponentEnv                   `json:"envs"`
-	Probe              ServiceProbe                     `json:"probe"`
+	Probes             []ServiceProbe                   `json:"probes"`
 	AppConfigGroupRels []AppConfigGroupRelations        `json:"app_config_groups"`
 	Labels             []ComponentLabel                 `json:"labels"`
 	Plugins            []ComponentPlugin                `json:"plugins"`
@@ -251,6 +257,7 @@ type Component struct {
 	ConfigFiles        []ComponentConfigFile            `json:"config_files"`
 	VolumeRelations    []VolumeRelation                 `json:"volume_relations"`
 	Volumes            []ComponentVolume                `json:"volumes"`
+	Endpoint           *Endpoints                       `json:"endpoint"`
 }
 
 // SyncComponentReq -

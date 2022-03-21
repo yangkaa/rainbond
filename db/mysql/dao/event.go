@@ -98,9 +98,22 @@ func (c *EventDaoImpl) GetEventByEventIDs(eventIDs []string) ([]*model.ServiceEv
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, err
+		return nil, errors.Wrap(err, "list events")
 	}
 	return result, nil
+}
+
+// UpdateInBatch -
+func (c *EventDaoImpl) UpdateInBatch(events []*model.ServiceEvent) error {
+	var objects []interface{}
+	for _, event := range events {
+		event := event
+		objects = append(objects, *event)
+	}
+	if err := gormbulkups.BulkUpsert(c.DB, objects, 2000); err != nil {
+		return errors.Wrap(err, "update events in batch")
+	}
+	return nil
 }
 
 //GetEventByServiceID get event log message
@@ -208,6 +221,7 @@ func (c *EventDaoImpl) LatestFailurePodEvent(podName string) (*model.ServiceEven
 	return &event, nil
 }
 
+// SetEventStatus -
 func (c *EventDaoImpl) SetEventStatus(ctx context.Context, status model.EventStatus) error {
 	event, _ := ctx.Value(ctxutil.ContextKey("event")).(*model.ServiceEvent)
 	if event != nil {
@@ -216,6 +230,24 @@ func (c *EventDaoImpl) SetEventStatus(ctx context.Context, status model.EventSta
 		return c.UpdateModel(event)
 	}
 	return nil
+}
+
+// GetExceptionEventsByTime -
+func (c *EventDaoImpl) GetExceptionEventsByTime(eventTypes []string, createTime time.Time) ([]*model.ServiceEvent, error) {
+	var events []*model.ServiceEvent
+	if err := c.DB.Model(&model.ServiceEvent{}).Where("opt_type in (?) and create_time > ?", eventTypes, createTime).Find(&events).Error; err != nil {
+		return nil, errors.Wrap(err, "get exception events")
+	}
+	return events, nil
+}
+
+// CountEvents -
+func (c *EventDaoImpl) CountEvents(tenantID, serviceID string, eventType string) int64 {
+	var count int64
+	if err := c.DB.Model(&model.ServiceEvent{}).Where("tenant_id = ? and service_id = ? and opt_type =?", tenantID, serviceID, eventType).Count(&count).Error; err != nil {
+		return 0
+	}
+	return count
 }
 
 //NotificationEventDaoImpl NotificationEventDaoImpl

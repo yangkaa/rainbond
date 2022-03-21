@@ -22,9 +22,10 @@ import (
 	"fmt"
 	"github.com/goodrain/rainbond/gateway/annotations/parser"
 	"github.com/goodrain/rainbond/gateway/annotations/resolver"
-	extensions "k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Config -
 type Config struct {
 	L4Enable bool
 	L4Host   string
@@ -35,18 +36,19 @@ type l4 struct {
 	r resolver.Resolver
 }
 
+// NewParser -
 func NewParser(r resolver.Resolver) parser.IngressAnnotation {
 	return l4{r}
 }
 
-func (l l4) Parse(ing *extensions.Ingress) (interface{}, error) {
-	l4Enable, _ := parser.GetBoolAnnotation("l4-enable", ing)
-	l4Host, _ := parser.GetStringAnnotation("l4-host", ing)
+func (l l4) Parse(meta *metav1.ObjectMeta) (interface{}, error) {
+	l4Enable, _ := parser.GetBoolAnnotation("l4-enable", meta)
+	l4Host, _ := parser.GetStringAnnotation("l4-host", meta)
 	if l4Host == "" {
 		l4Host = "0.0.0.0"
 	}
 
-	l4Port, _ := parser.GetIntAnnotation("l4-port", ing)
+	l4Port, _ := parser.GetIntAnnotation("l4-port", meta)
 	if l4Enable && (l4Port <= 0 || l4Port > 65535) {
 		return nil, fmt.Errorf("error l4Port: %d", l4Port)
 	}

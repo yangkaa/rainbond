@@ -410,6 +410,13 @@ func (m *Manager) ApplicationDao() dao.ApplicationDao {
 	}
 }
 
+//ApplicationDaoTransactions -
+func (m *Manager) ApplicationDaoTransactions(db *gorm.DB) dao.ApplicationDao {
+	return &mysqldao.ApplicationDaoImpl{
+		DB: db,
+	}
+}
+
 // AppConfigGroupDao -
 func (m *Manager) AppConfigGroupDao() dao.AppConfigGroupDao {
 	return &mysqldao.AppConfigGroupDaoImpl{
@@ -511,6 +518,20 @@ func (m *Manager) HTTPRuleDao() dao.HTTPRuleDao {
 //HTTPRuleDaoTransactions -
 func (m *Manager) HTTPRuleDaoTransactions(db *gorm.DB) dao.HTTPRuleDao {
 	return &mysqldao.HTTPRuleDaoImpl{
+		DB: db,
+	}
+}
+
+// HTTPRuleRewriteDao HTTPRuleRewriteDao
+func (m *Manager) HTTPRuleRewriteDao() dao.HTTPRuleRewriteDao {
+	return &mysqldao.HTTPRuleRewriteDaoTmpl{
+		DB: m.db,
+	}
+}
+
+//HTTPRuleRewriteDaoTransactions -
+func (m *Manager) HTTPRuleRewriteDaoTransactions(db *gorm.DB) dao.HTTPRuleRewriteDao {
+	return &mysqldao.HTTPRuleRewriteDaoTmpl{
 		DB: db,
 	}
 }

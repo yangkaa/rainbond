@@ -20,9 +20,9 @@ package dao
 
 import (
 	"fmt"
-	gormbulkups "github.com/atcdot/gorm-bulk-upsert"
 	"reflect"
 
+	gormbulkups "github.com/atcdot/gorm-bulk-upsert"
 	"github.com/goodrain/rainbond/api/util/bcode"
 	"github.com/goodrain/rainbond/db/model"
 	"github.com/jinzhu/gorm"
@@ -145,6 +145,18 @@ func (c *RuleExtensionDaoImpl) DeleteRuleExtensionByRuleID(ruleID string) error 
 func (c *RuleExtensionDaoImpl) DeleteByRuleIDs(ruleIDs []string) error {
 	if err := c.DB.Where("rule_id in (?)", ruleIDs).Delete(&model.RuleExtension{}).Error; err != nil {
 		return errors.Wrap(err, "delete rule extentions")
+	}
+	return nil
+}
+
+// CreateOrUpdateRuleExtensionsInBatch -
+func (c *RuleExtensionDaoImpl) CreateOrUpdateRuleExtensionsInBatch(exts []*model.RuleExtension) error {
+	var objects []interface{}
+	for _, ext := range exts {
+		objects = append(objects, *ext)
+	}
+	if err := gormbulkups.BulkUpsert(c.DB, objects, 2000); err != nil {
+		return errors.Wrap(err, "create or update rule extensions in batch")
 	}
 	return nil
 }
@@ -276,7 +288,7 @@ func (h *HTTPRuleDaoImpl) ListByCertID(certID string) ([]*model.HTTPRule, error)
 }
 
 //DeleteByComponentIDs delete http rule by component ids
-func (h *HTTPRuleDaoImpl) DeleteByComponentIDs(componentIDs []string) error{
+func (h *HTTPRuleDaoImpl) DeleteByComponentIDs(componentIDs []string) error {
 	return h.DB.Where("service_id in (?) ", componentIDs).Delete(&model.HTTPRule{}).Error
 }
 
@@ -288,6 +300,79 @@ func (h *HTTPRuleDaoImpl) CreateOrUpdateHTTPRuleInBatch(httpRules []*model.HTTPR
 	}
 	if err := gormbulkups.BulkUpsert(h.DB, objects, 2000); err != nil {
 		return errors.Wrap(err, "create or update http rule in batch")
+	}
+	return nil
+}
+
+// ListByComponentIDs -
+func (h *HTTPRuleDaoImpl) ListByComponentIDs(componentIDs []string) ([]*model.HTTPRule, error) {
+	var rules []*model.HTTPRule
+	if err := h.DB.Where("service_id in (?) ", componentIDs).Find(&rules).Error; err != nil {
+		return nil, err
+	}
+	return rules, nil
+}
+
+// HTTPRuleRewriteDaoTmpl is a implementation of HTTPRuleRewriteDao
+type HTTPRuleRewriteDaoTmpl struct {
+	DB *gorm.DB
+}
+
+//AddModel -
+func (h *HTTPRuleRewriteDaoTmpl) AddModel(mo model.Interface) error {
+	httpRuleRewrite, ok := mo.(*model.HTTPRuleRewrite)
+	if !ok {
+		return fmt.Errorf("can't not convert %s to *model.HTTPRuleRewrite", reflect.TypeOf(mo).String())
+	}
+	var oldHTTPRuleRewrite model.HTTPRuleRewrite
+	if ok := h.DB.Where("uuid = ?", httpRuleRewrite.UUID).Find(&oldHTTPRuleRewrite).RecordNotFound(); !ok {
+		return fmt.Errorf("HTTPRuleRewrite already exists based on uuid(%s)", httpRuleRewrite.UUID)
+	}
+	return h.DB.Create(httpRuleRewrite).Error
+}
+
+//UpdateModel -
+func (h *HTTPRuleRewriteDaoTmpl) UpdateModel(mo model.Interface) error {
+	hr, ok := mo.(*model.HTTPRuleRewrite)
+	if !ok {
+		return fmt.Errorf("failed to convert %s to *model.HTTPRuleRewrite", reflect.TypeOf(mo).String())
+	}
+	return h.DB.Save(hr).Error
+}
+
+// CreateOrUpdateHTTPRuleRewriteInBatch -
+func (h *HTTPRuleRewriteDaoTmpl) CreateOrUpdateHTTPRuleRewriteInBatch(httpRuleRewrites []*model.HTTPRuleRewrite) error {
+	var objects []interface{}
+	for _, httpRuleRewrites := range httpRuleRewrites {
+		objects = append(objects, *httpRuleRewrites)
+	}
+	if err := gormbulkups.BulkUpsert(h.DB, objects, 2000); err != nil {
+		return errors.Wrap(err, "create or update http rule rewrite in batch")
+	}
+	return nil
+}
+
+// ListByHTTPRuleID -
+func (h *HTTPRuleRewriteDaoTmpl) ListByHTTPRuleID(httpRuleID string) ([]*model.HTTPRuleRewrite, error) {
+	var rewrites []*model.HTTPRuleRewrite
+	if err := h.DB.Where("http_rule_id = ?", httpRuleID).Find(&rewrites).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return rewrites, nil
+		}
+		return nil, err
+	}
+	return rewrites, nil
+}
+
+// DeleteByHTTPRuleID -
+func (h *HTTPRuleRewriteDaoTmpl) DeleteByHTTPRuleID(httpRuleID string) error {
+	return h.DB.Where("http_rule_id in (?) ", httpRuleID).Delete(&model.HTTPRuleRewrite{}).Error
+}
+
+// DeleteByHTTPRuleIDs deletes http rule rewrites by given httpRuleIDs.
+func (h *HTTPRuleRewriteDaoTmpl) DeleteByHTTPRuleIDs(httpRuleIDs []string) error {
+	if err := h.DB.Where("http_rule_id in (?)", httpRuleIDs).Delete(&model.HTTPRuleRewrite{}).Error; err != nil {
+		return errors.Wrap(err, "delete http rule rewrites")
 	}
 	return nil
 }
@@ -407,7 +492,7 @@ func (t *TCPRuleDaoTmpl) ListByServiceID(serviceID string) ([]*model.TCPRule, er
 }
 
 //DeleteByComponentIDs delete tcp rule by component ids
-func (t *TCPRuleDaoTmpl) DeleteByComponentIDs(componentIDs []string) error{
+func (t *TCPRuleDaoTmpl) DeleteByComponentIDs(componentIDs []string) error {
 	return t.DB.Where("service_id in (?) ", componentIDs).Delete(&model.TCPRule{}).Error
 }
 
@@ -467,6 +552,18 @@ func (t *GwRuleConfigDaoImpl) ListByRuleID(rid string) ([]*model.GwRuleConfig, e
 func (t *GwRuleConfigDaoImpl) DeleteByRuleIDs(ruleIDs []string) error {
 	if err := t.DB.Where("rule_id in (?)", ruleIDs).Delete(&model.GwRuleConfig{}).Error; err != nil {
 		return errors.Wrap(err, "delete rule configs")
+	}
+	return nil
+}
+
+// CreateOrUpdateGwRuleConfigsInBatch creates or updates rule configs in batch.
+func (t *GwRuleConfigDaoImpl) CreateOrUpdateGwRuleConfigsInBatch(ruleConfigs []*model.GwRuleConfig) error {
+	var objects []interface{}
+	for _, ruleConfig := range ruleConfigs {
+		objects = append(objects, *ruleConfig)
+	}
+	if err := gormbulkups.BulkUpsert(t.DB, objects, 2000); err != nil {
+		return errors.Wrap(err, "create or update rule configs in batch")
 	}
 	return nil
 }

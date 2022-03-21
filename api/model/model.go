@@ -28,6 +28,12 @@ import (
 	dmodel "github.com/goodrain/rainbond/worker/discover/model"
 )
 
+// AppType
+const (
+	AppTypeRainbond = "rainbond"
+	AppTypeHelm     = "helm"
+)
+
 //ServiceGetCommon path参数
 //swagger:parameters getVolumes getDepVolumes
 type ServiceGetCommon struct {
@@ -352,12 +358,29 @@ type ServiceStruct struct {
 	ComponentMonitors []AddServiceMonitorRequestStruct     `json:"component_monitors" validate:"component_monitors"`
 	HTTPRules         []AddHTTPRuleStruct                  `json:"http_rules" validate:"http_rules"`
 	TCPRules          []AddTCPRuleStruct                   `json:"tcp_rules" validate:"tcp_rules"`
+	K8sComponentName  string                               `json:"k8s_component_name" validate:"k8s_component_name"`
 }
 
 // Endpoints holds third-party service endpoints or configuraion to get endpoints.
 type Endpoints struct {
-	Static    string `json:"static" validate:"static"`
-	Discovery string `json:"discovery" validate:"discovery"`
+	Static     []string            `json:"static" validate:"static"`
+	Kubernetes *EndpointKubernetes `json:"kubernetes" validate:"kubernetes"`
+}
+
+// DbModel -
+func (e *Endpoints) DbModel(componentID string) *dbmodel.ThirdPartySvcDiscoveryCfg {
+	return &dbmodel.ThirdPartySvcDiscoveryCfg{
+		ServiceID:   componentID,
+		Type:        string(dbmodel.DiscorveryTypeKubernetes),
+		Namespace:   e.Kubernetes.Namespace,
+		ServiceName: e.Kubernetes.ServiceName,
+	}
+}
+
+// EndpointKubernetes -
+type EndpointKubernetes struct {
+	Namespace   string `json:"namespace"`
+	ServiceName string `json:"serviceName"`
 }
 
 //TenantServiceVolumeStruct -
@@ -587,6 +610,7 @@ type AddTenantStruct struct {
 		Eid         string `json:"eid" validata:"eid"`
 		Token       string `json:"token" validate:"token"`
 		LimitMemory int    `json:"limit_memory" validate:"limit_memory"`
+		Namespace   string `json:"namespace" validate:"namespace"`
 	}
 }
 
@@ -1785,11 +1809,18 @@ func NewAppStatusFromImport(app *ImportAppStruct) *dbmodel.AppStatus {
 
 // Application -
 type Application struct {
-	AppName      string   `json:"app_name" validate:"required"`
-	ConsoleAppID int64    `json:"console_app_id"`
-	AppID        string   `json:"app_id"`
-	TenantID     string   `json:"tenant_id"`
-	ServiceIDs   []string `json:"service_ids"`
+	EID             string   `json:"eid" validate:"required"`
+	AppName         string   `json:"app_name" validate:"required"`
+	AppType         string   `json:"app_type" validate:"required,oneof=rainbond helm"`
+	ConsoleAppID    int64    `json:"console_app_id"`
+	AppID           string   `json:"app_id"`
+	TenantID        string   `json:"tenant_id"`
+	ServiceIDs      []string `json:"service_ids"`
+	AppStoreName    string   `json:"app_store_name"`
+	AppStoreURL     string   `json:"app_store_url"`
+	AppTemplateName string   `json:"app_template_name"`
+	Version         string   `json:"version"`
+	K8sApp          string   `json:"k8s_app" validate:"required"`
 }
 
 // CreateAppRequest -
@@ -1821,8 +1852,17 @@ type ListServiceResponse struct {
 
 // UpdateAppRequest -
 type UpdateAppRequest struct {
-	AppName        string `json:"app_name"`
-	GovernanceMode string `json:"governance_mode"`
+	AppName        string   `json:"app_name"`
+	GovernanceMode string   `json:"governance_mode"`
+	Overrides      []string `json:"overrides"`
+	Version        string   `json:"version"`
+	Revision       int      `json:"revision"`
+	K8sApp         string   `json:"k8s_app"`
+}
+
+// NeedUpdateHelmApp check if necessary to update the helm app.
+func (u *UpdateAppRequest) NeedUpdateHelmApp() bool {
+	return len(u.Overrides) > 0 || u.Version != "" || u.Revision != 0
 }
 
 // BindServiceRequest -
@@ -1830,10 +1870,20 @@ type BindServiceRequest struct {
 	ServiceIDs []string `json:"service_ids"`
 }
 
+// InstallAppReq -
+type InstallAppReq struct {
+	Overrides []string `json:"overrides"`
+}
+
+// ParseAppServicesReq -
+type ParseAppServicesReq struct {
+	Values string `json:"values"`
+}
+
 // ConfigGroupService -
 type ConfigGroupService struct {
-	ServiceID       string `json:"service_id"`
-	ServiceAlias    string `json:"service_alias"`
+	ServiceID    string `json:"service_id"`
+	ServiceAlias string `json:"service_alias"`
 }
 
 // DbModel return database model
@@ -1866,12 +1916,12 @@ func (c ConfigItem) DbModel(appID, configGroupName string) *dbmodel.ConfigGroupI
 
 // ApplicationConfigGroup -
 type ApplicationConfigGroup struct {
-	AppID               string               `json:"app_id"`
-	ConfigGroupName     string               `json:"config_group_name" validate:"required,alphanum,min=2,max=64"`
-	DeployType          string               `json:"deploy_type" validate:"required,oneof=env configfile"`
-	ServiceIDs          []string             `json:"service_ids"`
-	ConfigItems         []ConfigItem         `json:"config_items"`
-	Enable              bool                 `json:"enable"`
+	AppID           string       `json:"app_id"`
+	ConfigGroupName string       `json:"config_group_name" validate:"required,alphanum,min=2,max=64"`
+	DeployType      string       `json:"deploy_type" validate:"required,oneof=env configfile"`
+	ServiceIDs      []string     `json:"service_ids"`
+	ConfigItems     []ConfigItem `json:"config_items"`
+	Enable          bool         `json:"enable"`
 }
 
 // AppConfigGroup Interface for synchronizing application configuration groups
@@ -1919,6 +1969,27 @@ type ListApplicationConfigGroupResp struct {
 	PageSize    int                          `json:"pageSize"`
 }
 
+// CheckResourceNameReq -
+type CheckResourceNameReq struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+// CheckResourceNameResp -
+type CheckResourceNameResp struct {
+	Name string `json:"name"`
+}
+
+// HelmAppRelease -
+type HelmAppRelease struct {
+	Revision    int    `json:"revision"`
+	Updated     string `json:"updated"`
+	Status      string `json:"status"`
+	Chart       string `json:"chart"`
+	AppVersion  string `json:"app_version"`
+	Description string `json:"description"`
+}
+
 // AppConfigGroupRelations -
 type AppConfigGroupRelations struct {
 	ConfigGroupName string `json:"config_group_name"`
@@ -1937,4 +2008,9 @@ func (a *AppConfigGroupRelations) DbModel(appID, serviceID, serviceAlias string)
 // SyncAppConfigGroup -
 type SyncAppConfigGroup struct {
 	AppConfigGroups []AppConfigGroup `json:"app_config_groups"`
+}
+
+// AppStatusesReq -
+type AppStatusesReq struct {
+	AppIDs []string `json:"app_ids"`
 }

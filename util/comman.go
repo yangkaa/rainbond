@@ -527,6 +527,17 @@ func Zip(source, target string) error {
 	return err
 }
 
+// UnTar -
+func UnTar(archive, target string, zip bool) error {
+	parameter := "-x"
+	if zip {
+		parameter = "-zx"
+	}
+	command := []string{"tar", parameter, "-C", target, "-f", archive}
+	cmd := exec.Command(command[0], command[1:]...)
+	return cmd.Run()
+}
+
 //Unzip archive file to target dir
 func Unzip(archive, target string) error {
 	reader, err := zip.OpenDirectReader(archive)
@@ -806,4 +817,14 @@ func Elapsed(what string) func() {
 	return func() {
 		logrus.Debugf("%s took %v", what, time.Since(start))
 	}
+}
+
+// IsEndWithNumber Determine whether the stateful component directory name is satisfied, that is, it ends with a number
+func IsEndWithNumber(dir string) (isEndWithNumber bool, suffix string) {
+	reg := regexp.MustCompile(`^*-[0-9]*?$`)
+	if reg == nil {
+		return false, ""
+	}
+	suffix = reg.FindString(dir)
+	return suffix != "", suffix
 }

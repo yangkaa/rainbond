@@ -40,6 +40,7 @@ type Manager interface {
 	LicenseDao() dao.LicenseDao
 	AppDao() dao.AppDao
 	ApplicationDao() dao.ApplicationDao
+	ApplicationDaoTransactions(db *gorm.DB) dao.ApplicationDao
 	AppConfigGroupDao() dao.AppConfigGroupDao
 	AppConfigGroupDaoTransactions(db *gorm.DB) dao.AppConfigGroupDao
 	AppConfigGroupServiceDao() dao.AppConfigGroupServiceDao
@@ -114,6 +115,8 @@ type Manager interface {
 	RuleExtensionDaoTransactions(db *gorm.DB) dao.RuleExtensionDao
 	HTTPRuleDao() dao.HTTPRuleDao
 	HTTPRuleDaoTransactions(db *gorm.DB) dao.HTTPRuleDao
+	HTTPRuleRewriteDao() dao.HTTPRuleRewriteDao
+	HTTPRuleRewriteDaoTransactions(db *gorm.DB) dao.HTTPRuleRewriteDao
 	TCPRuleDao() dao.TCPRuleDao
 	TCPRuleDaoTransactions(db *gorm.DB) dao.TCPRuleDao
 	GwRuleConfigDao() dao.GwRuleConfigDao

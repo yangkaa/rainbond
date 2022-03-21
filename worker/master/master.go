@@ -27,8 +27,13 @@ import (
 	"github.com/goodrain/rainbond/cmd/worker/option"
 	"github.com/goodrain/rainbond/db"
 	"github.com/goodrain/rainbond/db/model"
+	"github.com/goodrain/rainbond/pkg/common"
+	"github.com/goodrain/rainbond/pkg/generated/clientset/versioned"
 	"github.com/goodrain/rainbond/util/leader"
 	"github.com/goodrain/rainbond/worker/appm/store"
+	mcontroller "github.com/goodrain/rainbond/worker/master/controller"
+	"github.com/goodrain/rainbond/worker/master/controller/helmapp"
+	"github.com/goodrain/rainbond/worker/master/controller/thirdcomponent"
 	"github.com/goodrain/rainbond/worker/master/podevent"
 	"github.com/goodrain/rainbond/worker/master/volumes/provider"
 	"github.com/goodrain/rainbond/worker/master/volumes/provider/lib/controller"
@@ -39,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 //Controller app runtime master controller
@@ -46,6 +52,7 @@ type Controller struct {
 	ctx                 context.Context
 	cancel              context.CancelFunc
 	conf                option.Config
+	restConfig          *rest.Config
 	store               store.Storer
 	dbmanager           db.Manager
 	memoryUse           *prometheus.GaugeVec
@@ -57,6 +64,8 @@ type Controller struct {
 	namespaceCPURequest *prometheus.GaugeVec
 	namespaceCPULimit   *prometheus.GaugeVec
 	pc                  *controller.ProvisionController
+	helmAppController   *helmapp.Controller
+	controllers         []mcontroller.Controller
 	isLeader            bool
 
 	kubeClient kubernetes.Interface
@@ -68,16 +77,11 @@ type Controller struct {
 	version      *version.Info
 	rainbondsssc controller.Provisioner
 	rainbondsslc controller.Provisioner
+	mgr          ctrl.Manager
 }
 
 //NewMasterController new master controller
-func NewMasterController(conf option.Config, kubecfg *rest.Config, store store.Storer) (*Controller, error) {
-	// kubecfg.RateLimiter = nil
-	kubeClient, err := kubernetes.NewForConfig(kubecfg)
-	if err != nil {
-		return nil, err
-	}
-
+func NewMasterController(conf option.Config, store store.Storer, kubeClient kubernetes.Interface, rainbondClient versioned.Interface, restConfig *rest.Config) (*Controller, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// The controller needs to know what the server version is because out-of-tree
@@ -103,14 +107,19 @@ func NewMasterController(conf option.Config, kubecfg *rest.Config, store store.S
 	}, serverVersion.GitVersion)
 	stopCh := make(chan struct{})
 
+	helmAppController := helmapp.NewController(ctx, stopCh, kubeClient, rainbondClient,
+		store.Informer().HelmApp, store.Lister().HelmApp, conf.Helm.RepoFile, conf.Helm.RepoCache, conf.Helm.RepoCache)
+
 	return &Controller{
-		conf:      conf,
-		pc:        pc,
-		store:     store,
-		stopCh:    stopCh,
-		cancel:    cancel,
-		ctx:       ctx,
-		dbmanager: db.GetManager(),
+		conf:              conf,
+		restConfig:        restConfig,
+		pc:                pc,
+		helmAppController: helmAppController,
+		store:             store,
+		stopCh:            stopCh,
+		cancel:            cancel,
+		ctx:               ctx,
+		dbmanager:         db.GetManager(),
 		memoryUse: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: "app_resource",
 			Name:      "appmemory",
@@ -184,10 +193,37 @@ func (m *Controller) Start() error {
 		defer m.store.UnRegisterVolumeTypeListener("volumeTypeEvent")
 		go m.volumeTypeEvent.Handle()
 
+		// helm app controller
+		go m.helmAppController.Start()
+		defer m.helmAppController.Stop()
+
+		// start controller
+		mgr, err := ctrl.NewManager(m.restConfig, ctrl.Options{
+			Scheme:           common.Scheme,
+			LeaderElection:   false,
+			LeaderElectionID: "controllers.rainbond.io",
+		})
+		if err != nil {
+			logrus.Errorf("create new manager: %v", err)
+			return
+		}
+		thirdComponentController, err := thirdcomponent.Setup(ctx, mgr)
+		if err != nil {
+			logrus.Errorf("setup third component controller: %v", err)
+			return
+		}
+		m.mgr = mgr
+		m.controllers = append(m.controllers, thirdComponentController)
+		stopchan := make(chan struct{})
+		go m.mgr.Start(stopchan)
+
+		defer func() { stopchan <- struct{}{} }()
+
 		select {
 		case <-ctx.Done():
 		case <-m.ctx.Done():
 		}
+
 	}
 	// Leader election was requested.
 	if m.conf.LeaderElectionNamespace == "" {
@@ -243,7 +279,15 @@ func (m *Controller) Scrape(ch chan<- prometheus.Metric, scrapeDurationDesc *pro
 	for _, service := range services {
 		if _, ok := status[service.ServiceID]; ok {
 			m.memoryUse.WithLabelValues(service.TenantID, service.AppID, service.ServiceID, "running").Set(float64(service.GetMemoryRequest()))
-			m.cpuUse.WithLabelValues(service.TenantID, service.AppID, service.ServiceID, "running").Set(float64(service.GetMemoryRequest()))
+			m.cpuUse.WithLabelValues(service.TenantID, service.AppID, service.ServiceID, "running").Set(float64(service.GetCPURequest()))
+		}
+		if service.IsClosed(){
+			if m.memoryUse.DeleteLabelValues(service.TenantID, service.AppID, service.ServiceID, "running"){
+				logrus.Infof("remove memory usage for [%s/%s/%s]", service.TenantID, service.AppID, service.ServiceID)
+			}
+			if m.cpuUse.DeleteLabelValues(service.TenantID, service.AppID, service.ServiceID, "running") {
+				logrus.Infof("remove cpu usage for [%s/%s/%s]", service.TenantID, service.AppID, service.ServiceID)
+			}
 		}
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, time.Since(scrapeTime).Seconds(), "collect.memory")
@@ -270,5 +314,13 @@ func (m *Controller) Scrape(ch chan<- prometheus.Metric, scrapeDurationDesc *pro
 	m.namespaceCPULimit.Collect(ch)
 	m.namespaceMemRequest.Collect(ch)
 	m.namespaceCPURequest.Collect(ch)
+	for _, contro := range m.controllers {
+		contro.Collect(ch)
+	}
 	logrus.Infof("success collect worker master metric")
+}
+
+// GetStore -
+func (m *Controller) GetStore() store.Storer {
+	return m.store
 }

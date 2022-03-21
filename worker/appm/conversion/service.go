@@ -20,6 +20,8 @@ package conversion
 
 import (
 	"fmt"
+	"github.com/goodrain/rainbond/api/handler/app_governance_mode/adaptor"
+	"github.com/sirupsen/logrus"
 	"strings"
 
 	"github.com/goodrain/rainbond/db"
@@ -95,13 +97,13 @@ func TenantServiceBase(as *v1.AppService, dbmanager db.Manager) error {
 	if as.DeployVersion == "" {
 		as.DeployVersion = tenantService.DeployVersion
 	}
-	as.ContainerCPU = tenantService.ContainerCPU
-	as.ContainerGPU = tenantService.ContainerGPU
 	as.AppID = tenantService.AppID
-	as.ContainerMemory = tenantService.ContainerMemory
-	as.Replicas = tenantService.Replicas
 	as.ServiceAlias = tenantService.ServiceAlias
 	as.UpgradeMethod = v1.TypeUpgradeMethod(tenantService.UpgradeMethod)
+	if tenantService.K8sComponentName == "" {
+		tenantService.K8sComponentName = tenantService.ServiceAlias
+	}
+	as.K8sComponentName = tenantService.K8sComponentName
 	if as.CreaterID == "" {
 		as.CreaterID = string(util.NewTimeVersion())
 	}
@@ -110,12 +112,24 @@ func TenantServiceBase(as *v1.AppService, dbmanager db.Manager) error {
 		return fmt.Errorf("conversion tenant info failure %s", err.Error())
 	}
 	if tenantService.Kind == dbmodel.ServiceKindThirdParty.String() {
+		disCfg, _ := dbmanager.ThirdPartySvcDiscoveryCfgDao().GetByServiceID(as.ServiceID)
+		as.SetDiscoveryCfg(disCfg)
 		return nil
 	}
-	label, err := dbmanager.TenantServiceLabelDao().GetLabelByNodeSelectorKey(as.ServiceID, "windows")
+
+	if tenantService.Kind == dbmodel.ServiceKindCustom.String() {
+		return nil
+	}
+	label, _ := dbmanager.TenantServiceLabelDao().GetLabelByNodeSelectorKey(as.ServiceID, "windows")
 	if label != nil {
 		as.IsWindowsService = true
 	}
+
+	// component resource config
+	as.ContainerCPU = tenantService.ContainerCPU
+	as.ContainerGPU = tenantService.ContainerGPU
+	as.ContainerMemory = tenantService.ContainerMemory
+	as.Replicas = tenantService.Replicas
 	if !tenantService.IsState() {
 		initBaseDeployment(as, tenantService)
 		return nil
@@ -124,17 +138,16 @@ func TenantServiceBase(as *v1.AppService, dbmanager db.Manager) error {
 		initBaseStatefulSet(as, tenantService)
 		return nil
 	}
-	return fmt.Errorf("Kind: %s; do not decision build type for service %s",
-		tenantService.Kind, as.ServiceAlias)
+	return fmt.Errorf("kind: %s; do not decision build type for service %s", tenantService.Kind, as.ServiceAlias)
 }
 
 func initTenant(as *v1.AppService, tenant *dbmodel.Tenants) error {
-	if tenant == nil || tenant.UUID == "" {
+	if tenant == nil || tenant.Namespace == "" {
 		return fmt.Errorf("tenant is invalid")
 	}
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   tenant.UUID,
+			Name:   tenant.Namespace,
 			Labels: map[string]string{"creator": "Rainbond"},
 		},
 	}
@@ -156,24 +169,20 @@ func initBaseStatefulSet(as *v1.AppService, service *dbmodel.TenantServices) {
 	if stateful == nil {
 		stateful = &appsv1.StatefulSet{}
 	}
-	stateful.Namespace = as.TenantID
+	stateful.Namespace = as.GetNamespace()
 	stateful.Spec.Replicas = int32Ptr(service.Replicas)
 	if stateful.Spec.Selector == nil {
 		stateful.Spec.Selector = &metav1.LabelSelector{}
 	}
 	initSelector(stateful.Spec.Selector, service)
-	stateful.Spec.ServiceName = service.ServiceName
-	stateful.Name = service.ServiceName
-	if stateful.Spec.ServiceName == "" {
-		stateful.Spec.ServiceName = service.ServiceAlias
-		stateful.Name = service.ServiceAlias
-	}
-	stateful.Namespace = service.TenantID
+	stateful.Name = as.GetK8sWorkloadName()
+	stateful.Spec.ServiceName = as.GetK8sWorkloadName()
 	stateful.GenerateName = service.ServiceAlias
+	injectLabels := getInjectLabels(as)
 	stateful.Labels = as.GetCommonLabels(stateful.Labels, map[string]string{
 		"name":    service.ServiceAlias,
 		"version": service.DeployVersion,
-	})
+	}, injectLabels)
 	stateful.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 	if as.UpgradeMethod == v1.OnDelete {
 		stateful.Spec.UpdateStrategy.Type = appsv1.OnDeleteStatefulSetStrategyType
@@ -187,22 +196,32 @@ func initBaseDeployment(as *v1.AppService, service *dbmodel.TenantServices) {
 	if deployment == nil {
 		deployment = &appsv1.Deployment{}
 	}
-	deployment.Namespace = as.TenantID
+	deployment.Namespace = as.GetNamespace()
 	deployment.Spec.Replicas = int32Ptr(service.Replicas)
 	if deployment.Spec.Selector == nil {
 		deployment.Spec.Selector = &metav1.LabelSelector{}
 	}
 	initSelector(deployment.Spec.Selector, service)
-	deployment.Namespace = service.TenantID
-	deployment.Name = service.ServiceID + "-deployment"
+	deployment.Name = as.GetK8sWorkloadName()
 	deployment.GenerateName = strings.Replace(service.ServiceAlias, "_", "-", -1)
+	injectLabels := getInjectLabels(as)
 	deployment.Labels = as.GetCommonLabels(deployment.Labels, map[string]string{
 		"name":    service.ServiceAlias,
 		"version": service.DeployVersion,
-	})
+	}, injectLabels)
 	deployment.Spec.Strategy.Type = appsv1.RollingUpdateDeploymentStrategyType
 	if as.UpgradeMethod == v1.OnDelete {
 		deployment.Spec.Strategy.Type = appsv1.RecreateDeploymentStrategyType
 	}
 	as.SetDeployment(deployment)
+}
+
+func getInjectLabels(as *v1.AppService) map[string]string {
+	mode, err := adaptor.NewAppGoveranceModeHandler(as.GovernanceMode, nil)
+	if err != nil {
+		logrus.Warningf("getInjectLabels failed: %v", err)
+		return nil
+	}
+	injectLabels := mode.GetInjectLabels()
+	return injectLabels
 }

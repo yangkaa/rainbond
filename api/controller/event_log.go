@@ -271,3 +271,17 @@ func (e *EventLogStruct) EventLog(w http.ResponseWriter, r *http.Request) {
 	httputil.ReturnSuccess(r, w, dl.Data)
 	return
 }
+
+func (e *EventLogStruct) GetLatestExceptionEvents(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("interval")
+	interval, err := strconv.Atoi(query)
+	if err != nil {
+		interval = 60
+	}
+	events, err := handler.GetEventHandler().GetLatestExceptionEvents(interval)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, "get log error")
+		return
+	}
+	httputil.ReturnSuccess(r, w, events)
+}

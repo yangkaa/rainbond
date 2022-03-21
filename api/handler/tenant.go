@@ -21,23 +21,35 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/shirou/gopsutil/disk"
+	os_runtime "runtime"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/goodrain/rainbond/api/client/prometheus"
+	"github.com/goodrain/rainbond/api/model"
 	api_model "github.com/goodrain/rainbond/api/model"
 	"github.com/goodrain/rainbond/api/util"
+	"github.com/goodrain/rainbond/api/util/bcode"
 	"github.com/goodrain/rainbond/cmd/api/option"
 	"github.com/goodrain/rainbond/db"
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	mqclient "github.com/goodrain/rainbond/mq/client"
+	"github.com/goodrain/rainbond/pkg/apis/rainbond/v1alpha1"
+	rutil "github.com/goodrain/rainbond/util"
 	"github.com/goodrain/rainbond/worker/client"
 	"github.com/goodrain/rainbond/worker/server/pb"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 //TenantAction tenant act
@@ -49,17 +61,30 @@ type TenantAction struct {
 	cacheClusterResourceStats *ClusterResourceStats
 	cacheTime                 time.Time
 	prometheusCli             prometheus.Interface
+	k8sClient                 k8sclient.Client
+	resources                 map[string]runtime.Object
 }
 
 //CreateTenManager create Manger
 func CreateTenManager(mqc mqclient.MQClient, statusCli *client.AppRuntimeSyncClient,
-	optCfg *option.Config, kubeClient *kubernetes.Clientset, prometheusCli prometheus.Interface) *TenantAction {
+	optCfg *option.Config,
+	kubeClient *kubernetes.Clientset,
+	prometheusCli prometheus.Interface,
+	k8sClient k8sclient.Client) *TenantAction {
+
+	resources := map[string]runtime.Object{
+		"helmApp": &v1alpha1.HelmApp{},
+		"service": &corev1.Service{},
+	}
+
 	return &TenantAction{
 		MQClient:      mqc,
 		statusCli:     statusCli,
 		OptCfg:        optCfg,
 		kubeClient:    kubeClient,
 		prometheusCli: prometheusCli,
+		k8sClient:     k8sClient,
+		resources:     resources,
 	}
 }
 
@@ -97,6 +122,7 @@ func (t *TenantAction) BindTenantsResource(source []*dbmodel.Tenants) api_model.
 			item.RunningAppNum = re.RunningAppNum
 			item.RunningAppInternalNum = re.RunningAppInternalNum
 			item.RunningAppThirdNum = re.RunningAppThirdNum
+			item.RunningApplications = re.RunningApplications
 		}
 		list.Add(item)
 	}
@@ -130,7 +156,7 @@ func (t *TenantAction) UpdateTenant(tenant *dbmodel.Tenants) error {
 // DeleteTenant deletes tenant based on the given tenantID.
 //
 // tenant can only be deleted without service or plugin
-func (t *TenantAction) DeleteTenant(tenantID string) error {
+func (t *TenantAction) DeleteTenant(ctx context.Context, tenantID string) error {
 	// check if there are still services
 	services, err := db.GetManager().TenantServiceDao().ListServicesByTenantID(tenantID)
 	if err != nil {
@@ -138,7 +164,7 @@ func (t *TenantAction) DeleteTenant(tenantID string) error {
 	}
 	if len(services) > 0 {
 		for _, service := range services {
-			GetServiceManager().TransServieToDelete(tenantID, service.ServiceID)
+			GetServiceManager().TransServieToDelete(ctx, tenantID, service.ServiceID)
 		}
 	}
 
@@ -377,6 +403,8 @@ type ClusterResourceStats struct {
 	AllMemory     int64
 	RequestCPU    int64
 	RequestMemory int64
+	UsageDisk     uint64
+	TotalDisk     uint64
 }
 
 func (t *TenantAction) initClusterResource(ctx context.Context) error {
@@ -403,6 +431,16 @@ func (t *TenantAction) initClusterResource(ctx context.Context) error {
 			}
 			crs.AllMemory += node.Status.Allocatable.Memory().Value() / (1024 * 1024)
 			crs.AllCPU += node.Status.Allocatable.Cpu().MilliValue()
+		}
+		var diskstauts *disk.UsageStat
+		if os_runtime.GOOS != "windows" {
+			diskstauts, _ = disk.Usage("/grdata")
+		} else {
+			diskstauts, _ = disk.Usage(`z:\\`)
+		}
+		if diskstauts != nil {
+			crs.TotalDisk = diskstauts.Total
+			crs.UsageDisk = diskstauts.Used
 		}
 		t.cacheClusterResourceStats = &crs
 		t.cacheTime = time.Now()
@@ -456,7 +494,7 @@ func (t *TenantAction) GetServicesResources(tr *api_model.ServicesResources) (re
 		var memory, cpu int64
 		for _, pod := range pods {
 			for _, c := range pod.Containers {
-				memory += c.MemoryLimit
+				memory += c.MemoryRequest
 				cpu += c.CpuRequest
 			}
 		}
@@ -587,4 +625,30 @@ func (t *TenantAction) GetClusterResource(ctx context.Context) *ClusterResourceS
 		return nil
 	}
 	return t.cacheClusterResourceStats
+}
+
+// CheckResourceName checks resource name.
+func (t *TenantAction) CheckResourceName(ctx context.Context, namespace string, req *model.CheckResourceNameReq) (*model.CheckResourceNameResp, error) {
+	obj, ok := t.resources[req.Type]
+	if !ok {
+		return nil, bcode.NewBadRequest("unsupported resource: " + req.Type)
+	}
+
+	nctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	retries := 3
+	for i := 0; i < retries; i++ {
+		if err := t.k8sClient.Get(nctx, types.NamespacedName{Namespace: namespace, Name: req.Name}, obj); err != nil {
+			if k8sErrors.IsNotFound(err) {
+				break
+			}
+			return nil, errors.Wrap(err, "ensure app name")
+		}
+		req.Name += "-" + rutil.NewUUID()[:5]
+	}
+
+	return &model.CheckResourceNameResp{
+		Name: req.Name,
+	}, nil
 }
