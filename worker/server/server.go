@@ -290,6 +290,7 @@ func (r *RuntimeServer) GetAppPods(ctx context.Context, re *pb.ServiceRequest) (
 		}
 		var containers = make(map[string]*pb.Container, len(pod.Spec.Containers))
 		volumes := make([]string, 0)
+		var mainContainerName string
 		for _, container := range pod.Spec.Containers {
 			containers[container.Name] = &pb.Container{
 				ContainerName: container.Name,
@@ -300,13 +301,25 @@ func (r *RuntimeServer) GetAppPods(ctx context.Context, re *pb.ServiceRequest) (
 			for _, vm := range container.VolumeMounts {
 				volumes = append(volumes, vm.Name)
 			}
+			if strings.Contains(container.Name, app.GetK8sWorkloadName()) {
+				mainContainerName = container.Name
+			}
 		}
-
 		sapod := &pb.ServiceAppPod{
 			PodIp:      pod.Status.PodIP,
 			PodName:    pod.Name,
 			Containers: containers,
 			PodVolumes: volumes,
+		}
+		// Make the default container of Web terminal component container
+		var sortContainers = make(map[string]*pb.Container, len(pod.Spec.Containers))
+		if mainContainerName != "" {
+			sortContainers[mainContainerName] = containers[mainContainerName]
+			delete(containers, mainContainerName)
+			for _, container := range containers {
+				sortContainers[container.ContainerName] = container
+			}
+			sapod.Containers = sortContainers
 		}
 		podStatus := &pb.PodStatus{}
 		wutil.DescribePodStatus(r.clientset, pod, podStatus, k8sutil.DefListEventsByPod)
