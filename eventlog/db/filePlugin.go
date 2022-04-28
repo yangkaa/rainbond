@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"github.com/nxadm/tail"
 	"io"
 	"os"
 	"os/exec"
@@ -105,9 +104,13 @@ func (m *filePlugin) SaveMessage(events []*EventLogMessage) error {
 		if err != nil {
 			return err
 		}
-		defer logfile.Close()
+		if logfile != nil {
+			defer logfile.Close()
+		}
 	} else {
-		defer logfile.Close()
+		if logfile != nil {
+			defer logfile.Close()
+		}
 	}
 
 	var newContent [][]byte
@@ -120,29 +123,22 @@ func (m *filePlugin) SaveMessage(events []*EventLogMessage) error {
 	body := bytes.Join(newContent, []byte("\n"))
 	body = append(body, []byte("\n")...)
 	if logFile != nil && logFile.Size() > int64(logMaxSize) {
-		// If the log content exceeds the limit, the old log content is combined with the new log to create a new log file and replace the original log.
-		// TODO: The new log file will also cause the log file to grow continuously due to line breaks, It is necessary to ensure that the log file is always at the limit value
-		var reservedContent string
-		t, err := tail.TailFile(stdoutLogPath, tail.Config{Follow: false, MustExist: true, Location: &tail.SeekInfo{eventContentSize, io.SeekStart}})
+		legacyLogPath := path.Join(filePathDir, "stdout-legacy.log")
+		err = os.Rename(stdoutLogPath, legacyLogPath)
+		if err != nil {
+			logrus.Errorf("[Savemessage]: Rename %v to %v failed %v", stdoutLogPath, legacyLogPath, err)
+			return err
+		}
+		logfile.Close()
+		logfile, err = os.OpenFile(stdoutLogPath, os.O_WRONLY|os.O_CREATE, 0666)
 		if err != nil {
 			return err
 		}
-		for line := range t.Lines {
-			reservedContent += "\n" + line.Text
-		}
-		writeContent := append([]byte(reservedContent+"\n"), body...)
-		newLogPath := path.Join(filePathDir, "stdout-new.log")
-		newLogfile, err := os.Create(newLogPath)
+		_, err = logfile.Write(body)
 		if err != nil {
 			return err
 		}
-		defer newLogfile.Close()
-		_, err = newLogfile.Write(writeContent)
-		if err != nil {
-			return err
-		}
-		logrus.Infof("[SaveMessage]: Old log file size %v, Need to preserve file size %v, New log size %v, Write content size %v", logFile.Size(), len(reservedContent), eventContentSize, len(writeContent))
-		return os.Rename(newLogPath, stdoutLogPath)
+		logrus.Infof("[SaveMessage]: Old log file size %v, New log size %v, Write content size %v", logFile.Size(), eventContentSize, len(body))
 	} else {
 		_, err = logfile.Write(body)
 		if logFile != nil {
