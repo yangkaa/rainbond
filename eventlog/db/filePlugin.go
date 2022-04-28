@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"github.com/nxadm/tail"
 	"io"
 	"os"
 	"os/exec"
@@ -33,6 +34,14 @@ import (
 
 	"github.com/goodrain/rainbond/util"
 	"github.com/sirupsen/logrus"
+)
+
+type ByteUnit int64
+
+const (
+	B  ByteUnit = 1
+	KB          = 1000 * B
+	MB          = 1000 * KB
 )
 
 type filePlugin struct {
@@ -59,16 +68,23 @@ func (m *filePlugin) SaveMessage(events []*EventLogMessage) error {
 	if len(events) == 0 {
 		return nil
 	}
+	logMaxSize := 10 * MB
+	if os.Getenv("LOG_MAX_SIZE") != "" {
+		if size, err := strconv.Atoi(os.Getenv("LOG_MAX_SIZE")); err == nil {
+			logMaxSize = ByteUnit(size) * MB
+		}
+	}
 	key := events[0].EventID
 	var logfile *os.File
 	filePathDir, err := m.getStdFilePath(key)
 	if err != nil {
 		return err
 	}
-	logFile, err := os.Stat(path.Join(filePathDir, "stdout.log"))
+	stdoutLogPath := path.Join(filePathDir, "stdout.log")
+	logFile, err := os.Stat(stdoutLogPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logfile, err = os.Create(path.Join(filePathDir, "stdout.log"))
+			logfile, err = os.Create(stdoutLogPath)
 			if err != nil {
 				return err
 			}
@@ -78,14 +94,14 @@ func (m *filePlugin) SaveMessage(events []*EventLogMessage) error {
 		}
 	} else {
 		if logFile.ModTime().Day() != time.Now().Day() {
-			err := MvLogFile(fmt.Sprintf("%s/%d-%d-%d.log.gz", filePathDir, logFile.ModTime().Year(), logFile.ModTime().Month(), logFile.ModTime().Day()), path.Join(filePathDir, "stdout.log"))
+			err := MvLogFile(fmt.Sprintf("%s/%d-%d-%d.log.gz", filePathDir, logFile.ModTime().Year(), logFile.ModTime().Month(), logFile.ModTime().Day()), stdoutLogPath)
 			if err != nil {
 				return err
 			}
 		}
 	}
 	if logfile == nil {
-		logfile, err = os.OpenFile(path.Join(filePathDir, "stdout.log"), os.O_WRONLY|os.O_APPEND, 0666)
+		logfile, err = os.OpenFile(stdoutLogPath, os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			return err
 		}
@@ -93,15 +109,50 @@ func (m *filePlugin) SaveMessage(events []*EventLogMessage) error {
 	} else {
 		defer logfile.Close()
 	}
-	var contant [][]byte
+
+	var newContent [][]byte
+	var eventContentSize int64
 	for _, e := range events {
-		contant = append(contant, e.Content)
+		newContent = append(newContent, e.Content)
+		eventContentSize += int64(len(e.Content))
 	}
-	body := bytes.Join(contant, []byte("\n"))
+	logrus.Infof("[SaveMessage]: The obtained event content size is %v", eventContentSize)
+	body := bytes.Join(newContent, []byte("\n"))
 	body = append(body, []byte("\n")...)
-	_, err = logfile.Write(body)
-	return err
+	if logFile != nil && logFile.Size() > int64(logMaxSize) {
+		// If the log content exceeds the limit, the old log content is combined with the new log to create a new log file and replace the original log.
+		// TODO: The new log file will also cause the log file to grow continuously due to line breaks, It is necessary to ensure that the log file is always at the limit value
+		var reservedContent string
+		t, err := tail.TailFile(stdoutLogPath, tail.Config{Follow: false, MustExist: true, Location: &tail.SeekInfo{eventContentSize, io.SeekStart}})
+		if err != nil {
+			return err
+		}
+		for line := range t.Lines {
+			reservedContent += "\n" + line.Text
+		}
+		writeContent := append([]byte(reservedContent+"\n"), body...)
+		newLogPath := path.Join(filePathDir, "stdout-new.log")
+		newLogfile, err := os.Create(newLogPath)
+		if err != nil {
+			return err
+		}
+		defer newLogfile.Close()
+		_, err = newLogfile.Write(writeContent)
+		if err != nil {
+			return err
+		}
+		logrus.Infof("[SaveMessage]: Old log file size %v, Need to preserve file size %v, New log size %v, Write content size %v", logFile.Size(), len(reservedContent), eventContentSize, len(writeContent))
+		return os.Rename(newLogPath, stdoutLogPath)
+	} else {
+		_, err = logfile.Write(body)
+		if logFile != nil {
+			logrus.Infof("[SaveMessage] Current LogFile Size is %v", logFile.Size())
+		}
+		return err
+	}
+	return nil
 }
+
 func (m *filePlugin) GetMessages(serviceID, level string, length int) (interface{}, error) {
 	if length <= 0 {
 		return nil, nil

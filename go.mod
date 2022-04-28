@@ -53,6 +53,7 @@ require (
 	github.com/gosuri/uitable v0.0.4
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/howeyc/fsnotify v0.9.0
+	github.com/hpcloud/tail v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.11
 	github.com/jinzhu/gorm v1.9.16
 	github.com/json-iterator/go v1.1.10

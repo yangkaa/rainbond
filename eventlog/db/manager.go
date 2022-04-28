@@ -37,6 +37,7 @@ func NewManager(conf conf.DBConf, log *logrus.Entry) (Manager, error) {
 	case "file":
 		return &filePlugin{
 			homePath: conf.HomePath,
+
 		}, nil
 	case "eventfile":
 		return &EventFilePlugin{
