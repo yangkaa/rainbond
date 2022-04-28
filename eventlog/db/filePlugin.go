@@ -122,7 +122,7 @@ func (m *filePlugin) SaveMessage(events []*EventLogMessage) error {
 	logrus.Infof("[SaveMessage]: The obtained event content size is %v", eventContentSize)
 	body := bytes.Join(newContent, []byte("\n"))
 	body = append(body, []byte("\n")...)
-	if logFile != nil && logFile.Size() > int64(logMaxSize) {
+	if logFile != nil && logFile.Size() > int64(logMaxSize/2) {
 		legacyLogPath := path.Join(filePathDir, "stdout-legacy.log")
 		err = os.Rename(stdoutLogPath, legacyLogPath)
 		if err != nil {
