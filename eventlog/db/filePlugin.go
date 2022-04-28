@@ -123,7 +123,7 @@ func (m *filePlugin) SaveMessage(events []*EventLogMessage) error {
 	body := bytes.Join(newContent, []byte("\n"))
 	body = append(body, []byte("\n")...)
 	if logFile != nil && logFile.Size() > int64(logMaxSize/2) {
-		legacyLogPath := path.Join(filePathDir, "stdout-legacy.log")
+		legacyLogPath := path.Join(filePathDir, "stdout.log-legacy")
 		err = os.Rename(stdoutLogPath, legacyLogPath)
 		if err != nil {
 			logrus.Errorf("[Savemessage]: Rename %v to %v failed %v", stdoutLogPath, legacyLogPath, err)
