@@ -1974,15 +1974,15 @@ func (s *ServiceAction) GetServicesStatus(tenantID string, serviceIDs []string) 
 }
 
 // GetEnterpriseRunningServices get running services
-func (s *ServiceAction) GetEnterpriseRunningServices(enterpriseID string) ([]string, *util.APIHandleError) {
+func (s *ServiceAction) GetEnterpriseRunningServices(enterpriseID string) ([]string, []string, *util.APIHandleError) {
 	var tenantIDs []string
 	tenants, err := db.GetManager().EnterpriseDao().GetEnterpriseTenants(enterpriseID)
 	if err != nil {
 		logrus.Errorf("list tenant failed: %s", err.Error())
-		return nil, util.CreateAPIHandleErrorFromDBError(fmt.Sprintf("enterprise[%s] get tenant failed", enterpriseID), err)
+		return nil, nil, util.CreateAPIHandleErrorFromDBError(fmt.Sprintf("enterprise[%s] get tenant failed", enterpriseID), err)
 	}
 	if len(tenants) == 0 {
-		return nil, util.CreateAPIHandleErrorf(400, "enterprise[%s] has not tenants", enterpriseID)
+		return nil, nil, util.CreateAPIHandleErrorf(400, "enterprise[%s] has not tenants", enterpriseID)
 	}
 	for _, tenant := range tenants {
 		tenantIDs = append(tenantIDs, tenant.UUID)
@@ -1990,20 +1990,23 @@ func (s *ServiceAction) GetEnterpriseRunningServices(enterpriseID string) ([]str
 	services, err := db.GetManager().TenantServiceDao().GetServicesByTenantIDs(tenantIDs)
 	if err != nil {
 		logrus.Errorf("list tenants service failed: %s", err.Error())
-		return nil, util.CreateAPIHandleErrorf(500, "get enterprise[%s] service failed: %s", enterpriseID, err.Error())
+		return nil, nil, util.CreateAPIHandleErrorf(500, "get enterprise[%s] service failed: %s", enterpriseID, err.Error())
 	}
 	var serviceIDs []string
 	for _, svc := range services {
 		serviceIDs = append(serviceIDs, svc.ServiceID)
 	}
 	statusList := s.statusCli.GetStatuss(strings.Join(serviceIDs, ","))
-	retServices := make([]string, 0, 10)
+	runningServices := make([]string, 0, 10)
+	abnormalServices := make([]string, 0, 100)
 	for service, status := range statusList {
 		if status == typesv1.RUNNING {
-			retServices = append(retServices, service)
+			runningServices = append(runningServices, service)
+		} else if status == typesv1.ABNORMAL {
+			abnormalServices = append(abnormalServices, service)
 		}
 	}
-	return retServices, nil
+	return runningServices, abnormalServices, nil
 }
 
 //CreateTenant create tenant
