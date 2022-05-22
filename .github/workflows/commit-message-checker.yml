@@ -7,7 +7,7 @@ on:
       - reopened
       - synchronize
   push:
-    branches: [main, V5.*, fixbug*, Develop*, ci*]
+    branches: [main, V5.*, fixbug*, Develop*, ci* ]
 
 jobs:
   check-commit-message:
