@@ -2,12 +2,18 @@ name: commit-ci-build
 
 on:
   push:
-    branches: [master, V5.3, V5.4]
+    branches: [main, V5.*, fixbug*, ci]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: thehanimo/pr-title-checker@v1.3.4
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          pass_on_octokit_error: false
+          configuration_path: ".github/pr-title-checker-config.json"
+
       - uses: actions/checkout@v2
       - name: Setup Go environment
         uses: actions/setup-go@v2.1.3
