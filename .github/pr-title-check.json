@@ -1,0 +1,11 @@
+{
+  "LABEL": {
+    "name": "angular-specification-title",
+    "color": "EEEEEE"
+  },
+  "CHECKS": {
+    "prefixes": ["fix: ", "feat: ", "docs: ", "test: ", "chore: ", "ci: ", "perf: ", "refactor: ", "revert: ", "style: ", "test: ",
+      "fix(", "feat(", "docs(", "test(", "chore(", "ci(", "perf(", "refactor(", "revert(", "style(", "test(", "[backport"],
+    "ignoreLabels" : ["dont-check-PRs-with-this-label"]
+  }
+}
