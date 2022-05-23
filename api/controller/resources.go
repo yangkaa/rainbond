@@ -107,13 +107,11 @@ func (v2 *V2Routes) Version(w http.ResponseWriter, r *http.Request) {
 	httputil.ReturnSuccess(r, w, map[string]string{"version": os.Getenv("RELEASE_DESC")})
 }
 
-//TenantStruct tenant struct
 type TenantStruct struct {
 	StatusCli *client.AppRuntimeSyncClient
 	MQClient  mqclient.MQClient
 }
 
-//AllTenantResources GetResources
 func (t *TenantStruct) AllTenantResources(w http.ResponseWriter, r *http.Request) {
 	tenants, err := handler.GetTenantManager().GetTenants("")
 	if err != nil {
