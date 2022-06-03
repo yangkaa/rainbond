@@ -8,7 +8,7 @@ default: help
 all: image ## build linux binaries, build images for docker
 
 clean: 
-	@rm -rf ${BIN_PATH}/*
+	@rm -rf ${BIN_PATH}/* | xargs command
 
 ifeq ($(origin WHAT), undefined)
   WHAT = all
