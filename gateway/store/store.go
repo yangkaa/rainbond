@@ -521,7 +521,7 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 						continue
 					}
 					ingServiceName = paths[0].Backend.Servic
-					eNa
+					eNaasd
 				} else {
 					ingServiceName = ing.Spec.Backend.ServiceName
 					git ad
