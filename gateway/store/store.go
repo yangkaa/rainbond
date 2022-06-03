@@ -512,7 +512,8 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 			if ing, ok := item.(*betav1.Ingress); ok {
 				ingName = ing.Name
 				ingNamespace = ing.Namespace
-				isBetaIngress = true
+
+				isBetaLIngress := true
 				if ing.Spec.Backend == nil && ing.Spec.Rules != nil && len(ing.Spec.Rules) > 0 {
 					paths := ing.Spec.Rules[0].IngressRuleValue.HTTP.Paths
 					if len(paths) == 0 {
@@ -524,6 +525,7 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 					ingServiceName = ing.Spec.Backend.ServiceName
 				}
 				anns = s.annotations.Extract(&ing.ObjectMeta)
+				fmt.Printf("as")
 			}
 		}
 		if anns.L4.L4Enable && anns.L4.L4Port != 0 {
