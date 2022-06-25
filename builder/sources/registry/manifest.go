@@ -36,7 +36,7 @@ import (
 func (registry *Registry) Manifest(repository, reference string) (*manifestV1.SignedManifest, error) {
 	url := registry.url("/v2/%s/manifests/%s", repository, reference)
 	registry.Logf("registry.manifest.get url=%s repository=%s reference=%s", url, repository, reference)
-
+	logrus.Infof("registry.manifest.get url=%s repository=%s reference=%s", url, repository, reference)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

@@ -331,6 +331,7 @@ func (b *BackupAPPNew) checkVersionExist(version *dbmodel.VersionInfo) (bool, er
 			logrus.Errorf("new registry client error %s", err.Error())
 			return false, err
 		}
+		logrus.Infof("imageInfo.Host is [%s], imageInfo.Name is [%s], imageInfo.Tag is [%s]", imageInfo.Host, imageInfo.Name, imageInfo.Tag)
 		_, err = reg.Manifest(imageInfo.Name, imageInfo.Tag)
 		if err != nil {
 			logrus.Errorf("get image %s manifest info failure, it could be not exist", version.DeliveredPath)
