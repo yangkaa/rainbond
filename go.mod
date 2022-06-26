@@ -110,7 +110,7 @@ require (
 	golang.org/x/text v0.3.5 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
 	golang.org/x/tools v0.1.0 // indirect
-	google.golang.org/appengine v1.6.7
+	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20210218151259-fe80b386bf06 // indirect
 	google.golang.org/grpc v1.35.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
@@ -134,6 +134,7 @@ replace (
 	github.com/docker/docker => github.com/docker/engine v0.0.0-20181106193140-f5749085e9cb
 	github.com/docker/libcompose => github.com/docker/libcompose v0.4.1-0.20181019154650-213509acef0f
 	github.com/godbus/dbus/v5 => github.com/godbus/dbus/v5 v5.0.3
+	github.com/goodrain/rainbond-oam => github.com/yangkaa/rainbond-oam v0.0.1
 	github.com/xeipuuv/gojsonschema => github.com/xeipuuv/gojsonschema v0.0.0-20160323030313-93e72a773fad
 	google.golang.org/grpc => google.golang.org/grpc v1.29.0
 	k8s.io/api => k8s.io/api v0.20.0
