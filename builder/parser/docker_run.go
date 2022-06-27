@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/docker/distribution/reference" //"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/goodrain/rainbond/.cache/github.com/sirupsen/logrus@v1.6.0"
 	"github.com/goodrain/rainbond/builder/parser/types"
 	"github.com/goodrain/rainbond/builder/sources"
 	"github.com/goodrain/rainbond/db/model"
@@ -94,11 +95,13 @@ func (d *DockerRunOrImageParse) Parse() ParseErrorList {
 		d.image = ParseImageName(d.source)
 	}
 	//获取镜像，验证是否存在
+	logrus.Infof("start pull image %s", d.image.Source())
 	imageInspect, err := sources.ImagePull(d.dockerclient, d.image.Source(), d.user, d.pass, d.logger, 10)
 	if err != nil {
 		if strings.Contains(err.Error(), "No such image") {
 			d.errappend(ErrorAndSolve(FatalError, fmt.Sprintf("镜像(%s)不存在", d.image.String()), SolveAdvice("modify_image", "请确认输入镜像名是否正确")))
 		} else {
+			logrus.Infof("pull image %s err %v", err, d.image.String())
 			if d.image.IsOfficial() {
 				d.errappend(ErrorAndSolve(FatalError, fmt.Sprintf("镜像(%s)获取失败,国内访问Docker官方仓库经常不稳定", d.image.String()), SolveAdvice("modify_image", "请确认输入镜像可以正常获取")))
 			} else {
