@@ -39,31 +39,31 @@ func (registry *Registry) Manifest(repository, reference string) (*manifestV1.Si
 	logrus.Infof("registry.manifest.get url=%s repository=%s reference=%s", url, repository, reference)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		logrus.Infof("[http.NewRequest] failed [%v]", err)
+		logrus.Errorf("[http.NewRequest] failed [%v]", err)
 		return nil, err
 	}
 
 	req.Header.Set("Accept", manifestV1.MediaTypeManifest)
 	resp, err := registry.Client.Do(req)
 	if err != nil {
-		logrus.Infof("[registry.Client.Do] failed [%v]", err)
+		logrus.Errorf("[registry.Client.Do] failed [%v]", err)
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logrus.Infof("[ioutil.ReadAll] failed [%v]", err)
+		logrus.Errorf("[ioutil.ReadAll] failed [%v]", err)
 		return nil, err
 	}
 
 	signedManifest := &manifestV1.SignedManifest{}
 	err = signedManifest.UnmarshalJSON(body)
 	if err != nil {
-		logrus.Infof("[signedManifest.UnmarshalJSON] failed [%v]", err)
+		logrus.Errorf("[signedManifest.UnmarshalJSON] failed [%v]", err)
 		return nil, err
 	}
-
+	logrus.Info("[signedManifest.UnmarshalJSON] success")
 	return signedManifest, nil
 }
 
