@@ -5,35 +5,31 @@ on:
       - GitHub-ARM64
 
 jobs:
-#  build-ui:
-#    runs-on: [self-hosted, ARM64]
-#    steps:
-#      - uses: actions/checkout@v2
-#      - name: Build the Docker image
-#        env:
-#          BUILD_RBD_APP_UI: false
-#          TRAVIS_PULL_REQUEST: false
-#          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-#          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-#          IMAGE_NAMESPACE: ${{ secrets.IMAGE_NAMESPACE }}
-#          VERSION: ${{ github.event.client_payload.version }}-arm64
-#        run: |
-#          if [ ${{ github.event.action }} == 'GitHub-ARM64' ];then
-#            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui.git
-#          else
-#            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui-cloud.git
-#          fi
-#          cd rainbond-ui
-#          echo "$(pwd)"
-#          yarn install
-#          echo "install--success"
-#          yarn run build
-#          echo "build--success"
-#          chmod +x ./release.sh
-#          ./release.sh
+  build-ui:
+    runs-on: [self-hosted, ARM64]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build the Docker image
+        env:
+          ARCH: arm64
+          BUILD_RBD_APP_UI: false
+          TRAVIS_PULL_REQUEST: false
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          IMAGE_NAMESPACE: ${{ secrets.IMAGE_NAMESPACE }}
+          VERSION: ${{ github.event.client_payload.version }}-arm64
+        run: |
+          if [ ${{ github.event.action }} == 'GitHub-ARM64' ];then
+            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui.git
+          fi
+          cd rainbond-ui
+          yarn install
+          yarn run build
+          chmod +x ./release.sh
+          ./release.sh
           
   build-rainbond-allinone:
-#    needs: build-ui
+    needs: build-ui
     runs-on: [self-hosted, ARM64]
     steps:
 #      - name: Set up Python 3.6
