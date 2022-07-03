@@ -24,8 +24,10 @@ jobs:
             git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui-cloud.git        
           fi
           cd rainbond-ui
-          chmod +x ./build.sh
-          ./build.sh
+          yarn install
+          yarn run build
+          chmod +x ./release.sh
+          ./release.sh
           
   build-rainbond-allinone:
     needs: build-ui
