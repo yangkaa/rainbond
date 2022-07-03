@@ -60,6 +60,7 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           IMAGE_NAMESPACE: ${{ secrets.IMAGE_NAMESPACE }}
           DOMESTIC_BASE_NAME: ${{ secrets.DOMESTIC_BASE_NAME }}
+          CLONE_URL: ${{ github.event.client_payload.clone_url }}
         run: |
           if [ ${{ github.event.action }} == 'GitHub-ARM64' ];then
             git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-console.git       
