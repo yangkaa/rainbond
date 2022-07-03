@@ -24,8 +24,11 @@ jobs:
             git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui-cloud.git        
           fi
           cd rainbond-ui
+          echo "$(pwd)"
           yarn install
+          echo "install--success"
           yarn run build
+          echo "build--success"
           chmod +x ./release.sh
           ./release.sh
           
