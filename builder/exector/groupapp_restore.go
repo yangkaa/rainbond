@@ -489,10 +489,6 @@ func (b *BackupAPPRestore) modify(appSnapshot *AppSnapshot) error {
 			a.ServiceID = newServiceID
 		}
 		for _, a := range app.Versions {
-			if a.DeliveredType == "image" {
-				a.ImageName = getNewImageName(a.ImageName)
-				a.DeliveredPath = getNewImageName(a.DeliveredPath)
-			}
 			a.ServiceID = newServiceID
 		}
 
