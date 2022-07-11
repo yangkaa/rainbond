@@ -282,6 +282,12 @@ func (b *BackupAPPRestore) restoreVersionAndData(backup *dbmodel.AppBackup, appS
 							newNameTmp[0] = fmt.Sprintf("manual%d", b.volumeIDMap[uint(oldVolumeID)])
 						}
 					}
+					// After version 5.5.0, users are allowed to set the names of components in the cluster.
+					// So the storage location of stateful components has also changed.
+					// eg: app-047d425d-gr9a9626-0 , (k8s-app=app-047d425d, k8s_component_name=gr9a9626)
+					if app.Service.K8sComponentName != "" && strings.Contains(filepath.Base(path), app.Service.K8sComponentName) {
+						newNameTmp = newNameTmp[len(newNameTmp)-2:]
+					}
 					newName := strings.Join(newNameTmp, "-")
 					newpath := filepath.Join(util.GetParentDirectory(path), newName)
 					logrus.Infof("rename %s to %s", path, newpath)
