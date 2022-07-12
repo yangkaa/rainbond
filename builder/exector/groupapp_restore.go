@@ -432,8 +432,12 @@ func (b *BackupAPPRestore) clear() {
 }
 func getNewImageName(imageName string) string {
 	image := parser.ParseImageName(imageName)
-	if image.GetDomain() != builder.REGISTRYDOMAIN {
+	logrus.Infof("image %v, imageName %v, image.GetDomain() %v, builder.REGISTRYDOMAIN %v", image, imageName, image.GetDomain(), builder.REGISTRYDOMAIN)
+	logrus.Infof("image.GetDomain %v, image.GetRepostory %v, imageSource %v", image.GetDomain(), image.GetRepostory(), image.Source())
+	if path.Join(image.GetDomain(), image.GetNamespace()) != builder.REGISTRYDOMAIN {
+		// 处理这里逻辑
 		newImageName := strings.Replace(imageName, image.GetDomain(), builder.REGISTRYDOMAIN, 1)
+		logrus.Infof("------------newImageName %v", newImageName)
 		return newImageName
 	}
 	return imageName
@@ -495,6 +499,10 @@ func (b *BackupAPPRestore) modify(appSnapshot *AppSnapshot) error {
 			a.ServiceID = newServiceID
 		}
 		for _, a := range app.Versions {
+			if a.DeliveredType == "image" {
+				a.ImageName = getNewImageName(a.ImageName)
+				a.DeliveredPath = getNewImageName(a.DeliveredPath)
+			}
 			a.ServiceID = newServiceID
 		}
 
