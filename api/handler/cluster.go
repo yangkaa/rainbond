@@ -11,13 +11,17 @@ import (
 
 	"github.com/goodrain/rainbond/api/model"
 	"github.com/goodrain/rainbond/api/util"
+	dbmodel "github.com/goodrain/rainbond/db/model"
+	"github.com/goodrain/rainbond/util/constants"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 // ClusterHandler -
@@ -30,13 +34,26 @@ type ClusterHandler interface {
 	MavenSettingDetail(ctx context.Context, name string) (*MavenSetting, *util.APIHandleError)
 	GetComputeNodeNums(ctx context.Context) (int64, error)
 	GetExceptionNodeInfo(ctx context.Context) ([]*model.ExceptionNode, error)
+	GetNamespace(ctx context.Context, content string) ([]string, *util.APIHandleError)
+	GetNamespaceSource(ctx context.Context, content string, namespace string) (map[string]model.LabelResource, *util.APIHandleError)
+	ConvertResource(ctx context.Context, namespace string, lr map[string]model.LabelResource) (map[string]model.ApplicationResource, *util.APIHandleError)
+	ResourceImport(namespace string, as map[string]model.ApplicationResource, eid string) (*model.ReturnResourceImport, *util.APIHandleError)
+	AddAppK8SResource(ctx context.Context, namespace string, appID string, resourceYaml string) ([]*dbmodel.K8sResource, *util.APIHandleError)
+	DeleteAppK8SResource(ctx context.Context, namespace, appID, name, yaml, kind string) *util.APIHandleError
+	UpdateAppK8SResource(ctx context.Context, namespace, appID, name, resourceYaml, kind string) (dbmodel.K8sResource, *util.APIHandleError)
+	SyncAppK8SResources(ctx context.Context, resources *model.SyncResources) ([]*dbmodel.K8sResource, *util.APIHandleError)
+	AppYamlResourceName(yamlResource model.YamlResource) (map[string]model.LabelResource, *util.APIHandleError)
+	AppYamlResourceDetailed(yamlResource model.YamlResource, yamlImport bool) (model.ApplicationResource, *util.APIHandleError)
+	AppYamlResourceImport(yamlResource model.YamlResource, components model.ApplicationResource) (model.AppComponent, *util.APIHandleError)
 }
 
 // NewClusterHandler -
-func NewClusterHandler(clientset *kubernetes.Clientset, RbdNamespace string) ClusterHandler {
+func NewClusterHandler(clientset *kubernetes.Clientset, RbdNamespace string, config *rest.Config, mapper meta.RESTMapper) ClusterHandler {
 	return &clusterAction{
 		namespace: RbdNamespace,
 		clientset: clientset,
+		config:    config,
+		mapper:    mapper,
 	}
 }
 
@@ -45,8 +62,11 @@ type clusterAction struct {
 	clientset        *kubernetes.Clientset
 	clusterInfoCache *model.ClusterResource
 	cacheTime        time.Time
+	config           *rest.Config
+	mapper           meta.RESTMapper
 }
 
+//GetClusterInfo -
 func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResource, error) {
 	timeout, _ := strconv.Atoi(os.Getenv("CLUSTER_INFO_CACHE_TIME"))
 	if timeout == 0 {
@@ -447,4 +467,35 @@ func (c *clusterAction) GetExceptionNodeInfo(ctx context.Context) ([]*model.Exce
 		})
 	}
 	return exceptionNodes, nil
+}
+
+//GetNamespace Get namespace of the current cluster
+func (c *clusterAction) GetNamespace(ctx context.Context, content string) ([]string, *util.APIHandleError) {
+	namespaceList, err := c.clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, &util.APIHandleError{Code: 404, Err: fmt.Errorf("failed to get namespace:%v", err)}
+	}
+	namespaces := new([]string)
+	for _, ns := range namespaceList.Items {
+		if strings.HasPrefix(ns.Name, "kube-") || ns.Name == "rainbond" || ns.Name == "rbd-system" {
+			continue
+		}
+		if labelValue, isRBDNamespace := ns.Labels[constants.ResourceManagedByLabel]; isRBDNamespace && labelValue == "rainbond" && content == "unmanaged" {
+			continue
+		}
+		*namespaces = append(*namespaces, ns.Name)
+	}
+	return *namespaces, nil
+}
+
+//MergeMap map去重合并
+func MergeMap(map1 map[string][]string, map2 map[string][]string) map[string][]string {
+	for k, v := range map1 {
+		if _, ok := map2[k]; ok {
+			map2[k] = append(map2[k], v...)
+			continue
+		}
+		map2[k] = v
+	}
+	return map2
 }

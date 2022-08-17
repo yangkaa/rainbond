@@ -30,7 +30,9 @@ import (
 	etcdutil "github.com/goodrain/rainbond/util/etcd"
 	"github.com/goodrain/rainbond/worker/client"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 )
@@ -44,6 +46,8 @@ func InitHandle(conf option.Config,
 	rainbondClient versioned.Interface,
 	k8sClient k8sclient.Client,
 	metricClient *metrics.Clientset,
+	config *rest.Config,
+	mapper meta.RESTMapper,
 ) error {
 	mq := api_db.MQManager{
 		EtcdClientArgs: etcdClientArgs,
@@ -82,12 +86,13 @@ func InitHandle(conf option.Config,
 	batchOperationHandler = CreateBatchOperationHandler(mqClient, statusCli, operationHandler)
 	defaultAppRestoreHandler = NewAppRestoreHandler()
 	defPodHandler = NewPodHandler(statusCli, kubeClient, metricClient)
-	defClusterHandler = NewClusterHandler(kubeClient, conf.RbdNamespace)
+	defClusterHandler = NewClusterHandler(kubeClient, conf.RbdNamespace, config, mapper)
 	defaultVolumeTypeHandler = CreateVolumeTypeManger(statusCli)
 	defaultEtcdHandler = NewEtcdHandler(etcdcli)
 	defaultmonitorHandler = NewMonitorHandler(prometheusCli)
 	defServiceEventHandler = NewServiceEventHandler()
 	defApplicationHandler = NewApplicationHandler(statusCli, prometheusCli, rainbondClient, kubeClient)
+	defRegistryAuthSecretHandler = CreateRegistryAuthSecretManager(dbmanager, mqClient, etcdcli)
 	return nil
 }
 
@@ -233,4 +238,11 @@ var defServiceEventHandler *ServiceEventHandler
 // GetServiceEventHandler -
 func GetServiceEventHandler() *ServiceEventHandler {
 	return defServiceEventHandler
+}
+
+var defRegistryAuthSecretHandler RegistryAuthSecretHandler
+
+// GetRegistryAuthSecretHandler -
+func GetRegistryAuthSecretHandler() RegistryAuthSecretHandler {
+	return defRegistryAuthSecretHandler
 }

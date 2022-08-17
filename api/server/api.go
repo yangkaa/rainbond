@@ -167,12 +167,14 @@ func (m *Manager) Run() {
 	m.r.Get("/api/v1/query", m.PrometheusAPI)
 	m.r.Get("/api/v1/query_range", m.PrometheusAPI)
 	m.r.Get("/api/v1/series", m.PrometheusAPI)
+	m.r.Get("/api/v1/alerts", m.PrometheusAPI)
 	//开启对浏览器的websocket服务和文件服务
 	go func() {
 		websocketRouter := chi.NewRouter()
 		websocketRouter.Mount("/", websocket.Routes())
 		websocketRouter.Mount("/logs", websocket.LogRoutes())
 		websocketRouter.Mount("/app", websocket.AppRoutes())
+		websocketRouter.Mount("/package_build", websocket.PackageBuildRoutes())
 		if m.conf.WebsocketSSL {
 			logrus.Infof("websocket listen on (HTTPs) %s", m.conf.WebsocketAddr)
 			logrus.Fatal(http.ListenAndServeTLS(m.conf.WebsocketAddr, m.conf.WebsocketCertFile, m.conf.WebsocketKeyFile, websocketRouter))
