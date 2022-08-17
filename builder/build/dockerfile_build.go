@@ -50,9 +50,11 @@ func (d *dockerfileBuild) Build(re *Request) (*Response, error) {
 	buildImageName := CreateImageName(re.ServiceID, re.DeployVersion)
 
 	buildOptions := types.ImageBuildOptions{
-		Tags:      []string{buildImageName},
-		Remove:    true,
-		BuildArgs: GetARGs(re.BuildEnvs),
+		Tags:        []string{buildImageName},
+		Remove:      true,
+		BuildArgs:   GetARGs(re.BuildEnvs),
+		NetworkMode: ImageBuildNetworkModeHost,
+		AuthConfigs: GetTenantRegistryAuthSecrets(re.Ctx, re.TenantID, re.KubeClient),
 	}
 	if _, ok := re.BuildEnvs["NO_CACHE"]; ok {
 		buildOptions.NoCache = true
@@ -65,7 +67,7 @@ func (d *dockerfileBuild) Build(re *Request) (*Response, error) {
 	if timeout < 10 {
 		timeout = 60
 	}
-	_, err = sources.ImageBuild(re.DockerClient, re.SourceDir, buildOptions, re.Logger, timeout)
+	err = sources.ImageBuild(re.DockerClient, re.SourceDir, buildOptions, re.Logger, timeout)
 	if err != nil {
 		re.Logger.Error(fmt.Sprintf("build image %s failure", buildImageName), map[string]string{"step": "builder-exector", "status": "failure"})
 		logrus.Errorf("build image error: %s", err.Error())

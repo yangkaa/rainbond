@@ -143,8 +143,10 @@ func (s *slugBuild) buildRunnerImage(slugPackage string) (string, error) {
 			"CODE_COMMIT_USER":    &s.re.Commit.User,
 			"CODE_COMMIT_MESSAGE": &s.re.Commit.Message,
 		},
-		Tags:   []string{imageName},
-		Remove: true,
+		Tags:        []string{imageName},
+		Remove:      true,
+		NetworkMode: ImageBuildNetworkModeHost,
+		AuthConfigs: GetTenantRegistryAuthSecrets(s.re.Ctx, s.re.TenantID, s.re.KubeClient),
 	}
 	if _, ok := s.re.BuildEnvs["NO_CACHE"]; ok {
 		runbuildOptions.NoCache = true
@@ -156,7 +158,7 @@ func (s *slugBuild) buildRunnerImage(slugPackage string) (string, error) {
 		return "", fmt.Errorf("pull image %s: %v", builder.RUNNERIMAGENAME, err)
 	}
 	logrus.Infof("pull image %s successfully.", builder.RUNNERIMAGENAME)
-	_, err := sources.ImageBuild(s.re.DockerClient, cacheDir, runbuildOptions, s.re.Logger, 30)
+	err := sources.ImageBuild(s.re.DockerClient, cacheDir, runbuildOptions, s.re.Logger, 30)
 	if err != nil {
 		s.re.Logger.Error(fmt.Sprintf("build image %s of new version failure", imageName), map[string]string{"step": "builder-exector", "status": "failure"})
 		logrus.Errorf("build image error: %s", err.Error())
@@ -312,6 +314,13 @@ func (s *slugBuild) createVolumeAndMount(re *Request, sourceTarFileName string) 
 			})
 		}
 	}
+	if re.ServerType == "pkg" {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "slug",
+			MountPath: "/tmp/app",
+			SubPath:   strings.TrimPrefix(re.RepositoryURL, "/grdata/"),
+		})
+	}
 	return volumes, volumeMounts
 }
 
@@ -320,7 +329,7 @@ func (s *slugBuild) runBuildJob(re *Request) error {
 	re.Logger.Info(util.Translation("Start make code package"), map[string]string{"step": "build-exector"})
 	start := time.Now()
 	var sourceTarFileName string
-	if re.ServerType != "oss" {
+	if re.ServerType != "oss" && re.ServerType != "pkg" {
 		var err error
 		sourceTarFileName, err = s.getSourceCodeTarFile(re)
 		if err != nil {
