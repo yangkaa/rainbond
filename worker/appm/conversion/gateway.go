@@ -536,7 +536,12 @@ func (a *AppServiceBuild) parseAnnotations(rule *model.HTTPRule) (map[string]str
 	if rule.Cookie != "" {
 		annos[parser.GetAnnotationWithPrefix("cookie")] = rule.Cookie
 	}
-
+	// waf
+	annos["EnableModSecurity"] = "false"
+	if rule.EnableModSecurity {
+		annos["EnableModSecurity"] = "true"
+	}
+	annos["WhiteIP"] = rule.WhiteIP
 	// path-rewrite
 	if rule.PathRewrite {
 		annos[parser.GetAnnotationWithPrefix("path-rewrite")] = "true"

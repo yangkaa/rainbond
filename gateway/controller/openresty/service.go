@@ -202,10 +202,17 @@ func (o *OrService) persistUpstreams(pools []*v1.Pool) error {
 
 func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv []*model.Server) {
 	for _, vs := range conf.L7VS {
+		openWhiteList := false
+		if len(vs.WhiteIP) > 0 {
+			openWhiteList = true
+		}
 		server := &model.Server{
-			Listen:     strings.Join(vs.Listening, " "),
-			Protocol:   "HTTP",
-			ServerName: strings.Replace(vs.ServerName, "tls", "", 1),
+			Listen:            strings.Join(vs.Listening, " "),
+			Protocol:          "HTTP",
+			ServerName:        strings.Replace(vs.ServerName, "tls", "", 1),
+			EnableModSecurity: vs.EnableModSecurity,
+			WhiteIP:           vs.WhiteIP,
+			OpenWhiteList:     openWhiteList,
 			// ForceSSLRedirect: vs.ForceSSLRedirect,
 			OptionValue: map[string]string{
 				"tenant_id":  vs.Namespace,
