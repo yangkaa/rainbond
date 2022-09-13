@@ -5,6 +5,10 @@ server {
     {{ if .ServerName }}server_name    {{.ServerName}};{{end}}
 	{{ if .DefaultType }}default_type    {{.DefaultType}};{{end}}
     {{ if .Charset }}charset   {{.Charset}};{{end}}
+    {{ range $whiteIP := .WhiteIP }}
+    allow {{$whiteIP}};
+    {{ end }}
+    {{ if .OpenWhiteList }}deny all;{{end}}
     access_log off;
     {{ if gt .KeepaliveTimeout.Num 0 }}
     keepalive_timeout {{.KeepaliveTimeout.Num}}{{.KeepaliveTimeout.Unit}};

@@ -21,6 +21,7 @@ package store
 import (
 	"bytes"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
@@ -647,7 +648,13 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 								vs.SSLCert = hostSSLMap[DefVirSrvName]
 							}
 						}
-
+						vs.EnableModSecurity, _ = strconv.ParseBool(ing.Annotations["EnableModSecurity"])
+						var writeList []string
+						err := json.Unmarshal([]byte(ing.Annotations["WhiteIP"]), &writeList)
+						if err != nil {
+							logrus.Warnf("%v is a problem with the deserialization of white list JSON,err: %v", ingName, err)
+						}
+						vs.WhiteIP = writeList
 						l7vsMap[virSrvName] = vs
 						l7vs = append(l7vs, vs)
 					}
@@ -760,7 +767,13 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 								vs.SSLCert = hostSSLMap[DefVirSrvName]
 							}
 						}
-
+						vs.EnableModSecurity, _ = strconv.ParseBool(ing.Annotations["EnableModSecurity"])
+						var writeList []string
+						err := json.Unmarshal([]byte(ing.Annotations["WhiteIP"]), &writeList)
+						if err != nil {
+							logrus.Warnf("%v is a problem with the deserialization of white list JSON,err: %v", ingName, err)
+						}
+						vs.WhiteIP = writeList
 						l7vsMap[virSrvName] = vs
 						l7vs = append(l7vs, vs)
 					}
