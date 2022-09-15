@@ -14,6 +14,11 @@ server {
     keepalive_timeout {{.KeepaliveTimeout.Num}}{{.KeepaliveTimeout.Unit}};
     {{ end }}
 
+    {{ if .EnableModSecurity }}
+    modsecurity on;
+    modsecurity_rules_file /usr/local/openresty/nginx/conf/modsecurity/modsecurity.conf;
+    {{ end }}
+
     {{ if .ServerTokens }}server_tokens on;{{ end }}
 
     {{ if .SSLCertificate }}
