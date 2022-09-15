@@ -10,8 +10,7 @@ DOMESTIC_NAMESPACE=${DOMESTIC_NAMESPACE:-'goodrain'}
 GOARCH=${BUILD_GOARCH:-'amd64'}
 IMAGE_DOMAIN=${IMAGE_DOMAIN:-image.goodrain.com}
 DISABLE_GOPROXY="true"
-
-
+ENABLE_WAF=${ENABLE_WAF:-'true'}
 GO_VERSION=1.13
 
 GOPROXY=${GOPROXY:-'https://goproxy.io'}
@@ -145,14 +144,18 @@ build::image() {
 	if [ "$GOARCH" = "arm64" ]; then
 		if [ "$1" = "gateway" ]; then
 			BASE_IMAGE_VERSION="1.19.3.2-alpine"
-		elif [ "$1" = "eventlog" ];then
+		elif [ "$1" = "eventlog" ]; then
 			DOCKERFILE_BASE="Dockerfile.arm"
-		elif [ "$1" = "mesh-data-panel" ];then
+		elif [ "$1" = "mesh-data-panel" ]; then
 			DOCKERFILE_BASE="Dockerfile.arm"
 		fi
 	else
 		if [ "$1" = "gateway" ]; then
-			BASE_IMAGE_VERSION="1.19.3.2"
+			if [ $ENABLE_WAF ]; then
+				BASE_IMAGE_VERSION="1.21.4.1-waf"
+			else
+				BASE_IMAGE_VERSION="1.19.3.2"
+			fi
 		fi
 	fi
 	docker build --build-arg RELEASE_DESC="${release_desc}" --build-arg BASE_IMAGE_VERSION="${BASE_IMAGE_VERSION}" --build-arg GOARCH="${GOARCH}" -t "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}" -f "${DOCKERFILE_BASE}" .
@@ -169,7 +172,7 @@ build::image() {
 			docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
 			docker push "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}"
 		fi
-		
+
 		if [ "${DOMESTIC_BASE_NAME}" ]; then
 			docker tag "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}" "${DOMESTIC_BASE_NAME}/${DOMESTIC_NAMESPACE}/rbd-$1:${VERSION}"
 			docker login -u "$DOMESTIC_DOCKER_USERNAME" -p "$DOMESTIC_DOCKER_PASSWORD" "${DOMESTIC_BASE_NAME}"

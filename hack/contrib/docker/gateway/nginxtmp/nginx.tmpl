@@ -4,6 +4,8 @@ error_log  {{.ErrorLog}} {{.ErrorLogLevel}};
 worker_rlimit_nofile {{.WorkerRlimitNofile}};
 daemon off;
 
+load_module /usr/local/openresty/nginx/modules/ngx_http_modsecurity_module.so;
+
 events {
     {{ if .Events.EnableEpoll }}use epoll;{{ end }}
     {{ if .Events.EnableMultiAccept }}multi_accept on;{{ end }}
