@@ -99,7 +99,9 @@ func ParseResponseBody(red io.ReadCloser) (re ResponseBody, err error) {
 }
 
 func init() {
+	logrus.Infof("--------------------->init streamlog driver %v", name)
 	if err := logger.RegisterLogDriver(name, New); err != nil {
+		logrus.Infof("Failed to register %s: %v", name, err)
 		logrus.Fatal(err)
 	}
 	if err := logger.RegisterLogOptValidator(name, ValidateLogOpt); err != nil {
