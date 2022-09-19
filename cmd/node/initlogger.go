@@ -21,9 +21,4 @@ package main
 import (
 	_ "github.com/goodrain/rainbond/node/nodem/logger/streamlog"
 	_ "github.com/goodrain/rainbond/node/nodem/logger/testlog"
-	"github.com/sirupsen/logrus"
 )
-
-func init() {
-	logrus.Infof("init logger---------------------------------------")
-}
