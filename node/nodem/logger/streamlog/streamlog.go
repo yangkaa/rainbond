@@ -99,9 +99,11 @@ func ParseResponseBody(red io.ReadCloser) (re ResponseBody, err error) {
 }
 
 func init() {
+	logrus.Infof("register logger------------%s---------------------------", name)
 	if err := logger.RegisterLogDriver(name, New); err != nil {
 		logrus.Fatal(err)
 	}
+	logrus.Infof("init logger-----success-------%s---------------------------", name)
 	if err := logger.RegisterLogOptValidator(name, ValidateLogOpt); err != nil {
 		logrus.Fatal(err)
 	}
