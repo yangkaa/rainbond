@@ -411,6 +411,7 @@ func (container *ContainerLog) startLogger() ([]Logger, error) {
 	for _, config := range configs {
 		initDriver, err :=
 			GetLogDriver(config.Name)
+		logrus.Infof("get log driver %s", config.Name)
 		if err != nil {
 			logrus.Warnf("get container log driver failure %s", err.Error())
 			continue
