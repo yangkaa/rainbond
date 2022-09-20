@@ -22,6 +22,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/goodrain/rainbond/util/criutil"
 	criapis "k8s.io/cri-api/pkg/apis"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/kubelet/cri/remote"
@@ -46,6 +49,12 @@ var (
 
 	watcher  *fsnotify.Watcher
 	exitChan = make(chan struct{})
+)
+
+const (
+	DockerContainerdSock    = "/var/run/docker/containerd/containerd.sock"
+	RunDockerContainerdSock = "/run/docker/containerd/containerd.sock"
+	ContainerdSock          = "/run/containerd/containerd.sock"
 )
 
 //Init  init config
@@ -103,8 +112,9 @@ type Conf struct {
 	//enable collect docker container log
 	EnableCollectLog bool
 	//DockerCli        *dockercli.Client
-	RuntimeServiceCli *runtimeapi.RuntimeServiceClient
+	RuntimeServiceCli runtimeapi.RuntimeServiceClient
 	RuntimeService    criapis.RuntimeService
+	ContainerdCli     *containerd.Client
 	EtcdCli           *client.Client
 
 	LicPath   string
@@ -219,6 +229,17 @@ func (a *Conf) SetLog() {
 	}
 }
 
+func newClient(namespace, address string, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
+	ctx := namespaces.WithNamespace(context.Background(), namespace)
+	client, err := containerd.New(address, opts...)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	return client, ctx, cancel, nil
+}
+
 //ParseClient handle config and create some api
 func (a *Conf) ParseClient(ctx context.Context, etcdClientArgs *etcdutil.ClientArgs) (err error) {
 	//a.DockerCli, err = dockercli.NewEnvClient()
@@ -233,7 +254,21 @@ func (a *Conf) ParseClient(ctx context.Context, etcdClientArgs *etcdutil.ClientA
 	if err != nil {
 		return
 	}
+	runtimeClient, conn, err := criutil.GetRuntimeClient(context.Background())
+	if err != nil {
+		return
+	}
+	defer conn.Close()
 	a.RuntimeService = runtimeService
+	a.RuntimeServiceCli = runtimeClient
+	client, ctx, cancel, err := newClient("", RunDockerContainerdSock)
+	if err != nil {
+		logrus.Errorf("new client failed %v", err)
+		return err
+	}
+	defer cancel()
+	defer client.Close()
+	a.ContainerdCli = client
 	logrus.Infof("begin create etcd client: %s", a.EtcdEndpoints)
 	for {
 		a.EtcdCli, err = etcdutil.NewClient(ctx, etcdClientArgs)

@@ -23,11 +23,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/events"
-	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/typeurl"
-
 	"github.com/docker/cli/templates"
 
 	"io"
@@ -42,12 +39,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/goodrain/rainbond/cmd/node/option"
 	"text/template"
-)
-
-const (
-	DockerContainerdSock    = "/var/run/docker/containerd/containerd.sock"
-	RunDockerContainerdSock = "/run/docker/containerd/containerd.sock"
-	ContainerdSock          = "/run/containerd/containerd.sock"
 )
 
 //RFC3339NanoFixed time format
@@ -219,12 +210,12 @@ func (c *ContainerLogManage) cacheContainer(cs ...ContainerEvent) {
 //}
 
 func (c *ContainerLogManage) listContainer() []*runtimeapi.Container {
-	containers, err := c.conf.RuntimeService.ListContainers(&runtimeapi.ContainerFilter{})
+	containers, err := c.conf.RuntimeServiceCli.ListContainers(context.Background(), &runtimeapi.ListContainersRequest{})
 	if err != nil {
 		logrus.Errorf("list containers failure.%s", err.Error())
-		containers, _ = c.conf.RuntimeService.ListContainers(&runtimeapi.ContainerFilter{})
+		containers, _ = c.conf.RuntimeServiceCli.ListContainers(context.Background(), &runtimeapi.ListContainersRequest{})
 	}
-	return containers
+	return containers.GetContainers()
 }
 
 func (c *ContainerLogManage) loollist() {
@@ -293,17 +284,10 @@ func parseTemplate(format string) (*template.Template, error) {
 	return templates.Parse(format)
 }
 func (c *ContainerLogManage) watchContainer() error {
-	client, ctx, cancel, err := newClient("", RunDockerContainerdSock)
-	if err != nil {
-		logrus.Errorf("new client failed %v", err)
-		return err
-	}
-	defer cancel()
-	eventsClient := client.EventService()
-	eventsCh, errCh := eventsClient.Subscribe(ctx)
-
+	eventsClient := c.conf.ContainerdCli.EventService()
+	eventsCh, errCh := eventsClient.Subscribe(context.Background())
 	var tmpl *template.Template
-	tmpl, err = parseTemplate("json")
+	tmpl, err := parseTemplate("json")
 	if err != nil {
 		logrus.Errorf("parse template failed %v", err)
 		return err
@@ -361,17 +345,6 @@ func (c *ContainerLogManage) watchContainer() error {
 	}
 }
 
-func newClient(namespace, address string, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
-	ctx := namespaces.WithNamespace(context.Background(), namespace)
-	client, err := containerd.New(address, opts...)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-	return client, ctx, cancel, nil
-}
-
 //func (c *ContainerLogManage) watchContainer() error {
 //
 //	return nil
@@ -411,7 +384,13 @@ func newClient(namespace, address string, opts ...containerd.ClientOpt) (*contai
 //}
 
 func (c *ContainerLogManage) getContainer(containerID string) (*runtimeapi.ContainerStatus, error) {
-	return c.conf.RuntimeService.ContainerStatus(containerID)
+	status, err := c.conf.RuntimeServiceCli.ContainerStatus(context.Background(), &runtimeapi.ContainerStatusRequest{
+		ContainerId: containerID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return status.GetStatus(), nil
 }
 
 var handleAction = []string{"create", "start", "stop", "die", "destroy"}

@@ -18,7 +18,7 @@ const (
 )
 
 var RuntimeEndpoint string
-var defaultRuntimeEndpoints = []string{"unix:///run/docker/containerd/containerd.sock", "unix:///run/containerd/containerd.sock", "unix:///var/run/dockershim.sock", "unix:///run/crio/crio.sock", "unix:///var/run/cri-dockerd.sock"}
+var defaultRuntimeEndpoints = []string{"unix:///var/run/dockershim.sock", "unix:///run/docker/containerd/containerd.sock", "unix:///run/containerd/containerd.sock", "unix:///run/crio/crio.sock", "unix:///var/run/cri-dockerd.sock"}
 
 func GetImageClient(context *context.Context) (v1alpha2.ImageServiceClient, *grpc.ClientConn, error) {
 	// Set up a connection to the server.
@@ -34,9 +34,9 @@ func getImageClientConnection(context *context.Context) (*grpc.ClientConn, error
 	return getConnection(defaultRuntimeEndpoints)
 }
 
-func GetRuntimeClient(context *context.Context) (v1alpha2.RuntimeServiceClient, *grpc.ClientConn, error) {
+func GetRuntimeClient(context context.Context) (v1alpha2.RuntimeServiceClient, *grpc.ClientConn, error) {
 	// Set up a connection to the server.
-	conn, err := getRuntimeClientConnection(context)
+	conn, err := getRuntimeClientConnection(&context)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "connect")
 	}
