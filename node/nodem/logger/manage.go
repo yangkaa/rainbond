@@ -19,10 +19,20 @@
 package logger
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/events"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/typeurl"
+
+	"github.com/docker/cli/templates"
+
 	"io"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -31,6 +41,13 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/goodrain/rainbond/cmd/node/option"
+	"text/template"
+)
+
+const (
+	DockerContainerdSock    = "/var/run/docker/containerd/containerd.sock"
+	RunDockerContainerdSock = "/run/docker/containerd/containerd.sock"
+	ContainerdSock          = "/run/containerd/containerd.sock"
 )
 
 //RFC3339NanoFixed time format
@@ -237,7 +254,7 @@ func (c *ContainerLogManage) loollist() {
 
 func (c *ContainerLogManage) listAndWatchContainer(errchan chan error) {
 	containers := c.listContainer()
-	logrus.Debugf("found %d containers", len(containers))
+	logrus.Infof("found %d containers", len(containers))
 	for _, con := range containers {
 		container, err := c.getContainer(con.GetId())
 		if err != nil {
@@ -259,36 +276,133 @@ func (c *ContainerLogManage) listAndWatchContainer(errchan chan error) {
 	}
 }
 
-func (c *ContainerLogManage) watchContainer() error {
-	return nil
-	//containerFileter := filters.NewArgs()
-	//containerFileter.Add("type", "container")
-	//eventchan, eventerrchan := c.conf.DockerCli.Events(c.ctx, types.EventsOptions{
-	//	Filters: containerFileter,
-	//})
-	//for {
-	//	select {
-	//	case <-c.ctx.Done():
-	//		return nil
-	//	case err := <-eventerrchan:
-	//		return err
-	//	case event, ok := <-eventchan:
-	//		if !ok {
-	//			return fmt.Errorf("event chan is closed")
-	//		}
-	//		if event.Type == events.ContainerEventType && checkEventAction(event.Action) {
-	//			container, err := c.getContainer(event.ID)
-	//			if err != nil {
-	//				if !strings.Contains(err.Error(), "No such container") {
-	//					logrus.Errorf("get container detail info failure %s", err.Error())
-	//				}
-	//				break
-	//			}
-	//			c.cacheContainer(ContainerEvent{Action: event.Action, Container: container})
-	//		}
-	//	}
-	//}
+type Out struct {
+	Timestamp time.Time
+	Namespace string
+	Topic     string
+	Event     string
 }
+
+func parseTemplate(format string) (*template.Template, error) {
+	aliases := map[string]string{
+		"json": "{{json .}}",
+	}
+	if alias, ok := aliases[format]; ok {
+		format = alias
+	}
+	return templates.Parse(format)
+}
+func (c *ContainerLogManage) watchContainer() error {
+	client, ctx, cancel, err := newClient("", RunDockerContainerdSock)
+	if err != nil {
+		logrus.Errorf("new client failed %v", err)
+		return err
+	}
+	defer cancel()
+	eventsClient := client.EventService()
+	eventsCh, errCh := eventsClient.Subscribe(ctx)
+
+	var tmpl *template.Template
+	tmpl, err = parseTemplate("json")
+	if err != nil {
+		logrus.Errorf("parse template failed %v", err)
+		return err
+	}
+	for {
+		var e *events.Envelope
+		select {
+		case e = <-eventsCh:
+		case err = <-errCh:
+			return err
+		}
+		if e != nil {
+			var out []byte
+			if e.Event != nil {
+				str := string(e.Event.GetValue())
+				logrus.Infof("topic %v , namespace %v, events %v", e.Topic, e.Namespace, str)
+
+				//for _, word := range str {
+				//	fmt.Printf("%c\t", word)
+				//}
+				//break
+				v, err := typeurl.UnmarshalAny(e.Event)
+				if err != nil {
+					logrus.Warn("cannot unmarshal an event from Any")
+					continue
+				}
+				out, err = json.Marshal(v)
+				if err != nil {
+					logrus.Warn("cannot marshal Any into JSON")
+					continue
+				}
+			}
+			if tmpl != nil {
+				out := Out{e.Timestamp, e.Namespace, e.Topic, string(out)}
+				var b bytes.Buffer
+				if err := tmpl.Execute(&b, out); err != nil {
+					return err
+				}
+				if _, err := fmt.Fprintln(os.Stdout, b.String()+"\n"); err != nil {
+					return err
+				}
+			} else {
+				if _, err := fmt.Fprintln(
+					os.Stdout,
+					e.Timestamp,
+					e.Namespace,
+					e.Topic,
+					string(out),
+				); err != nil {
+					return err
+				}
+			}
+
+		}
+	}
+}
+
+func newClient(namespace, address string, opts ...containerd.ClientOpt) (*containerd.Client, context.Context, context.CancelFunc, error) {
+	ctx := namespaces.WithNamespace(context.Background(), namespace)
+	client, err := containerd.New(address, opts...)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	return client, ctx, cancel, nil
+}
+
+//func (c *ContainerLogManage) watchContainer() error {
+//
+//	return nil
+//containerFileter := filters.NewArgs()
+//containerFileter.Add("type", "container")
+//eventchan, eventerrchan := c.conf.DockerCli.Events(c.ctx, types.EventsOptions{
+//	Filters: containerFileter,
+//})
+//for {
+//	select {
+//	case <-c.ctx.Done():
+//		return nil
+//	case err := <-eventerrchan:
+//		return err
+//	case event, ok := <-eventchan:
+//		if !ok {
+//			return fmt.Errorf("event chan is closed")
+//		}
+//		if event.Type == events.ContainerEventType && checkEventAction(event.Action) {
+//			container, err := c.getContainer(event.ID)
+//			if err != nil {
+//				if !strings.Contains(err.Error(), "No such container") {
+//					logrus.Errorf("get container detail info failure %s", err.Error())
+//				}
+//				break
+//			}
+//			c.cacheContainer(ContainerEvent{Action: event.Action, Container: container})
+//		}
+//	}
+//}
+//}
 
 //func (c *ContainerLogManage) getContainer(containerID string) (types.ContainerJSON, error) {
 //	ctx, cancel := context.WithTimeout(c.ctx, time.Second*5)

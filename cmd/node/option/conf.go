@@ -225,9 +225,9 @@ func (a *Conf) ParseClient(ctx context.Context, etcdClientArgs *etcdutil.ClientA
 	//if err != nil {
 	//	return err
 	//}
-	address := "unix:///run/docker/containerd/containerd.sock"
-	if os.Getenv("CONTAINERD_ADDRESS") != "" {
-		address = os.Getenv("CONTAINERD_ADDRESS")
+	address := "unix:///var/run/dockershim.sock"
+	if os.Getenv("RUNTIME_ENDPOINT") != "" {
+		address = os.Getenv("RUNTIME_ENDPOINT")
 	}
 	runtimeService, err := remote.NewRemoteRuntimeService(address, time.Second*3)
 	if err != nil {
