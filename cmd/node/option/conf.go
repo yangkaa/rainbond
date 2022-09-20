@@ -254,20 +254,17 @@ func (a *Conf) ParseClient(ctx context.Context, etcdClientArgs *etcdutil.ClientA
 	if err != nil {
 		return
 	}
-	runtimeClient, conn, err := criutil.GetRuntimeClient(context.Background())
+	runtimeClient, _, err := criutil.GetRuntimeClient(context.Background())
 	if err != nil {
 		return
 	}
-	defer conn.Close()
 	a.RuntimeService = runtimeService
 	a.RuntimeServiceCli = runtimeClient
-	client, ctx, cancel, err := newClient("", RunDockerContainerdSock)
+	client, ctx, _, err := newClient("", RunDockerContainerdSock)
 	if err != nil {
 		logrus.Errorf("new client failed %v", err)
 		return err
 	}
-	defer cancel()
-	defer client.Close()
 	a.ContainerdCli = client
 	logrus.Infof("begin create etcd client: %s", a.EtcdEndpoints)
 	for {
