@@ -19,17 +19,14 @@
 package logger
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	containerdEventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/typeurl"
 	"github.com/docker/cli/templates"
-
 	"io"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +36,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/goodrain/rainbond/cmd/node/option"
 	"text/template"
+
+	// Register grpc event types
+	_ "github.com/containerd/containerd/api/events"
 )
 
 //RFC3339NanoFixed time format
@@ -52,6 +52,40 @@ type ContainerLogManage struct {
 	cchan         chan ContainerEvent
 	containerLogs sync.Map
 }
+
+const (
+	// CONTAINER_ACTION_START is start container event action
+	CONTAINER_ACTION_START = "start"
+
+	// CONTAINER_ACTION_STOP is stop container event action
+	CONTAINER_ACTION_STOP = "stop"
+)
+
+const (
+	// CONTAINER_STATE_CREATED is created state
+	CONTAINER_STATE_CREATED = "created"
+
+	// CONTAINER_STATE_RUNNING is running state
+	CONTAINER_STATE_RUNNING = "running"
+
+	// CONTAINER_STATE_PAUSED is paused state
+	CONTAINER_STATE_PAUSED = "paused"
+
+	// CONTAINER_STATE_RESTARTING is restarting state
+	CONTAINER_STATE_RESTARTING = "restarting"
+
+	// CONTAINER_STATE_REMOVING is removing state
+	CONTAINER_STATE_REMOVING = "removing"
+
+	// CONTAINER_STATE_EXITED is exited state
+	CONTAINER_STATE_EXITED = "exited"
+
+	// CONTAINER_STATE_DEAD is dead state
+	CONTAINER_STATE_DEAD = "dead"
+
+	// CONTAINER_STATE_UNKNOWN is unknown state
+	CONTAINER_STATE_UNKNOWN = "unknown"
+)
 
 //CreatContainerLogManage create a container log manage
 func CreatContainerLogManage(conf *option.Conf) *ContainerLogManage {
@@ -120,7 +154,7 @@ func (c *ContainerLogManage) handleLogger() {
 			return
 		case cevent := <-c.cchan:
 			switch cevent.Action {
-			case "start":
+			case CONTAINER_ACTION_START:
 				//loggerType := cevent.Container.HostConfig.LogConfig.Type
 				//if loggerType != "json-file" && loggerType != "syslog" {
 				//	continue
@@ -169,7 +203,7 @@ func (c *ContainerLogManage) handleLogger() {
 						}
 					}()
 				}
-			case "die", "destroy":
+			case CONTAINER_ACTION_STOP:
 				if logger, ok := c.containerLogs.Load(cevent.Container.GetId()); ok {
 					clog, okf := logger.(*ContainerLog)
 					if okf {
@@ -283,15 +317,11 @@ func parseTemplate(format string) (*template.Template, error) {
 	}
 	return templates.Parse(format)
 }
+
 func (c *ContainerLogManage) watchContainer() error {
 	eventsClient := c.conf.ContainerdCli.EventService()
 	eventsCh, errCh := eventsClient.Subscribe(context.Background())
-	var tmpl *template.Template
-	tmpl, err := parseTemplate("json")
-	if err != nil {
-		logrus.Errorf("parse template failed %v", err)
-		return err
-	}
+	var err error
 	for {
 		var e *events.Envelope
 		select {
@@ -300,47 +330,56 @@ func (c *ContainerLogManage) watchContainer() error {
 			return err
 		}
 		if e != nil {
-			var out []byte
 			if e.Event != nil {
-				str := string(e.Event.GetValue())
-				logrus.Infof("topic %v , namespace %v, events %v", e.Topic, e.Namespace, str)
-
-				//for _, word := range str {
-				//	fmt.Printf("%c\t", word)
-				//}
-				//break
-				v, err := typeurl.UnmarshalAny(e.Event)
+				ev, err := typeurl.UnmarshalAny(e.Event)
 				if err != nil {
 					logrus.Warn("cannot unmarshal an event from Any")
 					continue
 				}
-				out, err = json.Marshal(v)
-				if err != nil {
-					logrus.Warn("cannot marshal Any into JSON")
-					continue
+				switch ev.(type) {
+				case *containerdEventstypes.TaskStart:
+					evVal := ev.(*containerdEventstypes.TaskStart)
+					// PATCH: if it's start event of pause container
+					// we would skip it.
+					// QUESTION: what if someone's container ID equals the other Sandbox ID?
+					targetContainerID := evVal.ContainerID
+					resp, _ := c.conf.RuntimeServiceCli.ListPodSandbox(context.Background(),
+						&runtimeapi.ListPodSandboxRequest{
+							Filter: &runtimeapi.PodSandboxFilter{
+								Id: targetContainerID,
+							},
+						})
+					if resp != nil && len(resp.Items) == 1 {
+						// it's sandbox container! skip this one!
+						logrus.Infof("skipped start event of container %s since it's sandbox container", targetContainerID)
+						return nil
+					}
+					container, err := c.getContainer(targetContainerID)
+					if err != nil {
+						if !strings.Contains(err.Error(), "No such container") {
+							logrus.Errorf("get container detail info failure %s", err.Error())
+						}
+						break
+					}
+					c.cacheContainer(ContainerEvent{Action: CONTAINER_ACTION_START, Container: container})
+				case containerdEventstypes.TaskExit, containerdEventstypes.TaskDelete:
+					var targetContainerID string
+					evVal, ok := ev.(*containerdEventstypes.TaskExit)
+					if ok {
+						targetContainerID = evVal.ContainerID
+					} else {
+						targetContainerID = ev.(*containerdEventstypes.TaskDelete).ContainerID
+					}
+					container, err := c.getContainer(targetContainerID)
+					if err != nil {
+						if !strings.Contains(err.Error(), "No such container") {
+							logrus.Errorf("get container detail info failure %s", err.Error())
+						}
+						break
+					}
+					c.cacheContainer(ContainerEvent{Action: CONTAINER_ACTION_STOP, Container: container})
 				}
 			}
-			if tmpl != nil {
-				out := Out{e.Timestamp, e.Namespace, e.Topic, string(out)}
-				var b bytes.Buffer
-				if err := tmpl.Execute(&b, out); err != nil {
-					return err
-				}
-				if _, err := fmt.Fprintln(os.Stdout, b.String()+"\n"); err != nil {
-					return err
-				}
-			} else {
-				if _, err := fmt.Fprintln(
-					os.Stdout,
-					e.Timestamp,
-					e.Namespace,
-					e.Topic,
-					string(out),
-				); err != nil {
-					return err
-				}
-			}
-
 		}
 	}
 }
