@@ -34,12 +34,22 @@ func getImageClientConnection(context *context.Context) (*grpc.ClientConn, error
 	return getConnection(defaultRuntimeEndpoints)
 }
 
-func GetRuntimeClient(context context.Context) (v1alpha2.RuntimeServiceClient, *grpc.ClientConn, error) {
-	// Set up a connection to the server.
-	conn, err := getRuntimeClientConnection(&context)
+func GetRuntimeClient(endpoint string, connectionTimeout time.Duration) (v1alpha2.RuntimeServiceClient, *grpc.ClientConn, error) {
+	addr, dialer, err := util.GetAddressAndDialer(endpoint)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "connect")
+		return nil, nil, err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithContextDialer(dialer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
+	if err != nil {
+		return nil, nil, err
+	}
+	// Set up a connection to the server.
+	//conn, err := getRuntimeClientConnection(&context)
+	//if err != nil {
+	//	return nil, nil, errors.Wrap(err, "connect")
+	//}
 	runtimeClient := v1alpha2.NewRuntimeServiceClient(conn)
 	return runtimeClient, conn, nil
 }
