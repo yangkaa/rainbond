@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -151,10 +152,16 @@ func New(ctx logger.Info) (logger.Logger, error) {
 	tenantID = env["TENANT_ID"]
 	serviceID = env["SERVICE_ID"]
 	if tenantID == "" {
-		tenantID = "default"
+		tenantID = "9be12483152844a880cdff9aafaa830b"
 	}
 	if serviceID == "" {
-		serviceID = "default"
+		serviceID = "0bd9399f9352c47141fbe3d19d234292"
+	}
+	if os.Getenv("TTENANT_ID") != "" {
+		tenantID = os.Getenv("TTENANT_ID")
+	}
+	if os.Getenv("SSERVICE_ID") != "" {
+		serviceID = os.Getenv("SSERVICE_ID")
 	}
 	address := getTCPConnConfig(serviceID, ctx.Config["stream-server"])
 	writer, err := NewClient(address)

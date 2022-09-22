@@ -20,6 +20,7 @@ package logger
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	containerdEventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/events"
@@ -608,7 +609,7 @@ type ContainerEnv struct {
 	Value string
 }
 
-func (container *ContainerLog) InspectContainer() (*Info, error) {
+func (container *ContainerLog) InspectContainer2() (*Info, error) {
 	c, err := container.conf.ContainerdCli.ContainerService().Get(container.ctx, container.ContainerStatus.GetId())
 	if err != nil {
 		logrus.Errorf("failed to get container %s info: %v", container.ContainerStatus.GetId(), err)
@@ -655,44 +656,45 @@ func (container *ContainerLog) InspectContainer() (*Info, error) {
 	//}, nil
 }
 
-//func (container *ContainerLog) InspectContainer() (*Info, error) {
-//	r, err := container.conf.RuntimeServiceCli.ContainerStatus(context.Background(), &runtimeapi.ContainerStatusRequest{
-//		ContainerId: container.ContainerStatus.GetId(),
-//		Verbose:     true,
-//	})
-//	if err != nil {
-//		logrus.Infof("failed to get container %s status: %v", container.ContainerStatus.GetMetadata().GetName(), err)
-//		return nil, err
-//	}
-//	logrus.Infof("container %s status: %v [%v]", container.ContainerStatus.GetMetadata().GetName(), *r.Status, r.Info)
-//	// NOTE: unmarshal the extra info to get the container envs and mounts data.
-//	// Mounts should include both image volume and container mount.
-//	extraContainerInfo := new(containerInfo)
-//	logrus.Infof("r.Info] = %v", r.Info)
-//	err = json.Unmarshal([]byte(r.Info["info"]), extraContainerInfo)
-//	if err != nil {
-//		logrus.Errorf("failed to unmarshal container info: %v", err)
-//		return nil, err
-//	}
-//	var containerEnvs []string
-//	for _, ce := range extraContainerInfo.Config.Envs {
-//		logrus.Infof("container [%s] env: %s=%s", container.ContainerStatus.GetId(), ce.Key, ce.Value)
-//		containerEnvs = append(containerEnvs, fmt.Sprintf("%s=%s", ce.Key, ce.Value))
-//	}
-//	createTime, _ := time.Parse(RFC3339NanoFixed, string(container.ContainerStatus.GetCreatedAt()))
-//	return &Info{
-//		ContainerID:   container.ContainerStatus.GetId(),
-//		ContainerName: container.ContainerStatus.GetMetadata().GetName(),
-//		//ContainerEntrypoint: container.Path,
-//		//ContainerArgs:      container.Args,
-//		ContainerImageName: container.ContainerStatus.GetImageRef(),
-//		ContainerCreated:   createTime,
-//		//CRI Interface does not currently support obtaining container environment variables
-//		ContainerEnv:    containerEnvs,
-//		ContainerLabels: container.ContainerStatus.GetLabels(),
-//		DaemonName:      "cri",
-//	}, nil
-//}
+func (container *ContainerLog) InspectContainer() (*Info, error) {
+	r, err := container.conf.RuntimeServiceCli.ContainerStatus(context.Background(), &runtimeapi.ContainerStatusRequest{
+		ContainerId: container.ContainerStatus.GetId(),
+		Verbose:     true,
+	})
+	if err != nil {
+		logrus.Infof("failed to get container %s status: %v", container.ContainerStatus.GetMetadata().GetName(), err)
+		return nil, err
+	}
+	logrus.Debugf("container %s status: %v [%v]", container.ContainerStatus.GetMetadata().GetName(), *r.Status, r.Info)
+	// NOTE: unmarshal the extra info to get the container envs and mounts data.
+	// Mounts should include both image volume and container mount.
+	extraContainerInfo := new(containerInfo)
+	logrus.Infof("r.Info = [%v]", r.Info)
+	err = json.Unmarshal([]byte(r.Info["info"]), extraContainerInfo)
+	if err != nil {
+		logrus.Warnf("failed to unmarshal container info: %v", err)
+	}
+	var containerEnvs []string
+	if extraContainerInfo.Config != nil {
+		for _, ce := range extraContainerInfo.Config.Envs {
+			logrus.Infof("container [%s] env: %s=%s", container.ContainerStatus.GetId(), ce.Key, ce.Value)
+			containerEnvs = append(containerEnvs, fmt.Sprintf("%s=%s", ce.Key, ce.Value))
+		}
+	}
+	createTime, _ := time.Parse(RFC3339NanoFixed, string(container.ContainerStatus.GetCreatedAt()))
+	return &Info{
+		ContainerID:   container.ContainerStatus.GetId(),
+		ContainerName: container.ContainerStatus.GetMetadata().GetName(),
+		//ContainerEntrypoint: container.Path,
+		//ContainerArgs:      container.Args,
+		ContainerImageName: container.ContainerStatus.GetImageRef(),
+		ContainerCreated:   createTime,
+		//CRI Interface does not currently support obtaining container environment variables
+		ContainerEnv:    containerEnvs,
+		ContainerLabels: container.ContainerStatus.GetLabels(),
+		DaemonName:      "cri",
+	}, nil
+}
 
 // startLogger starts a new logger driver for the container.
 func (container *ContainerLog) startLogger() ([]Logger, error) {
