@@ -621,6 +621,7 @@ func (container *ContainerLog) InspectContainer() (*Info, error) {
 	// NOTE: unmarshal the extra info to get the container envs and mounts data.
 	// Mounts should include both image volume and container mount.
 	extraContainerInfo := new(containerInfo)
+	logrus.Infof("r.Info[\"info\"] = %s", r.Info["info"])
 	err = json.Unmarshal([]byte(r.Info["info"]), extraContainerInfo)
 	if err != nil {
 		return nil, err
