@@ -254,7 +254,7 @@ func (a *Conf) ParseClient(ctx context.Context, etcdClientArgs *etcdutil.ClientA
 	if err != nil {
 		return
 	}
-	runtimeClient, _, err := criutil.GetRuntimeClient(address, time.Second*3)
+	runtimeClient, _, err := criutil.GetRuntimeClient(context.Background(), address, time.Second*3)
 	if err != nil {
 		return
 	}

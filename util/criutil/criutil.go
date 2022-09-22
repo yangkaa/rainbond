@@ -20,38 +20,63 @@ const (
 var RuntimeEndpoint string
 var defaultRuntimeEndpoints = []string{"unix:///var/run/dockershim.sock", "unix:///run/docker/containerd/containerd.sock", "unix:///run/containerd/containerd.sock", "unix:///run/crio/crio.sock", "unix:///var/run/cri-dockerd.sock"}
 
-func GetImageClient(context *context.Context) (v1alpha2.ImageServiceClient, *grpc.ClientConn, error) {
+//func GetImageClient(context *context.Context) (v1alpha2.ImageServiceClient, *grpc.ClientConn, error) {
+//	// Set up a connection to the server.
+//	conn, err := getImageClientConnection(context)
+//	if err != nil {
+//		return nil, nil, errors.Wrap(err, "connect")
+//	}
+//	imageClient := v1alpha2.NewImageServiceClient(conn)
+//	return imageClient, conn, nil
+//}
+
+//func getImageClientConnection(context *context.Context) (*grpc.ClientConn, error) {
+//	return getConnection(defaultRuntimeEndpoints)
+//}
+
+func getConnection(endPoints []string, timeout time.Duration) (*grpc.ClientConn, error) {
+	if endPoints == nil || len(endPoints) == 0 {
+		return nil, fmt.Errorf("endpoint is not set")
+	}
+	endPointsLen := len(endPoints)
+	var conn *grpc.ClientConn
+	for indx, endPoint := range endPoints {
+		logrus.Debugf("connect using endpoint '%s' with '%s' timeout", endPoint, timeout)
+		addr, dialer, err := util.GetAddressAndDialer(endPoint)
+		if err != nil {
+			if indx == endPointsLen-1 {
+				return nil, err
+			}
+			logrus.Error(err)
+			continue
+		}
+		conn, err = grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(timeout), grpc.WithContextDialer(dialer))
+		if err != nil {
+			errMsg := errors.Wrapf(err, "connect endpoint '%s', make sure you are running as root and the endpoint has been started", endPoint)
+			if indx == endPointsLen-1 {
+				return nil, errMsg
+			}
+			logrus.Error(errMsg)
+		} else {
+			logrus.Debugf("connected successfully using endpoint: %s", endPoint)
+			break
+		}
+	}
+	return conn, nil
+}
+
+func GetRuntimeClient(ctx context.Context, endpoint string, timeout time.Duration) (v1alpha2.RuntimeServiceClient, *grpc.ClientConn, error) {
 	// Set up a connection to the server.
-	conn, err := getImageClientConnection(context)
+	conn, err := getRuntimeClientConnection(ctx, endpoint, timeout)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "connect")
 	}
-	imageClient := v1alpha2.NewImageServiceClient(conn)
-	return imageClient, conn, nil
-}
-
-func getImageClientConnection(context *context.Context) (*grpc.ClientConn, error) {
-	return getConnection(defaultRuntimeEndpoints)
-}
-
-func GetRuntimeClient(endpoint string, connectionTimeout time.Duration) (v1alpha2.RuntimeServiceClient, *grpc.ClientConn, error) {
-	addr, dialer, err := util.GetAddressAndDialer(endpoint)
-	if err != nil {
-		return nil, nil, err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithContextDialer(dialer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
-	if err != nil {
-		return nil, nil, err
-	}
-	// Set up a connection to the server.
-	//conn, err := getRuntimeClientConnection(&context)
-	//if err != nil {
-	//	return nil, nil, errors.Wrap(err, "connect")
-	//}
 	runtimeClient := v1alpha2.NewRuntimeServiceClient(conn)
 	return runtimeClient, conn, nil
+}
+
+func getRuntimeClientConnection(ctx context.Context, endpoint string, timeout time.Duration) (*grpc.ClientConn, error) {
+	return getConnection([]string{endpoint}, timeout)
 }
 
 func CloseConnection(conn *grpc.ClientConn) error {
@@ -61,38 +86,38 @@ func CloseConnection(conn *grpc.ClientConn) error {
 	return conn.Close()
 }
 
-func getRuntimeClientConnection(context *context.Context) (*grpc.ClientConn, error) {
-	return getConnection(defaultRuntimeEndpoints)
-}
+//func getRuntimeClientConnection(context *context.Context) (*grpc.ClientConn, error) {
+//	return getConnection(defaultRuntimeEndpoints)
+//}
 
-func getConnection(endPoints []string) (*grpc.ClientConn, error) {
-	if endPoints == nil || len(endPoints) == 0 {
-		return nil, fmt.Errorf("endpoint is not set")
-	}
-	endPointsLen := len(endPoints)
-	var conn *grpc.ClientConn
-	for indx, endPoint := range endPoints {
-		logrus.Debugf("connect using endpoint '%s' with '%s' timeout", endPoint, time.Second*3)
-		addr, dialer, err := util.GetAddressAndDialer(endPoint)
-		if err != nil {
-			if indx == endPointsLen-1 {
-				return nil, err
-			}
-			logrus.Error(err)
-			continue
-		}
-		conn, err = grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second*3), grpc.WithContextDialer(dialer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
-		if err != nil {
-			errMsg := errors.Wrapf(err, "connect endpoint '%s', make sure you are running as root and the endpoint has been started", endPoint)
-			if indx == endPointsLen-1 {
-				return nil, errMsg
-			}
-			logrus.Error(errMsg)
-		} else {
-			RuntimeEndpoint = endPoint
-			logrus.Infof("connected successfully using endpoint: %s", endPoint)
-			break
-		}
-	}
-	return conn, nil
-}
+//func getConnection(endPoints []string) (*grpc.ClientConn, error) {
+//	if endPoints == nil || len(endPoints) == 0 {
+//		return nil, fmt.Errorf("endpoint is not set")
+//	}
+//	endPointsLen := len(endPoints)
+//	var conn *grpc.ClientConn
+//	for indx, endPoint := range endPoints {
+//		logrus.Debugf("connect using endpoint '%s' with '%s' timeout", endPoint, time.Second*3)
+//		addr, dialer, err := util.GetAddressAndDialer(endPoint)
+//		if err != nil {
+//			if indx == endPointsLen-1 {
+//				return nil, err
+//			}
+//			logrus.Error(err)
+//			continue
+//		}
+//		conn, err = grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second*3), grpc.WithContextDialer(dialer), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize)))
+//		if err != nil {
+//			errMsg := errors.Wrapf(err, "connect endpoint '%s', make sure you are running as root and the endpoint has been started", endPoint)
+//			if indx == endPointsLen-1 {
+//				return nil, errMsg
+//			}
+//			logrus.Error(errMsg)
+//		} else {
+//			RuntimeEndpoint = endPoint
+//			logrus.Infof("connected successfully using endpoint: %s", endPoint)
+//			break
+//		}
+//	}
+//	return conn, nil
+//}
