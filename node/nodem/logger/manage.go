@@ -610,15 +610,15 @@ type ContainerEnv struct {
 }
 
 func (container *ContainerLog) InspectContainer() (*Info, error) {
-	req := &runtimeapi.ContainerStatusRequest{
+	r, err := container.conf.RuntimeServiceCli.ContainerStatus(context.Background(), &runtimeapi.ContainerStatusRequest{
 		ContainerId: container.ContainerStatus.GetId(),
 		Verbose:     true,
-	}
-	r, err := container.conf.RuntimeServiceCli.ContainerStatus(context.Background(), req)
+	})
 	if err != nil {
-		logrus.Infof("failed to get container %s status: %v", container.ContainerStatus.GetId(), err)
+		logrus.Infof("failed to get container %s status: %v", container.ContainerStatus.GetMetadata().GetName(), err)
 		return nil, err
 	}
+	logrus.Infof("container %s status: %v [%v]", container.ContainerStatus.GetMetadata().GetName(), *r.Status, r.Info)
 	// NOTE: unmarshal the extra info to get the container envs and mounts data.
 	// Mounts should include both image volume and container mount.
 	extraContainerInfo := new(containerInfo)
