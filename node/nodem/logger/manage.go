@@ -616,6 +616,7 @@ func (container *ContainerLog) InspectContainer() (*Info, error) {
 	}
 	r, err := container.conf.RuntimeServiceCli.ContainerStatus(context.Background(), req)
 	if err != nil {
+		logrus.Infof("failed to get container %s status: %v", container.ContainerStatus.GetId(), err)
 		return nil, err
 	}
 	// NOTE: unmarshal the extra info to get the container envs and mounts data.
@@ -624,6 +625,7 @@ func (container *ContainerLog) InspectContainer() (*Info, error) {
 	logrus.Infof("r.Info[\"info\"] = %s", r.Info["info"])
 	err = json.Unmarshal([]byte(r.Info["info"]), extraContainerInfo)
 	if err != nil {
+		logrus.Errorf("failed to unmarshal container info: %v", err)
 		return nil, err
 	}
 	var containerEnvs []string
@@ -650,6 +652,7 @@ func (container *ContainerLog) InspectContainer() (*Info, error) {
 func (container *ContainerLog) startLogger() ([]Logger, error) {
 	info, err := container.InspectContainer()
 	if err != nil {
+		logrus.Errorf("failed to inspect container %s: %v", container.ContainerStatus.GetId(), err)
 		return nil, err
 	}
 	configs := getLoggerConfig([]string{})
