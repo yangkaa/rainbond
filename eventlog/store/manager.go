@@ -466,13 +466,14 @@ loop:
 			if len(m) < 47 {
 				continue
 			}
+			logrus.Infof("------------>log %s", string(m))
 			containerID := m[0:12] //0-12
 			logrus.Infof("------------>containerd ID %s", containerID)
 			serviceID := string(m[13:45]) //13-45
-			logrus.Infof("------------>service ID %s", serviceID)
+			//logrus.Infof("------------>service ID %s", serviceID)
 
 			log := m[45:]
-			logrus.Infof("------------>log %s", string(m))
+
 			buffer := bytes.NewBuffer(containerID)
 			buffer.WriteString(":")
 			buffer.Write(log)
