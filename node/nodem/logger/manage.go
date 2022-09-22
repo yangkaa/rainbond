@@ -622,7 +622,7 @@ func (container *ContainerLog) InspectContainer() (*Info, error) {
 	// NOTE: unmarshal the extra info to get the container envs and mounts data.
 	// Mounts should include both image volume and container mount.
 	extraContainerInfo := new(containerInfo)
-	logrus.Infof("r.Info[\"info\"] = %s", r.Info["info"])
+	logrus.Infof("r.Info] = %v", r.Info)
 	err = json.Unmarshal([]byte(r.Info["info"]), extraContainerInfo)
 	if err != nil {
 		logrus.Errorf("failed to unmarshal container info: %v", err)
@@ -652,7 +652,7 @@ func (container *ContainerLog) InspectContainer() (*Info, error) {
 func (container *ContainerLog) startLogger() ([]Logger, error) {
 	info, err := container.InspectContainer()
 	if err != nil {
-		logrus.Errorf("failed to inspect container %s: %v", container.ContainerStatus.GetId(), err)
+		//logrus.Errorf("failed to inspect container %s: %v", container.ContainerStatus.GetId(), err)
 		return nil, err
 	}
 	configs := getLoggerConfig([]string{})
