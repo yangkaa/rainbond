@@ -20,6 +20,7 @@ package logger
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	containerdEventstypes "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/events"
@@ -185,7 +186,7 @@ func (c *ContainerLogManage) handleLogger() {
 								cevent.Container, _ = c.getContainer(cevent.Container.GetId())
 								continue
 							}
-							clog := createContainerLog(c.ctx, cevent.Container, reader)
+							clog := createContainerLog(c.ctx, cevent.Container, reader, c.conf)
 							if err := clog.StartLogging(); err != nil {
 								clog.Stop()
 								if err == ErrNeglectedContainer {
@@ -453,13 +454,14 @@ func checkEventAction(action string) bool {
 //	}
 //}
 
-func createContainerLog(ctx context.Context, container *runtimeapi.ContainerStatus, reader *LogFile) *ContainerLog {
+func createContainerLog(ctx context.Context, container *runtimeapi.ContainerStatus, reader *LogFile, conf *option.Conf) *ContainerLog {
 	cctx, cancel := context.WithCancel(ctx)
 	return &ContainerLog{
 		ctx:             cctx,
 		cancel:          cancel,
 		ContainerStatus: container,
 		reader:          reader,
+		conf:            conf,
 	}
 }
 
@@ -467,6 +469,7 @@ func createContainerLog(ctx context.Context, container *runtimeapi.ContainerStat
 type ContainerLog struct {
 	ctx    context.Context
 	cancel context.CancelFunc
+	conf   *option.Conf
 	//types.ContainerJSON
 	*runtimeapi.ContainerStatus
 	LogCopier *Copier
@@ -536,8 +539,118 @@ func getLoggerConfig(envs []string) []*ContainerLoggerConfig {
 //ErrNeglectedContainer not define logger name
 var ErrNeglectedContainer = fmt.Errorf("Neglected container")
 
+// containerInfo is extra info returned by containerd grpc api
+// it's NOT part of cri-api, so we keep this struct being internal visibility.
+// If we don't care sth details, we will keep it being interface type.
+type containerInfo struct {
+	Sandboxid      string                    `json:"sandboxID"`
+	Pid            int                       `json:"pid"`
+	Removing       bool                      `json:"removing"`
+	Snapshotkey    string                    `json:"snapshotKey"`
+	Snapshotter    string                    `json:"snapshotter"`
+	Runtimetype    string                    `json:"runtimeType"`
+	Runtimeoptions interface{}               `json:"runtimeOptions"`
+	Config         *ContainerInfoConfig      `json:"config"`
+	Runtimespec    *ContainerInfoRuntimeSpec `json:"runtimeSpec"`
+}
+
+// ContainerInfoMetadata ...
+type ContainerInfoMetadata struct {
+	Name string `json:"name"`
+}
+
+// ContainerEnv ...
+type ContainerInfoEnv struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// ContainerInfoMount ...
+type ContainerInfoMount struct {
+	ContainerPath  string `json:"container_path"`
+	HostPath       string `json:"host_path"`
+	Readonly       bool   `json:"readonly,omitempty"`
+	SelinuxRelabel bool   `json:"selinux_relabel,omitempty"`
+}
+
+// ContainerInfoConfig ...
+type ContainerInfoConfig struct {
+	Metadata    *ContainerInfoMetadata `json:"metadata"`
+	Image       interface{}            `json:"image"`
+	Envs        []*ContainerInfoEnv    `json:"envs"`
+	Mounts      []*ContainerInfoMount  `json:"mounts"`
+	Labels      interface{}            `json:"labels"`
+	Annotations interface{}            `json:"annotations"`
+	LogPath     string                 `json:"log_path"`
+	Linux       interface{}            `json:"linux,omitempty"`
+}
+
+// ContainerInfoRuntimeMount ...
+type ContainerInfoRuntimeMount struct {
+	Destination string   `json:"destination"`
+	Type        string   `json:"type"`
+	Source      string   `json:"source"`
+	Options     []string `json:"options"`
+}
+
+// ContainerInfoRuntimeSpec ...
+type ContainerInfoRuntimeSpec struct {
+	Ociversion  string                       `json:"ociVersion"`
+	Process     interface{}                  `json:"process"`
+	Root        interface{}                  `json:"root"`
+	Mounts      []*ContainerInfoRuntimeMount `json:"mounts"`
+	Annotations interface{}                  `json:"annotations"`
+	Linux       interface{}                  `json:"linux,omitempty"`
+}
+
+// ContainerEnv is container env
+type ContainerEnv struct {
+	Key   string
+	Value string
+}
+
+func (container *ContainerLog) InspectContainer() (*Info, error) {
+	req := &runtimeapi.ContainerStatusRequest{
+		ContainerId: container.ContainerStatus.GetId(),
+		Verbose:     true,
+	}
+	r, err := container.conf.RuntimeServiceCli.ContainerStatus(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	// NOTE: unmarshal the extra info to get the container envs and mounts data.
+	// Mounts should include both image volume and container mount.
+	extraContainerInfo := new(containerInfo)
+	err = json.Unmarshal([]byte(r.Info["info"]), extraContainerInfo)
+	if err != nil {
+		return nil, err
+	}
+	var containerEnvs []string
+	for _, ce := range extraContainerInfo.Config.Envs {
+		logrus.Infof("container [%s] env: %s=%s", container.ContainerStatus.GetId(), ce.Key, ce.Value)
+		containerEnvs = append(containerEnvs, fmt.Sprintf("%s=%s", ce.Key, ce.Value))
+	}
+	createTime, _ := time.Parse(RFC3339NanoFixed, string(container.ContainerStatus.GetCreatedAt()))
+	return &Info{
+		ContainerID:   container.ContainerStatus.GetId(),
+		ContainerName: container.ContainerStatus.GetMetadata().GetName(),
+		//ContainerEntrypoint: container.Path,
+		//ContainerArgs:      container.Args,
+		ContainerImageName: container.ContainerStatus.GetImageRef(),
+		ContainerCreated:   createTime,
+		//CRI Interface does not currently support obtaining container environment variables
+		ContainerEnv:    containerEnvs,
+		ContainerLabels: container.ContainerStatus.GetLabels(),
+		DaemonName:      "cri",
+	}, nil
+}
+
 // startLogger starts a new logger driver for the container.
 func (container *ContainerLog) startLogger() ([]Logger, error) {
+	info, err := container.InspectContainer()
+	if err != nil {
+		return nil, err
+	}
 	configs := getLoggerConfig([]string{})
 	var loggers []Logger
 	for _, config := range configs {
@@ -548,21 +661,9 @@ func (container *ContainerLog) startLogger() ([]Logger, error) {
 			logrus.Warnf("get container log driver failure %s", err.Error())
 			continue
 		}
-		createTime, _ := time.Parse(RFC3339NanoFixed, string(container.ContainerStatus.GetCreatedAt()))
-		info := Info{
-			Config:        config.Options,
-			ContainerID:   container.ContainerStatus.GetId(),
-			ContainerName: container.ContainerStatus.GetMetadata().GetName(),
-			//ContainerEntrypoint: container.Path,
-			//ContainerArgs:      container.Args,
-			ContainerImageName: container.ContainerStatus.GetImageRef(),
-			ContainerCreated:   createTime,
-			//CRI Interface does not currently support obtaining container environment variables
-			ContainerEnv:    []string{},
-			ContainerLabels: container.ContainerStatus.GetLabels(),
-			DaemonName:      "cri",
-		}
-		l, err := initDriver(info)
+		info.Config = config.Options
+		info.DaemonName = "cri"
+		l, err := initDriver(*info)
 		if err != nil {
 			logrus.Warnf("init container log driver failure %s", err.Error())
 			continue
