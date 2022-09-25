@@ -19,13 +19,11 @@
 package logger
 
 import (
-	"bufio"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"k8s.io/kubernetes/pkg/util/tail"
 	"os"
 	"runtime"
 	"strings"
@@ -133,42 +131,46 @@ func decodeLogLine(dec *json.Decoder, l *jsonlog.JSONLog) (*Message, error) {
 
 // decodeFunc is used to create a decoder for the log file reader
 func decodeFunc(rdr io.Reader) func() (*Message, error) {
-	file, ok := rdr.(*os.File)
-	if ok {
-		return func() (msg *Message, err error) {
-			for retries := 0; retries < 5; retries++ {
-				// Search start point based on tail line.
-				start, err := tail.FindTailLineStartIndex(file, 0)
-				if err != nil {
-					logrus.Errorf("find tail line start index error: %v", err)
-					continue
-				}
-				logrus.Infof("decodeFunc file name: %s", file.Name())
-				if _, err := file.Seek(start, io.SeekStart); err != nil {
-					logrus.Errorf("seek file error: %v", err)
-					continue
-				}
-				// Start parsing the logs.
-				r := bufio.NewReader(file)
-				l, err := r.ReadBytes(eol[0])
-				if err != nil && err != io.EOF {
-					logrus.WithError(err).WithField("retries", retries).Warn("got error while reading log line")
-					continue
-				}
-				logrus.Infof("decodeFunc file name: %s, log line: %s", file.Name(), string(l))
-				if err = parseCRILog(l, msg); err != nil {
-					logrus.WithError(err).WithField("retries", retries).Warn("got error while decoding CRI log")
-					continue
-				}
-			}
-			return msg, nil
-		}
-	}
+	//file, ok := rdr.(*os.File)
+	//if ok {
+	//	return func() (msg *Message, err error) {
+	//		for retries := 0; retries < 5; retries++ {
+	//			// Search start point based on tail line.
+	//			start, err := tail.FindTailLineStartIndex(file, 0)
+	//			if err != nil {
+	//				logrus.Errorf("find tail line start index error: %v", err)
+	//				continue
+	//			}
+	//			logrus.Infof("decodeFunc file name: %s", file.Name())
+	//			if _, err := file.Seek(start, io.SeekStart); err != nil {
+	//				logrus.Errorf("seek file error: %v", err)
+	//				continue
+	//			}
+	//			// Start parsing the logs.
+	//			r := bufio.NewReader(file)
+	//			l, err := r.ReadBytes(eol[0])
+	//			if err != nil && err != io.EOF {
+	//				logrus.WithError(err).WithField("retries", retries).Warn("got error while reading log line")
+	//				continue
+	//			}
+	//			logrus.Infof("decodeFunc file name: %s, log line: %s", file.Name(), string(l))
+	//			if err = parseCRILog(l, msg); err != nil {
+	//				logrus.WithError(err).WithField("retries", retries).Warn("got error while decoding CRI log")
+	//				continue
+	//			}
+	//		}
+	//		return msg, nil
+	//	}
+	//}
 
 	l := &jsonlog.JSONLog{}
 	dec := json.NewDecoder(rdr)
 	return func() (msg *Message, err error) {
 		for retries := 0; retries < maxJSONDecodeRetry; retries++ {
+			p := make([]byte, 65535)
+			rdr.Read(p)
+			logrus.Infof("decodeFunc file name: %s, log line: %s", rdr, string(p))
+			//logrus.Infof("decodeFunc file name: %s", rdr)
 			msg, err = decodeLogLine(dec, l)
 			if err == nil || err == io.EOF {
 				break
