@@ -143,13 +143,13 @@ func (n *NodeManager) Start(errchan chan error) error {
 		logrus.Infof("this node(%s) is not compute node or disable collect container log ,do not start container log manage", n.currentNode.Role)
 	}
 
-	// TODO: imageGCManager with containerd
-	//if n.cfg.EnableImageGC && n.cfg.ContainerRuntime == "docker" {
-	//	if n.currentNode.Role.HasRule(client.ManageNode) && !n.currentNode.Role.HasRule(client.ComputeNode) {
-	//		n.imageGCManager.SetServiceImages(n.controller.ListServiceImages())
-	//		go n.imageGCManager.Start()
-	//	}
-	//}
+	//TODO: imageGCManager with containerd
+	if n.cfg.EnableImageGC && n.cfg.ContainerRuntime == "docker" {
+		if n.currentNode.Role.HasRule(client.ManageNode) && !n.currentNode.Role.HasRule(client.ComputeNode) {
+			n.imageGCManager.SetServiceImages(n.controller.ListServiceImages())
+			go n.imageGCManager.Start()
+		}
+	}
 
 	go n.monitor.Start(errchan)
 	go n.heartbeat()

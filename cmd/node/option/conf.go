@@ -35,6 +35,8 @@ import (
 	etcdutil "github.com/goodrain/rainbond/util/etcd"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+	// Register grpc event types
+	_ "github.com/containerd/containerd/api/events"
 )
 
 var (
