@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"k8s.io/kubernetes/pkg/util/tail"
 	"os"
 	"runtime"
 	"strings"
@@ -136,7 +137,17 @@ func decodeFunc(rdr io.Reader) func() (*Message, error) {
 	if ok {
 		return func() (msg *Message, err error) {
 			for retries := 0; retries < 5; retries++ {
+				// Search start point based on tail line.
+				start, err := tail.FindTailLineStartIndex(file, 0)
+				if err != nil {
+					logrus.Errorf("find tail line start index error: %v", err)
+					continue
+				}
 				logrus.Infof("decodeFunc file name: %s", file.Name())
+				if _, err := file.Seek(start, io.SeekStart); err != nil {
+					logrus.Errorf("seek file error: %v", err)
+					continue
+				}
 				// Start parsing the logs.
 				r := bufio.NewReader(file)
 				l, err := r.ReadBytes(eol[0])
