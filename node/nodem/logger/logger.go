@@ -20,23 +20,8 @@ package logger
 
 import (
 	"errors"
-	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"sync"
 	"time"
-)
-
-var (
-	// eol is the end-of-line sign in the log.
-	eol = []byte{'\n'}
-	// delimiter is the delimiter for timestamp and stream type in log line.
-	delimiter = []byte{' '}
-	// tagDelimiter is the delimiter for log tags.
-	tagDelimiter = []byte(runtimeapi.LogTagDelimiter)
-)
-
-const (
-	// timeFormatIn is the format for parsing timestamps from other logs.
-	timeFormatIn = "2006-01-02T15:04:05.999999999Z07:00"
 )
 
 // ErrReadLogsNotSupported is returned when the logger does not support reading logs.

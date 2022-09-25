@@ -487,7 +487,7 @@ func (container *ContainerLog) provideContainerdLoggerInfo() (*Info, error) {
 			containerEnvs = append(containerEnvs, fmt.Sprintf("%s=%s", ce.Key, ce.Value))
 		}
 	}
-	createTime, _ := time.Parse(RFC3339NanoFixed, string(container.ContainerStatus.GetCreatedAt()))
+	createTime := time.Unix(container.ContainerStatus.GetCreatedAt(), 0)
 	return &Info{
 		ContainerID:   container.ContainerStatus.GetId(),
 		ContainerName: container.ContainerStatus.GetMetadata().GetName(),

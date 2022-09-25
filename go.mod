@@ -114,7 +114,11 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-require golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+require (
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	k8s.io/klog/v2 v2.5.0
+	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
+)
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
@@ -269,10 +273,8 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/gengo v0.0.0-20201113003025-83324d819ded // indirect
-	k8s.io/klog/v2 v2.5.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd // indirect
 	k8s.io/kubectl v0.20.4 // indirect
-	k8s.io/utils v0.0.0-20201110183641-67b214c5f920 // indirect
 	sigs.k8s.io/kustomize v2.0.3+incompatible // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.0.2 // indirect
 )
