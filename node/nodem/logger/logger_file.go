@@ -19,11 +19,14 @@
 package logger
 
 import (
+	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"os"
 	"runtime"
 	"strings"
@@ -153,11 +156,64 @@ func decodeFunc(rdr io.Reader) func() (*Message, error) {
 				dec = json.NewDecoder(reader)
 				continue
 			}
+			// Start parsing the logs.
+			r := bufio.NewReader(rdr)
+			l, err := r.ReadBytes(eol[0])
+			if err != nil && err != io.EOF {
+				logrus.WithError(err).WithField("retries", retries).Warn("got error while reading log line")
+				continue
+			}
+			if err = parseCRILog(l, msg); err != nil {
+				logrus.WithError(err).WithField("retries", retries).Warn("got error while decoding CRI log")
+				continue
+			}
 			logrus.WithError(err).WithField("retries", retries).Warn("got error while decoding json")
 		}
 		return msg, err
 	}
 }
+
+// parseCRILog parses logs in CRI log format. CRI Log format example:
+//   2016-10-06T00:17:09.669794202Z stdout P log content 1
+//   2016-10-06T00:17:09.669794203Z stderr F log content 2
+func parseCRILog(log []byte, msg *Message) error {
+	var err error
+	// Parse timestamp
+	idx := bytes.Index(log, delimiter)
+	if idx < 0 {
+		return fmt.Errorf("timestamp is not found")
+	}
+	msg.Timestamp, err = time.Parse(timeFormatIn, string(log[:idx]))
+	if err != nil {
+		return fmt.Errorf("unexpected timestamp format %q: %v", timeFormatIn, err)
+	}
+
+	// Parse stream type
+	log = log[idx+1:]
+	idx = bytes.Index(log, delimiter)
+	if idx < 0 {
+		return fmt.Errorf("stream type is not found")
+	}
+
+	// Parse log tag
+	log = log[idx+1:]
+	idx = bytes.Index(log, delimiter)
+	if idx < 0 {
+		return fmt.Errorf("log tag is not found")
+	}
+	// Keep this forward compatible.
+	tags := bytes.Split(log[:idx], tagDelimiter)
+	partial := runtimeapi.LogTag(tags[0]) == runtimeapi.LogTagPartial
+	// Trim the tailing new line if this is a partial line.
+	if partial && len(log) > 0 && log[len(log)-1] == '\n' {
+		log = log[:len(log)-1]
+	}
+
+	// Get log content
+	msg.Line = log[idx+1:]
+	return nil
+}
+
 func getTailReader(ctx context.Context, r SizeReaderAt, req int) (io.Reader, int, error) {
 	return tailfile.NewTailReader(ctx, r, req)
 }
