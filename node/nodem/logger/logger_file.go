@@ -179,6 +179,7 @@ func decodeFunc(rdr io.Reader) func() (*Message, error) {
 func parseCRILog(log []byte, msg *Message) error {
 	var err error
 	// Parse timestamp
+	logrus.Infof("parseCRILog: %s", string(log))
 	idx := bytes.Index(log, delimiter)
 	if idx < 0 {
 		return fmt.Errorf("timestamp is not found")
