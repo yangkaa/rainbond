@@ -10,14 +10,14 @@ import (
 )
 
 const (
-	// CONTAINER_RUNTIME_DOCKER docker runtime
+	// ContainerRuntimeDocker docker runtime
 	ContainerRuntimeDocker = "docker"
-	// CONTAINER_RUNTIME_CONTAINERD containerd runtime
+	// ContainerRuntimeContainerd containerd runtime
 	ContainerRuntimeContainerd = "containerd"
 	// RuntimeEndpointDocker docker runtime endpoint
-	RuntimeEndpointDocker = "unix:///var/run/dockershim.sock"
+	RuntimeEndpointDocker = "/var/run/dockershim.sock"
 	// RuntimeEndpointContainerd containerd runtime endpoint
-	RuntimeEndpointContainerd = "unix:///run/containerd/containerd.sock"
+	RuntimeEndpointContainerd = "/run/containerd/containerd.sock"
 )
 
 const (
