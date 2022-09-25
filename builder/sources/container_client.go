@@ -81,6 +81,7 @@ type ClientFactory interface {
 
 // NewContainerImageClient new container image client
 func NewContainerImageClient(containerRuntime, endpoint string, timeout time.Duration) (c ContainerImageCli, err error) {
+	logrus.Infof("create container client runtime %s endpoint %s", containerRuntime, endpoint)
 	switch containerRuntime {
 	case ContainerRuntimeDocker:
 		factory := &dockerClientFactory{}
