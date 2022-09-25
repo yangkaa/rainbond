@@ -68,9 +68,9 @@ func (c *ContainerLogManage) Start() error {
 			logrus.Errorf(err.Error())
 		}
 	}()
-	go c.handleLogger()
-	go c.listAndWatchContainer(errchan)
-	go c.loollist()
+	//go c.handleLogger()
+	//go c.listAndWatchContainer(errchan)
+	//go c.loollist()
 	logrus.Infof("start container log manage success")
 	return nil
 }

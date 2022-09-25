@@ -169,7 +169,7 @@ func decodeFunc(rdr io.Reader) func() (*Message, error) {
 		for retries := 0; retries < maxJSONDecodeRetry; retries++ {
 			p := make([]byte, 65535)
 			rdr.Read(p)
-			logrus.Infof("decodeFunc file name: %s, log line: %s", rdr, string(p))
+			//logrus.Infof("decodeFunc file name: %s, log line: %s", rdr, string(p))
 			//logrus.Infof("decodeFunc file name: %s", rdr)
 			msg, err = decodeLogLine(dec, l)
 			if err == nil || err == io.EOF {
