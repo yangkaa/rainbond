@@ -14,6 +14,7 @@ require (
 	github.com/bluebreezecf/opentsdb-goclient v0.0.0-20190921120552-796138372df3
 	github.com/cockroachdb/cmux v0.0.0-20170110192607-30d10be49292 // indirect
 	github.com/containerd/containerd v1.5.7
+	github.com/containerd/typeurl v1.0.2
 	github.com/coreos/etcd v3.3.17+incompatible
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/crossplane/crossplane-runtime v0.10.0
@@ -88,7 +89,6 @@ require (
 	github.com/twinj/uuid v1.0.0
 	github.com/urfave/cli v1.22.2
 	github.com/yudai/umutex v0.0.0-20150817080136-18216d265c6b
-	github.com/containerd/typeurl v1.0.2
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63
 	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5 // indirect

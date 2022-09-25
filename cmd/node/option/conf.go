@@ -24,8 +24,7 @@ import (
 	"fmt"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
-	"github.com/goodrain/rainbond/util/criutil"
-	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	"github.com/goodrain/rainbond/builder/sources"
 	"os"
 	"path"
 	"time"
@@ -50,6 +49,7 @@ var (
 )
 
 const (
+	EndpointDocker          = "unix:///var/run/docker.sock"
 	DockerContainerdSock    = "/var/run/docker/containerd/containerd.sock"
 	RunDockerContainerdSock = "/run/docker/containerd/containerd.sock"
 	ContainerdSock          = "/run/containerd/containerd.sock"
@@ -110,8 +110,11 @@ type Conf struct {
 	//enable collect docker container log
 	EnableCollectLog bool
 	//DockerCli        *dockercli.Client
-	RuntimeServiceCli runtimeapi.RuntimeServiceClient
-	ContainerdCli     *containerd.Client
+	//RuntimeServiceCli runtimeapi.RuntimeServiceClient
+	//ContainerdCli     *containerd.Client
+	ContainerRuntime  string
+	RuntimeEndpoint   string
+	ContainerImageCli sources.ContainerImageCli
 	EtcdCli           *client.Client
 
 	LicPath   string
@@ -202,6 +205,8 @@ func (a *Conf) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.ImageRepositoryHost, "image-repo-host", "goodrain.me", "The host of image repository")
 	fs.StringVar(&a.GatewayVIP, "gateway-vip", "", "The vip of gateway")
 	fs.StringVar(&a.HostsFile, "hostsfile", "/newetc/hosts", "/etc/hosts mapped path in the container. eg. /etc/hosts:/tmp/hosts. Do not set hostsfile to /etc/hosts")
+	fs.StringVar(&a.ContainerRuntime, "container-runtime", sources.ContainerRuntimeContainerd, "container runtime, support docker and containerd")
+	fs.StringVar(&a.RuntimeEndpoint, "runtime-endpoint", sources.RuntimeEndpointContainerd, "container runtime endpoint")
 }
 
 //SetLog 设置log
@@ -239,26 +244,13 @@ func newClient(namespace, address string, opts ...containerd.ClientOpt) (*contai
 
 //ParseClient handle config and create some api
 func (a *Conf) ParseClient(ctx context.Context, etcdClientArgs *etcdutil.ClientArgs) (err error) {
-	//a.DockerCli, err = dockercli.NewEnvClient()
-	//if err != nil {
-	//	return err
-	//}
-	address := "unix:///var/run/dockershim.sock"
-	if os.Getenv("RUNTIME_ENDPOINT") != "" {
-		address = os.Getenv("RUNTIME_ENDPOINT")
-	}
-	runtimeClient, _, err := criutil.GetRuntimeClient(context.Background(), address, time.Second*3)
+	logrus.Infof("begin create container image client, runtime [%s] runtime endpoint [%s]", a.ContainerRuntime, a.RuntimeEndpoint, a.EtcdEndpoints)
+	containerImageCli, err := sources.NewContainerImageClient(a.ContainerRuntime, a.RuntimeEndpoint, time.Second*3)
 	if err != nil {
-		return
-	}
-	a.RuntimeServiceCli = runtimeClient
-	client, ctx, _, err := newClient("", ContainerdSock)
-	if err != nil {
-		logrus.Errorf("new client failed %v", err)
 		return err
 	}
-	a.ContainerdCli = client
-	logrus.Infof("begin create etcd client: %s", a.EtcdEndpoints)
+	a.ContainerImageCli = containerImageCli
+	logrus.Infof("create container image client success\n begin create etcd client: %s", a.EtcdEndpoints)
 	for {
 		a.EtcdCli, err = etcdutil.NewClient(ctx, etcdClientArgs)
 		if err != nil {
