@@ -8,6 +8,7 @@ import (
 	"github.com/containerd/typeurl"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"os"
 	"strings"
 
 	"github.com/goodrain/rainbond/util/criutil"
@@ -33,6 +34,9 @@ func (f containerdClientFactory) NewClient(endpoint string, timeout time.Duratio
 	runtimeClient, grpcConn, err = criutil.GetRuntimeClient(context.Background(), endpoint, time.Second*3)
 	if err != nil {
 		return nil, err
+	}
+	if os.Getenv("CONTAINERD_SOCK") != "" {
+		endpoint = os.Getenv("CONTAINERD_SOCK")
 	}
 	containerdCli, err = containerd.New(endpoint, containerd.WithTimeout(timeout))
 	if err != nil {
