@@ -51,15 +51,19 @@ type ContainerDesc struct {
 
 func (c *ContainerDesc) GetLogPath() string {
 	if c.ContainerRuntime == ContainerRuntimeDocker {
+		logrus.Infof("docker container log path %s", c.ContainerJSON.LogPath)
 		return c.ContainerJSON.LogPath
 	}
+	logrus.Infof("containerd container log path %s", c.ContainerStatus.GetLogPath())
 	return c.ContainerStatus.GetLogPath()
 }
 
 func (c *ContainerDesc) GetId() string {
 	if c.ContainerRuntime == ContainerRuntimeDocker {
+		logrus.Infof("docker container id %s", c.ContainerJSON.ID)
 		return c.ContainerJSON.ID
 	}
+	logrus.Infof("containerd container id %s", c.ContainerStatus.GetId())
 	return c.ContainerStatus.GetId()
 }
 

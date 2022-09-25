@@ -9,6 +9,7 @@ import (
 	dockercli "github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	"os"
 	"strings"
 	"time"
 )
@@ -29,6 +30,9 @@ type dockerClientFactory struct{}
 var _ ClientFactory = &dockerClientFactory{}
 
 func (f dockerClientFactory) NewClient(endpoint string, timeout time.Duration) (ContainerImageCli, error) {
+	if os.Getenv("DOCKER_API_VERSION") == "" {
+		os.Setenv("DOCKER_API_VERSION", "1.40")
+	}
 	cli, err := dockercli.NewClientWithOpts(dockercli.FromEnv)
 	if err != nil {
 		return nil, err
