@@ -81,6 +81,7 @@ func CreateSourceCodeParse(source string, logger event.Logger) Parser {
 
 //Parse 获取代码 解析代码 检验代码
 func (d *SourceCodeParse) Parse() ParseErrorList {
+	logrus.Infof("start parse source code %s", d.source)
 	if d.source == "" {
 		d.logger.Error("源码检查输入参数错误", map[string]string{"step": "parse"})
 		d.errappend(Errorf(FatalError, "source can not be empty"))
