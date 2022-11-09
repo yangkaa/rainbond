@@ -4,7 +4,7 @@ ARG RELEASE_DESC
 
 ENV WORK_DIR=/run
 
-RUN apk add --no-cache openssl openssh-client subversion
+RUN sed -i 's/mirrors.aliyun.com/dl-cdn.alpinelinux.org/g' /etc/apk/repositories && apk add --no-cache openssl openssh-client subversion
 COPY rainbond-chaos entrypoint.sh /run/
 COPY export-app /src/export-app
 

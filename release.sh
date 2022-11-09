@@ -17,7 +17,7 @@ fi
 
 GO_VERSION=1.17-alpine3.16
 
-GOPROXY=${GOPROXY:-'https://goproxy.cn'}
+GOPROXY=${GOPROXY:-''}
 
 if [ "$DISABLE_GOPROXY" == "true" ]; then
 	GOPROXY=
