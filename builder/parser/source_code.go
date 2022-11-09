@@ -272,7 +272,9 @@ func (d *SourceCodeParse) Parse() ParseErrorList {
 	//获取代码仓库
 	switch csi.ServerType {
 	case "git":
+		logrus.Infof("start get service %s code by git", csi.ServiceID)
 		if err := gitFunc(); err != nil && err.IsFatalError() {
+			logrus.Errorf("get service %s code by git failure %s", csi.ServiceID, err.Error())
 			return err
 		}
 	case "svn":
