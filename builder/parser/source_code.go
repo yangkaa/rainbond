@@ -111,10 +111,14 @@ func (d *SourceCodeParse) Parse() ParseErrorList {
 	}
 	// The source code is useless after the test is completed, and needs to be deleted.
 	defer func() {
-		if csi.ServerType != "pkg"{
-			if sources.CheckFileExist(buildInfo.GetCodeHome()) {
-				if err := sources.RemoveDir(buildInfo.GetCodeHome()); err != nil {
-					logrus.Warningf("remove source code: %v", err)
+		logrus.Infof("ready delete source code: [%s]", buildInfo.GetCodeHome())
+		if os.Getenv("REMOVE_CODE") != "" {
+			logrus.Infof("remove code home: %s success", buildInfo.GetCodeHome())
+			if csi.ServerType != "pkg" {
+				if sources.CheckFileExist(buildInfo.GetCodeHome()) {
+					if err := sources.RemoveDir(buildInfo.GetCodeHome()); err != nil {
+						logrus.Warningf("remove source code: %v", err)
+					}
 				}
 			}
 		}
@@ -206,10 +210,10 @@ func (d *SourceCodeParse) Parse() ParseErrorList {
 		d.branchs = rs.Branchs
 		return nil
 	}
-	packageFunc :=func() ParseErrorList{
+	packageFunc := func() ParseErrorList {
 		var checkPath string
 		checkPath = buildInfo.RepostoryURL
-		pathSplit := strings.Split(buildInfo.RepostoryURL,"/")
+		pathSplit := strings.Split(buildInfo.RepostoryURL, "/")
 		eventID := pathSplit[len(pathSplit)-1]
 		files, err := ioutil.ReadDir(checkPath)
 		if err != nil {
@@ -302,10 +306,12 @@ func (d *SourceCodeParse) Parse() ParseErrorList {
 	var buildPath = buildInfo.GetCodeBuildAbsPath()
 	//解析代码类型
 	var lang code.Lang
+	logrus.Infof("build path is %s", buildPath)
 	if rbdfileConfig != nil && rbdfileConfig.Language != "" {
 		lang = code.Lang(rbdfileConfig.Language)
 	} else {
 		lang, err = code.GetLangType(buildPath)
+		logrus.Infof("get lang type %s, err %v", lang, err)
 		if err != nil {
 			if err == code.ErrCodeDirNotExist {
 				d.errappend(ErrorAndSolve(FatalError, "源码目录不存在", "获取代码任务失败，请联系客服"))
@@ -595,6 +601,7 @@ func removeQuotes(value string) string {
 }
 
 func (d *SourceCodeParse) parseDockerfileInfo(dockerfile string) bool {
+	logrus.Infof("parse dockerfile info %s", dockerfile)
 	commands, err := sources.ParseFile(dockerfile)
 	if err != nil {
 		d.errappend(ErrorAndSolve(FatalError, err.Error(), "请确认Dockerfile格式是否符合规范"))

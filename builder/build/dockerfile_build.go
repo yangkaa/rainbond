@@ -132,7 +132,7 @@ func (d *dockerfileBuild) runBuildJob(re *Request, buildImageName string) error 
 	}
 	re.Logger.Info(util.Translation("create build code job success"), map[string]string{"step": "build-exector"})
 	// delete job after complete
-	defer jobc.GetJobController().DeleteJob(job.Name)
+	// defer jobc.GetJobController().DeleteJob(job.Name)
 	return d.waitingComplete(re, reChan)
 	return nil
 }

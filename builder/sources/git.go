@@ -115,6 +115,7 @@ func getShowURL(rurl string) string {
 
 //GitClone git clone code
 func GitClone(csi CodeSourceInfo, sourceDir string, logger event.Logger, timeout int) (*git.Repository, error) {
+	logrus.Infof("start clone code from %s to [%s]", csi.RepositoryURL, sourceDir)
 	GetPrivateFileParam := csi.TenantID
 	if !strings.HasSuffix(csi.RepositoryURL, ".git") {
 		csi.RepositoryURL = csi.RepositoryURL + ".git"

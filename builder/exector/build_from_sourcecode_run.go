@@ -251,9 +251,11 @@ func (i *SourceCodeBuildItem) Run(timeout time.Duration) error {
 	}
 	// clean cache code
 	defer func() {
-		if i.CodeSouceInfo.ServerType != "pkg" {
-			if err := os.RemoveAll(rbi.GetCodeHome()); err != nil {
-				logrus.Warningf("remove source code: %v", err)
+		if os.Getenv("REMOVE_CODE") != "" {
+			if i.CodeSouceInfo.ServerType != "pkg" {
+				if err := os.RemoveAll(rbi.GetCodeHome()); err != nil {
+					logrus.Warningf("remove source code: %v", err)
+				}
 			}
 		}
 	}()
