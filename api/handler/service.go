@@ -45,7 +45,6 @@ import (
 	gclient "github.com/goodrain/rainbond/mq/client"
 	"github.com/goodrain/rainbond/pkg/generated/clientset/versioned"
 	core_util "github.com/goodrain/rainbond/util"
-	typesv1 "github.com/goodrain/rainbond/worker/appm/types/v1"
 	"github.com/goodrain/rainbond/worker/client"
 	"github.com/goodrain/rainbond/worker/discover/model"
 	"github.com/goodrain/rainbond/worker/server"
@@ -1985,16 +1984,16 @@ func (s *ServiceAction) GetServicesStatus(tenantID string, serviceIDs []string) 
 	return info
 }
 
-// GetEnterpriseRunningServices get running services
-func (s *ServiceAction) GetEnterpriseRunningServices(enterpriseID string) ([]string, []string, *util.APIHandleError) {
+// GetEnterpriseServicesStatus get services
+func (s *ServiceAction) GetEnterpriseServicesStatus(enterpriseID string) (map[string]string, *util.APIHandleError) {
 	var tenantIDs []string
 	tenants, err := db.GetManager().EnterpriseDao().GetEnterpriseTenants(enterpriseID)
 	if err != nil {
 		logrus.Errorf("list tenant failed: %s", err.Error())
-		return nil, nil, util.CreateAPIHandleErrorFromDBError(fmt.Sprintf("enterprise[%s] get tenant failed", enterpriseID), err)
+		return nil, util.CreateAPIHandleErrorFromDBError(fmt.Sprintf("enterprise[%s] get tenant failed", enterpriseID), err)
 	}
 	if len(tenants) == 0 {
-		return nil, nil, util.CreateAPIHandleErrorf(400, "enterprise[%s] has not tenants", enterpriseID)
+		return nil, util.CreateAPIHandleErrorf(400, "enterprise[%s] has not tenants", enterpriseID)
 	}
 	for _, tenant := range tenants {
 		tenantIDs = append(tenantIDs, tenant.UUID)
@@ -2002,23 +2001,14 @@ func (s *ServiceAction) GetEnterpriseRunningServices(enterpriseID string) ([]str
 	services, err := db.GetManager().TenantServiceDao().GetServicesByTenantIDs(tenantIDs)
 	if err != nil {
 		logrus.Errorf("list tenants service failed: %s", err.Error())
-		return nil, nil, util.CreateAPIHandleErrorf(500, "get enterprise[%s] service failed: %s", enterpriseID, err.Error())
+		return nil, util.CreateAPIHandleErrorf(500, "get enterprise[%s] service failed: %s", enterpriseID, err.Error())
 	}
 	var serviceIDs []string
 	for _, svc := range services {
 		serviceIDs = append(serviceIDs, svc.ServiceID)
 	}
 	statusList := s.statusCli.GetStatuss(strings.Join(serviceIDs, ","))
-	runningServices := make([]string, 0, 10)
-	abnormalServices := make([]string, 0, 100)
-	for service, status := range statusList {
-		if status == typesv1.RUNNING {
-			runningServices = append(runningServices, service)
-		} else if status == typesv1.ABNORMAL {
-			abnormalServices = append(abnormalServices, service)
-		}
-	}
-	return runningServices, abnormalServices, nil
+	return statusList, nil
 }
 
 //CreateTenant create tenant
@@ -2295,6 +2285,12 @@ func (s *ServiceAction) delServiceMetadata(ctx context.Context, serviceID string
 	if err != nil {
 		return err
 	}
+	if db.GetManager().DB().Dialect().GetName() == "sqlite3" {
+		if err := s.deleteThirdComponent(ctx, service); err != nil {
+			return err
+		}
+		return s.deleteComponent(db.GetManager().DB(), service)
+	}
 	logrus.Infof("delete service %s %s", serviceID, service.ServiceAlias)
 	return db.GetManager().DB().Transaction(func(tx *gorm.DB) error {
 		if err := s.deleteThirdComponent(ctx, service); err != nil {
@@ -2391,6 +2387,29 @@ func (s *ServiceAction) ListVersionInfo(serviceID string) (*api_model.BuildListR
 	result := &api_model.BuildListRespVO{
 		DeployVersion: svc.DeployVersion,
 		List:          bversions,
+	}
+	return result, nil
+}
+
+// EventBuildVersion -
+func (s *ServiceAction) EventBuildVersion(serviceID, buildVersion string) (*api_model.BuildListRespVO, error) {
+	versionInfo, err := db.GetManager().VersionInfoDao().GetVersionByDeployVersion(buildVersion, serviceID)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		logrus.Errorf("error getting all version by service id: %v", err)
+		return nil, fmt.Errorf("error getting all version by service id: %v", err)
+	}
+	b, err := json.Marshal(versionInfo)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling version infos: %v", err)
+	}
+	var bversion *api_model.BuildVersion
+	if err := json.Unmarshal(b, &bversion); err != nil {
+		return nil, fmt.Errorf("error unmarshaling version infos: %v", err)
+	}
+
+	result := &api_model.BuildListRespVO{
+		DeployVersion: buildVersion,
+		List:          bversion,
 	}
 	return result, nil
 }

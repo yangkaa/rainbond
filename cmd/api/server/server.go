@@ -20,11 +20,6 @@ package server
 
 import (
 	"context"
-	"k8s.io/client-go/restmapper"
-	"os"
-	"os/signal"
-	"syscall"
-
 	"github.com/goodrain/rainbond/api/controller"
 	"github.com/goodrain/rainbond/api/db"
 	"github.com/goodrain/rainbond/api/discover"
@@ -42,8 +37,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/client-go/restmapper"
 	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
+	"os"
+	"os/signal"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"syscall"
 )
 
 //Run start run

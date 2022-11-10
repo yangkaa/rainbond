@@ -21,6 +21,7 @@ package exector
 import (
 	"context"
 	"fmt"
+	"github.com/goodrain/rainbond/builder/sources"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -30,7 +31,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/coreos/etcd/clientv3"
-	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 
@@ -64,13 +64,19 @@ type Manager interface {
 	SetReturnTaskChan(func(*pb.TaskMessage))
 	Start() error
 	Stop() error
+	GetImageClient() sources.ImageClient
 }
 
 //NewManager new manager
 func NewManager(conf option.Config, mqc mqclient.MQClient) (Manager, error) {
-	dockerClient, err := client.NewEnvClient()
+	imageClient, err := sources.NewImageClient(conf.ContainerRuntime, conf.RuntimeEndpoint, time.Second*3)
 	if err != nil {
 		return nil, err
+	}
+
+	containerdClient := imageClient.GetContainerdClient()
+	if containerdClient == nil && conf.ContainerRuntime == sources.ContainerRuntimeContainerd {
+		return nil, fmt.Errorf("containerd client is nil")
 	}
 
 	var restConfig *rest.Config // TODO fanyangyang use k8sutil.NewRestConfig
@@ -111,7 +117,7 @@ func NewManager(conf option.Config, mqc mqclient.MQClient) (Manager, error) {
 	}
 	logrus.Infof("The maximum number of concurrent build tasks supported by the current node is %d", maxConcurrentTask)
 	return &exectorManager{
-		DockerClient:      dockerClient,
+		KanikoImage:       conf.KanikoImage,
 		KubeClient:        kubeClient,
 		EtcdCli:           etcdCli,
 		mqClient:          mqc,
@@ -120,11 +126,12 @@ func NewManager(conf option.Config, mqc mqclient.MQClient) (Manager, error) {
 		ctx:               ctx,
 		cancel:            cancel,
 		cfg:               conf,
+		imageClient:       imageClient,
 	}, nil
 }
 
 type exectorManager struct {
-	DockerClient      *client.Client
+	KanikoImage       string
 	KubeClient        kubernetes.Interface
 	EtcdCli           *clientv3.Client
 	tasks             chan *pb.TaskMessage
@@ -135,6 +142,7 @@ type exectorManager struct {
 	cancel            context.CancelFunc
 	runningTask       sync.Map
 	cfg               option.Config
+	imageClient       sources.ImageClient
 }
 
 //TaskWorker worker interface
@@ -275,7 +283,7 @@ func (e *exectorManager) exec(task *pb.TaskMessage) error {
 //buildFromImage build app from docker image
 func (e *exectorManager) buildFromImage(task *pb.TaskMessage) {
 	i := NewImageBuildItem(task.TaskBody)
-	i.DockerClient = e.DockerClient
+	i.ImageClient = e.imageClient
 	i.Logger.Info("Start with the image build application task", map[string]string{"step": "builder-exector", "status": "starting"})
 	defer event.GetManager().ReleaseLogger(i.Logger)
 	defer func() {
@@ -311,6 +319,10 @@ func (e *exectorManager) buildFromImage(task *pb.TaskMessage) {
 				logrus.Errorf("Update app service deploy version failure %s, service %s do not auto upgrade", err.Error(), i.ServiceID)
 				break
 			}
+			if err := e.UpdateServiceEvent(i.EventID, i.DeployVersion); err != nil {
+				logrus.Errorf("Update service event deploy version failure %s, service %s do not auto upgrade", err.Error(), i.ServiceID)
+				return
+			}
 			err = e.sendAction(i.TenantID, i.ServiceID, i.EventID, i.DeployVersion, i.Action, configs, i.Logger)
 			if err != nil {
 				i.Logger.Error("Send upgrade action failed", map[string]string{"step": "callback", "status": "failure"})
@@ -324,7 +336,8 @@ func (e *exectorManager) buildFromImage(task *pb.TaskMessage) {
 //support git repository
 func (e *exectorManager) buildFromSourceCode(task *pb.TaskMessage) {
 	i := NewSouceCodeBuildItem(task.TaskBody)
-	i.DockerClient = e.DockerClient
+	i.ImageClient = e.imageClient
+	i.KanikoImage = e.KanikoImage
 	i.KubeClient = e.KubeClient
 	i.RbdNamespace = e.cfg.RbdNamespace
 	i.RbdRepoName = e.cfg.RbdRepoName
@@ -372,6 +385,10 @@ func (e *exectorManager) buildFromSourceCode(task *pb.TaskMessage) {
 			logrus.Errorf("Update app service deploy version failure %s, service %s do not auto upgrade", err.Error(), i.ServiceID)
 			return
 		}
+		if err := e.UpdateServiceEvent(i.EventID, i.DeployVersion); err != nil {
+			logrus.Errorf("Update service event deploy version failure %s, service %s do not auto upgrade", err.Error(), i.ServiceID)
+			return
+		}
 		err = e.sendAction(i.TenantID, i.ServiceID, i.EventID, i.DeployVersion, i.Action, configs, i.Logger)
 		if err != nil {
 			i.Logger.Error("Send upgrade action failed", map[string]string{"step": "callback", "status": "failure"})
@@ -417,6 +434,10 @@ func (e *exectorManager) buildFromMarketSlug(task *pb.TaskMessage) {
 					logrus.Errorf("Update app service deploy version failure %s, service %s do not auto upgrade", err.Error(), i.ServiceID)
 					break
 				}
+				if err := e.UpdateServiceEvent(i.EventID, i.DeployVersion); err != nil {
+					logrus.Errorf("Update service event deploy version failure %s, service %s do not auto upgrade", err.Error(), i.ServiceID)
+					return
+				}
 				err = e.sendAction(i.TenantID, i.ServiceID, i.EventID, i.DeployVersion, i.Action, i.Configs, i.Logger)
 				if err != nil {
 					i.Logger.Error("Send upgrade action failed", map[string]string{"step": "callback", "status": "failure"})
@@ -443,15 +464,16 @@ func (e *exectorManager) sendAction(tenantID, serviceID, eventID, newVersion, ac
 	case "upgrade":
 		//add upgrade event
 		event := &dbmodel.ServiceEvent{
-			EventID:   util.NewUUID(),
-			TenantID:  tenantID,
-			ServiceID: serviceID,
-			StartTime: time.Now().Format(time.RFC3339),
-			OptType:   "upgrade",
-			Target:    "service",
-			TargetID:  serviceID,
-			UserName:  "",
-			SynType:   dbmodel.ASYNEVENTTYPE,
+			EventID:      util.NewUUID(),
+			TenantID:     tenantID,
+			ServiceID:    serviceID,
+			StartTime:    time.Now().Format(time.RFC3339),
+			OptType:      "upgrade",
+			Target:       "service",
+			TargetID:     serviceID,
+			UserName:     "",
+			SynType:      dbmodel.ASYNEVENTTYPE,
+			BuildVersion: newVersion,
 		}
 		if err := db.GetManager().ServiceEventDao().AddModel(event); err != nil {
 			logrus.Errorf("create upgrade event failure %s, service %s do not auto upgrade", err.Error(), serviceID)
@@ -519,7 +541,7 @@ func (e *exectorManager) slugShare(task *pb.TaskMessage) {
 
 //imageShare share app of docker image
 func (e *exectorManager) imageShare(task *pb.TaskMessage) {
-	i, err := NewImageShareItem(task.TaskBody, e.DockerClient, e.EtcdCli)
+	i, err := NewImageShareItem(task.TaskBody, e.imageClient, e.EtcdCli)
 	if err != nil {
 		logrus.Error("create share image task error.", err.Error())
 		i.Logger.Error(util.Translation("create share image task error"), map[string]string{"step": "builder-exector", "status": "failure"})
@@ -585,13 +607,22 @@ func (e *exectorManager) Stop() error {
 	return nil
 }
 
+func (e *exectorManager) GetImageClient() sources.ImageClient {
+	return e.imageClient
+}
+
 func (e *exectorManager) GetMaxConcurrentTask() float64 {
 	return float64(e.maxConcurrentTask)
 }
+
 func (e *exectorManager) GetCurrentConcurrentTask() float64 {
 	return float64(len(e.tasks))
 }
 
 func (e *exectorManager) UpdateDeployVersion(serviceID, newVersion string) error {
 	return db.GetManager().TenantServiceDao().UpdateDeployVersion(serviceID, newVersion)
+}
+
+func (e *exectorManager) UpdateServiceEvent(eventID, deployVersion string) error {
+	return db.GetManager().ServiceEventDao().UpdateBuildVersion(eventID, deployVersion)
 }

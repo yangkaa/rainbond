@@ -21,23 +21,24 @@ package conversion
 import (
 	"encoding/json"
 	"fmt"
+	k8sutil "github.com/goodrain/rainbond/util/k8s"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
+	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"strconv"
 	"strings"
 
 	apimodel "github.com/goodrain/rainbond/api/model"
 
 	"github.com/goodrain/rainbond/api/handler/app_governance_mode/adaptor"
-	"github.com/sirupsen/logrus"
-	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/api/batch/v1beta1"
-
 	"github.com/goodrain/rainbond/db"
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	"github.com/goodrain/rainbond/util"
 	v1 "github.com/goodrain/rainbond/worker/appm/types/v1"
 	"github.com/jinzhu/gorm"
+	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -250,7 +251,7 @@ func initBaseJob(as *v1.AppService, service *dbmodel.TenantServices) {
 	}, injectLabels)
 
 	var js *apimodel.JobStrategy
-	if service.JobStrategy != ""{
+	if service.JobStrategy != "" {
 		err := json.Unmarshal([]byte(service.JobStrategy), &js)
 		if err != nil {
 			logrus.Error("job strategy json unmarshal error", err)
@@ -288,19 +289,16 @@ func initBaseJob(as *v1.AppService, service *dbmodel.TenantServices) {
 
 func initBaseCronJob(as *v1.AppService, service *dbmodel.TenantServices) {
 	as.ServiceType = v1.TypeCronJob
-	cronJob := as.GetCronJob()
-	if cronJob == nil {
-		cronJob = &v1beta1.CronJob{}
-	}
 	injectLabels := getInjectLabels(as)
-	jobTemp := v1beta1.JobTemplateSpec{}
+	jobTemp := batchv1.JobTemplateSpec{}
 	jobTemp.Name = as.GetK8sWorkloadName()
 	jobTemp.Namespace = as.GetNamespace()
 	jobTemp.Labels = as.GetCommonLabels(jobTemp.Labels, map[string]string{
 		"name":    service.ServiceAlias,
 		"version": service.DeployVersion,
 	}, injectLabels)
-	if service.JobStrategy != ""{
+	var schedule string
+	if service.JobStrategy != "" {
 		var js *apimodel.JobStrategy
 		err := json.Unmarshal([]byte(service.JobStrategy), &js)
 		if err != nil {
@@ -333,12 +331,32 @@ func initBaseCronJob(as *v1.AppService, service *dbmodel.TenantServices) {
 				jobTemp.Spec.Completions = &cpt
 			}
 		}
-		cronJob.Spec.Schedule = js.Schedule
+		schedule = js.Schedule
 	}
-	cronJob.Spec.JobTemplate = jobTemp
+
+	if k8sutil.GetKubeVersion().AtLeast(utilversion.MustParseSemantic("v1.21.0")) {
+		cronJob := as.GetCronJob()
+		if cronJob == nil {
+			cronJob = &batchv1.CronJob{}
+		}
+		cronJob.Spec.Schedule = schedule
+		cronJob.Spec.JobTemplate = jobTemp
+		cronJob.Namespace = as.GetNamespace()
+		cronJob.Name = as.GetK8sWorkloadName()
+		as.SetCronJob(cronJob)
+		return
+	}
+	cronJob := as.GetBetaCronJob()
+	if cronJob == nil {
+		cronJob = &batchv1beta1.CronJob{}
+	}
+	cronJob.Spec.JobTemplate = batchv1beta1.JobTemplateSpec{
+		ObjectMeta: jobTemp.ObjectMeta,
+		Spec:       jobTemp.Spec,
+	}
 	cronJob.Namespace = as.GetNamespace()
 	cronJob.Name = as.GetK8sWorkloadName()
-	as.SetCronJob(cronJob)
+	as.SetBetaCronJob(cronJob)
 }
 
 func getInjectLabels(as *v1.AppService) map[string]string {

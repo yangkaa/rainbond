@@ -9,13 +9,11 @@ import (
 	"github.com/goodrain/rainbond/api/util"
 	"github.com/goodrain/rainbond/db"
 	dbmodel "github.com/goodrain/rainbond/db/model"
-	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	appv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +31,7 @@ import (
 func (c *clusterAction) AppYamlResourceName(yamlResource api_model.YamlResource) (map[string]api_model.LabelResource, *util.APIHandleError) {
 	logrus.Infof("AppYamlResourceName begin")
 	fileResource := make(map[string]api_model.LabelResource)
-	k8sResourceObjects := c.YamlToResource(yamlResource)
+	k8sResourceObjects := c.YamlToResource(yamlResource, api_model.YamlSourceFile, "")
 	var DeployNames, JobNames, CJNames, SFSNames, RoleNames, HPANames, RBNames, SANames, SecretNames, ServiceNames, CMNames, NetworkPolicyNames, IngressNames, PVCNames []string
 	defaultResource := make(map[string][]string)
 	for _, k8sResourceObject := range k8sResourceObjects {
@@ -110,9 +108,13 @@ func (c *clusterAction) AppYamlResourceName(yamlResource api_model.YamlResource)
 }
 
 //AppYamlResourceDetailed -
-func (c *clusterAction) AppYamlResourceDetailed(yamlResource api_model.YamlResource, yamlImport bool) (api_model.ApplicationResource, *util.APIHandleError) {
+func (c *clusterAction) AppYamlResourceDetailed(yamlResource api_model.YamlResource, yamlImport bool, Yaml string) (api_model.ApplicationResource, *util.APIHandleError) {
 	logrus.Infof("AppYamlResourceDetailed begin")
-	k8sResourceObjects := c.YamlToResource(yamlResource)
+	source := api_model.YamlSourceFile
+	if Yaml != "" {
+		source = api_model.YamlSourceHelm
+	}
+	k8sResourceObjects := c.YamlToResource(yamlResource, source, Yaml)
 	var K8SResource []dbmodel.K8sResource
 	var ConvertResource []api_model.ConvertResource
 	for _, k8sResourceObject := range k8sResourceObjects {
@@ -203,7 +205,7 @@ func (c *clusterAction) AppYamlResourceDetailed(yamlResource api_model.YamlResou
 				c.PodTemplateSpecResource(parameter)
 			case api_model.CronJob:
 				cjJSON, _ := json.Marshal(buildResource.Resource)
-				var cjObject v1beta1.CronJob
+				var cjObject batchv1.CronJob
 				json.Unmarshal(cjJSON, &cjObject)
 				memory, cpu := cjObject.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Resources.Requests.Memory().Value(), cjObject.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Resources.Requests.Cpu().MilliValue()
 				if memory == 0 {
@@ -301,44 +303,42 @@ func (c *clusterAction) AppYamlResourceImport(yamlResource api_model.YamlResourc
 		return api_model.AppComponent{}, &util.APIHandleError{Code: 400, Err: fmt.Errorf("GetAppByID error %v", err)}
 	}
 	var ar api_model.AppComponent
-	err = db.GetManager().DB().Transaction(func(tx *gorm.DB) error {
-		k8sResource, err := c.CreateK8sResource(tx, components.KubernetesResources, app.AppID)
+	k8sResource, err := c.CreateK8sResource(components.KubernetesResources, app.AppID)
+	if err != nil {
+		logrus.Errorf("create K8sResources err:%v", err)
+		return ar, &util.APIHandleError{Code: 400, Err: fmt.Errorf("create K8sResources err:%v", err)}
+	}
+	var componentAttributes []api_model.ComponentAttributes
+	for _, componentResource := range components.ConvertResource {
+		component, err := c.CreateComponent(app, yamlResource.TenantID, componentResource, yamlResource.Namespace, true)
 		if err != nil {
-			logrus.Errorf("create K8sResources err:%v", err)
-			return &util.APIHandleError{Code: 400, Err: fmt.Errorf("create K8sResources err:%v", err)}
+			logrus.Errorf("%v", err)
+			return ar, &util.APIHandleError{Code: 400, Err: fmt.Errorf("create app error:%v", err)}
 		}
-		var componentAttributes []api_model.ComponentAttributes
-		for _, componentResource := range components.ConvertResource {
-			component, err := c.CreateComponent(app, yamlResource.TenantID, componentResource, yamlResource.Namespace, true)
-			if err != nil {
-				logrus.Errorf("%v", err)
-				return &util.APIHandleError{Code: 400, Err: fmt.Errorf("create app error:%v", err)}
-			}
-			c.createENV(componentResource.ENVManagement, component)
-			c.createConfig(componentResource.ConfigManagement, component)
-			c.createPort(componentResource.PortManagement, component)
-			componentResource.TelescopicManagement.RuleID = c.createTelescopic(componentResource.TelescopicManagement, component)
-			componentResource.HealthyCheckManagement.ProbeID = c.createHealthyCheck(componentResource.HealthyCheckManagement, component)
-			c.createK8sAttributes(componentResource.ComponentK8sAttributesManagement, yamlResource.TenantID, component)
-			componentAttributes = append(componentAttributes, api_model.ComponentAttributes{
-				TS:                     component,
-				Image:                  componentResource.BasicManagement.Image,
-				Cmd:                    componentResource.BasicManagement.Cmd,
-				ENV:                    componentResource.ENVManagement,
-				Config:                 componentResource.ConfigManagement,
-				Port:                   componentResource.PortManagement,
-				Telescopic:             componentResource.TelescopicManagement,
-				HealthyCheck:           componentResource.HealthyCheckManagement,
-				ComponentK8sAttributes: componentResource.ComponentK8sAttributesManagement,
-			})
-		}
-		ar = api_model.AppComponent{
-			App:          app,
-			K8sResources: k8sResource,
-			Component:    componentAttributes,
-		}
-		return nil
-	})
+		c.createENV(componentResource.ENVManagement, component)
+		c.createConfig(componentResource.ConfigManagement, component)
+		c.createPort(componentResource.PortManagement, component)
+		componentResource.TelescopicManagement.RuleID = c.createTelescopic(componentResource.TelescopicManagement, component)
+		componentResource.HealthyCheckManagement.ProbeID = c.createHealthyCheck(componentResource.HealthyCheckManagement, component)
+		c.createK8sAttributes(componentResource.ComponentK8sAttributesManagement, yamlResource.TenantID, component)
+		componentAttributes = append(componentAttributes, api_model.ComponentAttributes{
+			TS:                     component,
+			Image:                  componentResource.BasicManagement.Image,
+			Cmd:                    componentResource.BasicManagement.Cmd,
+			ENV:                    componentResource.ENVManagement,
+			Config:                 componentResource.ConfigManagement,
+			Port:                   componentResource.PortManagement,
+			Telescopic:             componentResource.TelescopicManagement,
+			HealthyCheck:           componentResource.HealthyCheckManagement,
+			ComponentK8sAttributes: componentResource.ComponentK8sAttributesManagement,
+		})
+	}
+	ar = api_model.AppComponent{
+		App:          app,
+		K8sResources: k8sResource,
+		Component:    componentAttributes,
+	}
+
 	if err != nil {
 		return api_model.AppComponent{}, &util.APIHandleError{Code: 400, Err: fmt.Errorf("app yaml resource import error:%v", err)}
 	}
@@ -347,22 +347,29 @@ func (c *clusterAction) AppYamlResourceImport(yamlResource api_model.YamlResourc
 }
 
 //YamlToResource -
-func (c *clusterAction) YamlToResource(yamlResource api_model.YamlResource) []api_model.K8sResourceObject {
+func (c *clusterAction) YamlToResource(yamlResource api_model.YamlResource, yamlSource, yamlContent string) []api_model.K8sResourceObject {
 	yamlDirectoryPath := path.Join("/grdata/package_build/temp/events", yamlResource.EventID, "*")
-	yamlFilesPath, _ := filepath.Glob(yamlDirectoryPath)
+	yamlFilesPath := []string{api_model.YamlSourceHelm}
+	if yamlSource == api_model.YamlSourceFile {
+		yamlFilesPath, _ = filepath.Glob(yamlDirectoryPath)
+	}
 	var fileBuildResourceList []api_model.K8sResourceObject
 	for _, yamlFilePath := range yamlFilesPath {
-		pathSplitList := strings.Split(yamlFilePath, "/")
-		fileName := pathSplitList[len(pathSplitList)-1]
-		yamlFileBytes, err := ioutil.ReadFile(yamlFilePath)
-		if err != nil {
-			logrus.Errorf("%v", err)
-			fileBuildResourceList = append(fileBuildResourceList, api_model.K8sResourceObject{
-				FileName:       fileName,
-				BuildResources: nil,
-				Error:          err.Error(),
-			})
-			continue
+		var fileName string
+		yamlFileBytes := []byte(yamlContent)
+		if yamlSource == api_model.YamlSourceFile {
+			fileName = path.Base(yamlFilePath)
+			var err error
+			yamlFileBytes, err = ioutil.ReadFile(yamlFilePath)
+			if err != nil {
+				logrus.Errorf("%v", err)
+				fileBuildResourceList = append(fileBuildResourceList, api_model.K8sResourceObject{
+					FileName:       fileName,
+					BuildResources: nil,
+					Error:          err.Error(),
+				})
+				continue
+			}
 		}
 		dc, err := dynamic.NewForConfig(c.config)
 		if err != nil {
@@ -431,6 +438,7 @@ func (c *clusterAction) YamlToResource(yamlResource api_model.YamlResource) []ap
 
 //ResourceCreate -
 func (c *clusterAction) ResourceCreate(buildResource api_model.BuildResource, namespace string) (*unstructured.Unstructured, error) {
+	logrus.Infof("begin ResourceCreate function")
 	mapping, err := c.mapper.RESTMapping(buildResource.GVK.GroupKind(), buildResource.GVK.Version)
 	if err != nil {
 		logrus.Errorf("%v", err)

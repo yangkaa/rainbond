@@ -20,6 +20,7 @@ package option
 
 import (
 	"fmt"
+	"github.com/goodrain/rainbond/builder/sources"
 	"runtime"
 
 	"github.com/goodrain/rainbond/mq/client"
@@ -37,6 +38,7 @@ type Config struct {
 	EtcdPrefix           string
 	ClusterName          string
 	MysqlConnectionInfo  string
+	KanikoImage          string
 	DBType               string
 	PrometheusMetricPath string
 	EventLogServers      []string
@@ -55,6 +57,8 @@ type Config struct {
 	CachePVCName         string
 	CacheMode            string
 	CachePath            string
+	ContainerRuntime     string
+	RuntimeEndpoint      string
 }
 
 //Builder  builder server
@@ -79,6 +83,7 @@ func (a *Builder) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&a.EtcdTimeout, "etcd-timeout", 5, "etcd http timeout seconds")
 	fs.StringVar(&a.EtcdPrefix, "etcd-prefix", "/store", "the etcd data save key prefix ")
 	fs.StringVar(&a.PrometheusMetricPath, "metric", "/metrics", "prometheus metrics path")
+	fs.StringVar(&a.KanikoImage, "kaniko-image", "registry.cn-hangzhou.aliyuncs.com/goodrain/kaniko-executor:latest", "kaniko image version")
 	fs.StringVar(&a.DBType, "db-type", "mysql", "db type mysql or etcd")
 	fs.StringVar(&a.MysqlConnectionInfo, "mysql", "root:admin@tcp(127.0.0.1:3306)/region", "mysql db connection info")
 	fs.StringSliceVar(&a.EventLogServers, "event-servers", []string{"127.0.0.1:6366"}, "event log server address. simple lb")
@@ -98,6 +103,8 @@ func (a *Builder) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.CachePVCName, "pvc-cache-name", "cache", "pvc name of cache")
 	fs.StringVar(&a.CacheMode, "cache-mode", "sharefile", "volume cache mount type, can be hostpath and sharefile, default is sharefile, which mount using pvc")
 	fs.StringVar(&a.CachePath, "cache-path", "/cache", "volume cache mount path, when cache-mode using hostpath, default path is /cache")
+	fs.StringVar(&a.ContainerRuntime, "container-runtime", sources.ContainerRuntimeContainerd, "container runtime, support docker and containerd")
+	fs.StringVar(&a.RuntimeEndpoint, "runtime-endpoint", sources.RuntimeEndpointContainerd, "container runtime endpoint")
 }
 
 //SetLog 设置log

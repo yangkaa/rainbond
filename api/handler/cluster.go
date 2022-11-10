@@ -9,19 +9,27 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goodrain/rainbond/api/client/prometheus"
 	"github.com/goodrain/rainbond/api/model"
 	"github.com/goodrain/rainbond/api/util"
+	"github.com/goodrain/rainbond/api/util/bcode"
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	"github.com/goodrain/rainbond/util/constants"
+	k8sutil "github.com/goodrain/rainbond/util/k8s"
+	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/sirupsen/logrus"
+	"io"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apiserver/pkg/util/flushwriter"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"net/http"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ClusterHandler -
@@ -43,17 +51,23 @@ type ClusterHandler interface {
 	UpdateAppK8SResource(ctx context.Context, namespace, appID, name, resourceYaml, kind string) (dbmodel.K8sResource, *util.APIHandleError)
 	SyncAppK8SResources(ctx context.Context, resources *model.SyncResources) ([]*dbmodel.K8sResource, *util.APIHandleError)
 	AppYamlResourceName(yamlResource model.YamlResource) (map[string]model.LabelResource, *util.APIHandleError)
-	AppYamlResourceDetailed(yamlResource model.YamlResource, yamlImport bool) (model.ApplicationResource, *util.APIHandleError)
+	AppYamlResourceDetailed(yamlResource model.YamlResource, yamlImport bool, Yaml string) (model.ApplicationResource, *util.APIHandleError)
 	AppYamlResourceImport(yamlResource model.YamlResource, components model.ApplicationResource) (model.AppComponent, *util.APIHandleError)
+	RbdLog(w http.ResponseWriter, r *http.Request, podName string, follow bool) error
+	GetRbdPods() (rbds []model.RbdResp, err error)
+	CreateShellPod(regionName string) (pod *corev1.Pod, err error)
+	DeleteShellPod(podName string) error
 }
 
 // NewClusterHandler -
-func NewClusterHandler(clientset *kubernetes.Clientset, RbdNamespace string, config *rest.Config, mapper meta.RESTMapper) ClusterHandler {
+func NewClusterHandler(clientset *kubernetes.Clientset, RbdNamespace, grctlImage string, config *rest.Config, mapper meta.RESTMapper, prometheusCli prometheus.Interface) ClusterHandler {
 	return &clusterAction{
-		namespace: RbdNamespace,
-		clientset: clientset,
-		config:    config,
-		mapper:    mapper,
+		namespace:     RbdNamespace,
+		clientset:     clientset,
+		config:        config,
+		mapper:        mapper,
+		grctlImage:    grctlImage,
+		prometheusCli: prometheusCli,
 	}
 }
 
@@ -64,6 +78,15 @@ type clusterAction struct {
 	cacheTime        time.Time
 	config           *rest.Config
 	mapper           meta.RESTMapper
+	grctlImage       string
+	client           client.Client
+	prometheusCli    prometheus.Interface
+}
+
+type nodeInformation struct {
+	memory int64
+	cpu    int64
+	es     int64
 }
 
 //GetClusterInfo -
@@ -88,6 +111,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	var computeNode, manageNode, etcdNode, notReadyComputeNode, notReadyManageNode, notReadyEtcdNode int
 	var healthCapCPU, healthCapMem, unhealthCapCPU, unhealthCapMem int64
 	usedNodeList := make([]*corev1.Node, len(nodes))
+	var nodeReady int32
 	for i := range nodes {
 		node := nodes[i]
 		if !isNodeReady(node) {
@@ -117,6 +141,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		if isEtcdNode(node) {
 			etcdNode++
 		}
+		nodeReady += 1
 		healthCapCPU += node.Status.Allocatable.Cpu().Value()
 		healthCapMem += node.Status.Allocatable.Memory().Value()
 		if node.Spec.Unschedulable == false {
@@ -128,40 +153,65 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR, all_pods int64
 	nodeAllocatableResourceList := make(map[string]*model.NodeResource, len(usedNodeList))
 	var maxAllocatableMemory *model.NodeResource
+
+	query := fmt.Sprint(`rbd_api_exporter_cluster_pod_memory`)
+	podMemoryMetric := c.prometheusCli.GetMetric(query, time.Now())
+
+	query = fmt.Sprint(`rbd_api_exporter_cluster_pod_cpu`)
+	podCPUMetric := c.prometheusCli.GetMetric(query, time.Now())
+
+	query = fmt.Sprint(`rbd_api_exporter_cluster_pod_ephemeral_storage`)
+	podEphemeralStorageMetric := c.prometheusCli.GetMetric(query, time.Now())
+
+	query = fmt.Sprint(`rbd_api_exporter_cluster_pod_number`)
+	podNumber := c.prometheusCli.GetMetric(query, time.Now())
+	for _, podNum := range podNumber.MetricData.MetricValues {
+		all_pods = int64(podNum.Sample.Value())
+	}
 	for i := range usedNodeList {
 		node := usedNodeList[i]
-
-		pods, err := c.listPods(ctx, node.Name)
-		if err != nil {
-			return nil, fmt.Errorf("list pods: %v", err)
-		}
-		all_pods += int64(len(pods))
 		nodeAllocatableResource := model.NewResource(node.Status.Allocatable)
-		for _, pod := range pods {
-			if componentID, ok := pod.Labels["service_id"]; ok {
+		for i, pod := range podMemoryMetric.MetricData.MetricValues {
+			if pod.Metadata["node_name"] != node.Name {
+				continue
+			}
+			if componentID, ok := pod.Metadata["service_id"]; ok {
 				existComponents[componentID] = struct{}{}
 			}
-			if appID, ok := pod.Labels["app_id"]; ok {
+			if appID, ok := pod.Metadata["app_id"]; ok {
 				existApplications[appID] = struct{}{}
 			}
 			nodeAllocatableResource.AllowedPodNumber--
-			for _, c := range pod.Spec.Containers {
-				nodeAllocatableResource.Memory -= c.Resources.Requests.Memory().Value()
-				nodeAllocatableResource.MilliCPU -= c.Resources.Requests.Cpu().MilliValue()
-				nodeAllocatableResource.EphemeralStorage -= c.Resources.Requests.StorageEphemeral().Value()
-				if isNodeReady(node) {
-					healthcpuR += c.Resources.Requests.Cpu().MilliValue()
-					healthmemR += c.Resources.Requests.Memory().Value()
-				} else {
-					unhealthCPUR += c.Resources.Requests.Cpu().MilliValue()
-					unhealthMemR += c.Resources.Requests.Memory().Value()
-				}
-				if pod.Labels["creator"] == "Rainbond" {
-					rbdMemR += c.Resources.Requests.Memory().Value()
-					rbdCPUR += c.Resources.Requests.Cpu().MilliValue()
-				}
+			memory := int64(pod.Sample.Value())
+			cpu := int64(podCPUMetric.MetricData.MetricValues[i].Sample.Value())
+			ephemeralStorage := int64(podEphemeralStorageMetric.MetricData.MetricValues[i].Sample.Value())
+
+			nodeAllocatableResource.Memory -= memory
+			nodeAllocatableResource.MilliCPU -= cpu
+			nodeAllocatableResource.EphemeralStorage -= ephemeralStorage
+			if isNodeReady(node) {
+				healthcpuR += cpu
+				healthmemR += memory
+			} else {
+				unhealthCPUR += cpu
+				unhealthMemR += memory
+			}
+			if _, ok := pod.Metadata["service_id"]; ok {
+				rbdMemR += memory
+				rbdCPUR += cpu
 			}
 		}
+		nodeAllocatableResourceList[node.Name] = nodeAllocatableResource
+
+		// Gets the node resource with the maximum remaining scheduling memory
+		if maxAllocatableMemory == nil {
+			maxAllocatableMemory = nodeAllocatableResource
+		} else {
+			if nodeAllocatableResource.Memory > maxAllocatableMemory.Memory {
+				maxAllocatableMemory = nodeAllocatableResource
+			}
+		}
+
 		nodeAllocatableResourceList[node.Name] = nodeAllocatableResource
 
 		// Gets the node resource with the maximum remaining scheduling memory
@@ -213,6 +263,9 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		NotReadyEtcdNode:                 notReadyEtcdNode,
 		Applications:                     int64(len(existApplications)),
 		Components:                       int64(len(existComponents)),
+		ResourceProxyStatus:              true,
+		K8sVersion:                       k8sutil.GetKubeVersion().String(),
+		NodeReady:                        nodeReady,
 	}
 
 	result.AllNode = len(nodes)
@@ -498,4 +551,136 @@ func MergeMap(map1 map[string][]string, map2 map[string][]string) map[string][]s
 		map2[k] = v
 	}
 	return map2
+}
+
+// CreateShellPod -
+func (c *clusterAction) CreateShellPod(regionName string) (pod *corev1.Pod, err error) {
+	ctx := context.Background()
+	volumes := []corev1.Volume{
+		{
+			Name: "grctl-config",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "grctl-config",
+			MountPath: "/root/.rbd",
+		},
+	}
+	shellPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: fmt.Sprintf("shell-%v-", regionName),
+			Namespace:    c.namespace,
+		},
+		Spec: corev1.PodSpec{
+			TerminationGracePeriodSeconds: new(int64),
+			RestartPolicy:                 corev1.RestartPolicyNever,
+			NodeSelector: map[string]string{
+				"kubernetes.io/os": "linux",
+			},
+			ServiceAccountName: "rainbond-operator",
+			Containers: []corev1.Container{
+				{
+					Name:            "shell",
+					TTY:             true,
+					Stdin:           true,
+					StdinOnce:       true,
+					Image:           c.grctlImage,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					VolumeMounts:    volumeMounts,
+				},
+			},
+			InitContainers: []corev1.Container{
+				{
+					Name:            "init-shell",
+					TTY:             true,
+					Stdin:           true,
+					StdinOnce:       true,
+					Image:           c.grctlImage,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"grctl", "install"},
+					VolumeMounts:    volumeMounts,
+				},
+			},
+			Volumes: volumes,
+		},
+	}
+	pod, err = c.clientset.CoreV1().Pods("rbd-system").Create(ctx, shellPod, metav1.CreateOptions{})
+	if err != nil {
+		logrus.Error("create shell pod error:", err)
+		return nil, err
+	}
+	return pod, nil
+}
+
+// DeleteShellPod -
+func (c *clusterAction) DeleteShellPod(podName string) (err error) {
+	err = c.clientset.CoreV1().Pods("rbd-system").Delete(context.Background(), podName, metav1.DeleteOptions{})
+	if err != nil {
+		logrus.Error("delete shell pod error:", err)
+		return err
+	}
+	return nil
+}
+
+// RbdLog returns the logs reader for a container in a pod, a pod or a component.
+func (c *clusterAction) RbdLog(w http.ResponseWriter, r *http.Request, podName string, follow bool) error {
+	if podName == "" {
+		// Only support return the logs reader for a container now.
+		return errors.WithStack(bcode.NewBadRequest("the field 'podName' and 'containerName' is required"))
+	}
+	request := c.clientset.CoreV1().Pods("rbd-system").GetLogs(podName, &corev1.PodLogOptions{
+		Follow: follow,
+	})
+	out, err := request.Stream(context.TODO())
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return errors.Wrap(bcode.ErrPodNotFound, "get pod log")
+		}
+		return errors.Wrap(err, "get stream from request")
+	}
+	defer out.Close()
+
+	w.Header().Set("Transfer-Encoding", "chunked")
+	w.WriteHeader(http.StatusOK)
+
+	// Flush headers, if possible
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+
+	writer := flushwriter.Wrap(w)
+
+	_, err = io.Copy(writer, out)
+	if err != nil {
+		if strings.HasSuffix(err.Error(), "write: broken pipe") {
+			return nil
+		}
+		logrus.Warningf("write stream to response: %v", err)
+	}
+	return nil
+}
+
+// GetRbdPods -
+func (c *clusterAction) GetRbdPods() (rbds []model.RbdResp, err error) {
+	pods, err := c.clientset.CoreV1().Pods("rbd-system").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		logrus.Error("get rbd pod list error:", err)
+		return nil, err
+	}
+	var rbd model.RbdResp
+	for _, pod := range pods.Items {
+		if strings.Contains(pod.Name, "rbd-chaos") || strings.Contains(pod.Name, "rbd-api") || strings.Contains(pod.Name, "rbd-worker") || strings.Contains(pod.Name, "rbd-gateway") {
+			rbdSplit := strings.Split(pod.Name, "-")
+			rbdName := fmt.Sprintf("%s-%s", rbdSplit[0], rbdSplit[1])
+			rbd.RbdName = rbdName
+			rbd.PodName = pod.Name
+			rbd.NodeName = pod.Spec.NodeName
+			rbds = append(rbds, rbd)
+		}
+	}
+	return rbds, nil
 }
