@@ -84,8 +84,6 @@ build::binary() {
 		local build_args="-w -s -X github.com/goodrain/rainbond/cmd.version=${release_desc}"
 	elif [ "$1" = "chaos" ]; then
 		build_dir="./cmd/builder"
-	elif [ "$1" = "gateway" ]; then
-		build_image="golang:1.13-alpine"
 	elif [ "$1" = "monitor" ]; then
 		CGO_ENABLED=0
 	elif [ "$1" = "grctl" ] || [ "$1" = "mesh-data-panel" ]; then
