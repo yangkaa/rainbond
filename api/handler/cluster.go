@@ -83,10 +83,10 @@ type clusterAction struct {
 	prometheusCli    prometheus.Interface
 }
 
-type nodeInformation struct {
-	memory int64
-	cpu    int64
-	es     int64
+type nodePod struct {
+	Memory           prometheus.MetricValue
+	CPU              prometheus.MetricValue
+	EphemeralStorage prometheus.MetricValue
 }
 
 //GetClusterInfo -
@@ -112,6 +112,48 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	var healthCapCPU, healthCapMem, unhealthCapCPU, unhealthCapMem int64
 	usedNodeList := make([]*corev1.Node, len(nodes))
 	var nodeReady int32
+
+	existComponents := make(map[string]struct{})
+	existApplications := make(map[string]struct{})
+	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR, all_pods int64
+	nodeAllocatableResourceList := make(map[string]*model.NodeResource, len(usedNodeList))
+	var maxAllocatableMemory *model.NodeResource
+	query := fmt.Sprint(`rbd_api_exporter_cluster_pod_number`)
+	podNumber := c.prometheusCli.GetMetric(query, time.Now())
+	var instance string
+	for _, podNum := range podNumber.MetricData.MetricValues {
+		all_pods = int64(podNum.Sample.Value())
+		instance = podNum.Metadata["instance"]
+	}
+
+	query = fmt.Sprintf(`rbd_api_exporter_cluster_pod_memory{instance="%v"}`, instance)
+	podMemoryMetric := c.prometheusCli.GetMetric(query, time.Now())
+
+	query = fmt.Sprintf(`rbd_api_exporter_cluster_pod_cpu{instance="%v"}`, instance)
+	podCPUMetric := c.prometheusCli.GetMetric(query, time.Now())
+
+	query = fmt.Sprintf(`rbd_api_exporter_cluster_pod_ephemeral_storage{instance="%v"}`, instance)
+	podEphemeralStorageMetric := c.prometheusCli.GetMetric(query, time.Now())
+
+	nodeMap := make(map[string][]nodePod)
+	for i, memory := range podMemoryMetric.MetricData.MetricValues {
+		if nodePodList, ok := nodeMap[memory.Metadata["node_name"]]; ok {
+			nodePodList = append(nodePodList, nodePod{
+				Memory:           memory,
+				CPU:              podCPUMetric.MetricData.MetricValues[i],
+				EphemeralStorage: podEphemeralStorageMetric.MetricData.MetricValues[i],
+			})
+			nodeMap[memory.Metadata["node_name"]] = nodePodList
+			continue
+		}
+		nodeMap[memory.Metadata["node_name"]] = []nodePod{
+			{
+				Memory:           memory,
+				CPU:              podCPUMetric.MetricData.MetricValues[i],
+				EphemeralStorage: podEphemeralStorageMetric.MetricData.MetricValues[i],
+			},
+		}
+	}
 	for i := range nodes {
 		node := nodes[i]
 		if !isNodeReady(node) {
@@ -141,89 +183,52 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		if isEtcdNode(node) {
 			etcdNode++
 		}
-		nodeReady += 1
+		nodeReady++
 		healthCapCPU += node.Status.Allocatable.Cpu().Value()
 		healthCapMem += node.Status.Allocatable.Memory().Value()
 		if node.Spec.Unschedulable == false {
 			usedNodeList[i] = node
 		}
-	}
-	existComponents := make(map[string]struct{})
-	existApplications := make(map[string]struct{})
-	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR, all_pods int64
-	nodeAllocatableResourceList := make(map[string]*model.NodeResource, len(usedNodeList))
-	var maxAllocatableMemory *model.NodeResource
-
-	query := fmt.Sprint(`rbd_api_exporter_cluster_pod_memory`)
-	podMemoryMetric := c.prometheusCli.GetMetric(query, time.Now())
-
-	query = fmt.Sprint(`rbd_api_exporter_cluster_pod_cpu`)
-	podCPUMetric := c.prometheusCli.GetMetric(query, time.Now())
-
-	query = fmt.Sprint(`rbd_api_exporter_cluster_pod_ephemeral_storage`)
-	podEphemeralStorageMetric := c.prometheusCli.GetMetric(query, time.Now())
-
-	query = fmt.Sprint(`rbd_api_exporter_cluster_pod_number`)
-	podNumber := c.prometheusCli.GetMetric(query, time.Now())
-	for _, podNum := range podNumber.MetricData.MetricValues {
-		all_pods = int64(podNum.Sample.Value())
-	}
-	for i := range usedNodeList {
-		node := usedNodeList[i]
 		nodeAllocatableResource := model.NewResource(node.Status.Allocatable)
-		for i, pod := range podMemoryMetric.MetricData.MetricValues {
-			if pod.Metadata["node_name"] != node.Name {
-				continue
+		if nodePods, ok := nodeMap[node.Name]; ok {
+			for _, pod := range nodePods {
+				if componentID, ok := pod.Memory.Metadata["service_id"]; ok {
+					existComponents[componentID] = struct{}{}
+				}
+				if appID, ok := pod.Memory.Metadata["app_id"]; ok {
+					existApplications[appID] = struct{}{}
+				}
+				nodeAllocatableResource.AllowedPodNumber--
+				memory := int64(pod.Memory.Sample.Value())
+				cpu := int64(pod.CPU.Sample.Value())
+				ephemeralStorage := int64(pod.EphemeralStorage.Sample.Value())
+				nodeAllocatableResource.Memory -= memory
+				nodeAllocatableResource.MilliCPU -= cpu
+				nodeAllocatableResource.EphemeralStorage -= ephemeralStorage
+				if isNodeReady(node) {
+					healthcpuR += cpu
+					healthmemR += memory
+				} else {
+					unhealthCPUR += cpu
+					unhealthMemR += memory
+				}
+				if _, ok := pod.Memory.Metadata["service_id"]; ok {
+					rbdMemR += memory
+					rbdCPUR += cpu
+				}
 			}
-			if componentID, ok := pod.Metadata["service_id"]; ok {
-				existComponents[componentID] = struct{}{}
-			}
-			if appID, ok := pod.Metadata["app_id"]; ok {
-				existApplications[appID] = struct{}{}
-			}
-			nodeAllocatableResource.AllowedPodNumber--
-			memory := int64(pod.Sample.Value())
-			cpu := int64(podCPUMetric.MetricData.MetricValues[i].Sample.Value())
-			ephemeralStorage := int64(podEphemeralStorageMetric.MetricData.MetricValues[i].Sample.Value())
+			nodeAllocatableResourceList[node.Name] = nodeAllocatableResource
 
-			nodeAllocatableResource.Memory -= memory
-			nodeAllocatableResource.MilliCPU -= cpu
-			nodeAllocatableResource.EphemeralStorage -= ephemeralStorage
-			if isNodeReady(node) {
-				healthcpuR += cpu
-				healthmemR += memory
+			// Gets the node resource with the maximum remaining scheduling memory
+			if maxAllocatableMemory == nil {
+				maxAllocatableMemory = nodeAllocatableResource
 			} else {
-				unhealthCPUR += cpu
-				unhealthMemR += memory
-			}
-			if _, ok := pod.Metadata["service_id"]; ok {
-				rbdMemR += memory
-				rbdCPUR += cpu
-			}
-		}
-		nodeAllocatableResourceList[node.Name] = nodeAllocatableResource
-
-		// Gets the node resource with the maximum remaining scheduling memory
-		if maxAllocatableMemory == nil {
-			maxAllocatableMemory = nodeAllocatableResource
-		} else {
-			if nodeAllocatableResource.Memory > maxAllocatableMemory.Memory {
-				maxAllocatableMemory = nodeAllocatableResource
-			}
-		}
-
-		nodeAllocatableResourceList[node.Name] = nodeAllocatableResource
-
-		// Gets the node resource with the maximum remaining scheduling memory
-		if maxAllocatableMemory == nil {
-			maxAllocatableMemory = nodeAllocatableResource
-		} else {
-			if nodeAllocatableResource.Memory > maxAllocatableMemory.Memory {
-				maxAllocatableMemory = nodeAllocatableResource
+				if nodeAllocatableResource.Memory > maxAllocatableMemory.Memory {
+					maxAllocatableMemory = nodeAllocatableResource
+				}
 			}
 		}
 	}
-
 	var diskstauts *disk.UsageStat
 	if runtime.GOOS != "windows" {
 		diskstauts, _ = disk.Usage("/grdata")
