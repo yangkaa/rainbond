@@ -5,7 +5,8 @@ set -o errexit
 WORK_DIR=/go/src/github.com/goodrain/rainbond
 BASE_NAME=rainbond
 IMAGE_BASE_NAME=${IMAGE_NAMESPACE:-'rainbond'}
-DOCKER_USERNAME=${DOCKER_USERNAME:-'rainbond'}
+# Enterprise Edition does not need to be pushed to dockerhub
+# DOCKER_USERNAME=${DOCKER_USERNAME:-'rainbond'}
 DOMESTIC_NAMESPACE=${DOMESTIC_NAMESPACE:-'goodrain'}
 IMAGE_DOMAIN=${IMAGE_DOMAIN:-image.goodrain.com}
 DISABLE_GOPROXY="true"
