@@ -33,8 +33,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 //InitHandle 初始化handle
@@ -70,6 +70,7 @@ func InitHandle(conf option.Config,
 	defaultPluginHandler = CreatePluginManager(mqClient)
 	defaultAppHandler = CreateAppManager(mqClient)
 	defaultTenantHandler = CreateTenManager(mqClient, statusCli, &conf, kubeClient, prometheusCli, k8sClient)
+	defaultHelmHandler = CreateHelmManager(kubeClient, rainbondClient)
 	defaultNetRulesHandler = CreateNetRulesManager(etcdcli)
 	defaultCloudHandler = CreateCloudManager(conf)
 	defaultAPPBackupHandler = group.CreateBackupHandle(mqClient, statusCli, etcdcli)
@@ -86,7 +87,7 @@ func InitHandle(conf option.Config,
 	batchOperationHandler = CreateBatchOperationHandler(mqClient, statusCli, operationHandler)
 	defaultAppRestoreHandler = NewAppRestoreHandler()
 	defPodHandler = NewPodHandler(statusCli, kubeClient, metricClient)
-	defClusterHandler = NewClusterHandler(kubeClient, conf.RbdNamespace, config, mapper)
+	defClusterHandler = NewClusterHandler(kubeClient, conf.RbdNamespace, conf.GrctlImage, config, mapper, prometheusCli)
 	defaultVolumeTypeHandler = CreateVolumeTypeManger(statusCli)
 	defaultEtcdHandler = NewEtcdHandler(etcdcli)
 	defaultmonitorHandler = NewMonitorHandler(prometheusCli)
@@ -133,6 +134,13 @@ var defaultTenantHandler TenantHandler
 //GetTenantManager get manager
 func GetTenantManager() TenantHandler {
 	return defaultTenantHandler
+}
+
+var defaultHelmHandler HelmHandler
+
+//GetHelmManager get manager
+func GetHelmManager() HelmHandler {
+	return defaultHelmHandler
 }
 
 var defaultNetRulesHandler NetRulesHandler

@@ -74,17 +74,45 @@ func NewExporter() *Exporter {
 			Name:      "cluster_shared_storage_total",
 			Help:      "rainbond cluster shared_storage total, path is /grdata",
 		}),
+		clusterPodsNumber: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "cluster_pod_number",
+			Help:      "rainbond cluster pods number",
+		}),
+		clusterPodMemory: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "cluster_pod_memory",
+			Help:      "rainbond cluster pod memory",
+		}, []string{"node_name", "app_id", "service_id", "resource_version"}),
+		clusterPodCPU: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "cluster_pod_cpu",
+			Help:      "rainbond cluster pod CPU",
+		}, []string{"node_name", "app_id", "service_id", "resource_version"}),
+		clusterPodStorageEphemeral: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "cluster_pod_ephemeral_storage",
+			Help:      "rainbond cluster pod StorageEphemeral",
+		}, []string{"node_name", "app_id", "service_id", "resource_version"}),
 	}
 }
 
 //Exporter exporter
 type Exporter struct {
-	apiRequest                *prometheus.CounterVec
-	tenantLimit               *prometheus.GaugeVec
-	clusterCPUTotal           prometheus.Gauge
-	clusterMemoryTotal        prometheus.Gauge
-	clusterSharedStorageTotal prometheus.Gauge
-	clusterSharedStorageUsage prometheus.Gauge
+	apiRequest                 *prometheus.CounterVec
+	tenantLimit                *prometheus.GaugeVec
+	clusterPodMemory           *prometheus.GaugeVec
+	clusterPodCPU              *prometheus.GaugeVec
+	clusterPodStorageEphemeral *prometheus.GaugeVec
+	clusterPodsNumber          prometheus.Gauge
+	clusterCPUTotal            prometheus.Gauge
+	clusterMemoryTotal         prometheus.Gauge
+	clusterSharedStorageTotal  prometheus.Gauge
+	clusterSharedStorageUsage  prometheus.Gauge
 }
 
 //RequestInc request inc
@@ -124,6 +152,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	if resource != nil {
 		e.clusterMemoryTotal.Set(float64(resource.AllMemory))
 		e.clusterCPUTotal.Set(float64(resource.AllCPU))
+		e.clusterPodsNumber.Set(float64(resource.AllPods))
+		for _, pod := range resource.NodePods {
+			e.clusterPodMemory.WithLabelValues(pod.NodeName, pod.AppID, pod.ServiceID, pod.ResourceVersion).Set(float64(pod.Memory))
+			e.clusterPodCPU.WithLabelValues(pod.NodeName, pod.AppID, pod.ServiceID, pod.ResourceVersion).Set(float64(pod.Cpu))
+			e.clusterPodStorageEphemeral.WithLabelValues(pod.NodeName, pod.AppID, pod.ServiceID, pod.ResourceVersion).Set(float64(pod.StorageEphemeral))
+		}
 		e.clusterSharedStorageTotal.Set(float64(resource.TotalDisk))
 		e.clusterSharedStorageUsage.Set(float64(resource.UsageDisk))
 	}
@@ -132,4 +166,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.clusterCPUTotal.Collect(ch)
 	e.clusterSharedStorageTotal.Collect(ch)
 	e.clusterSharedStorageUsage.Collect(ch)
+	e.clusterPodsNumber.Collect(ch)
+	e.clusterPodStorageEphemeral.Collect(ch)
+	e.clusterPodCPU.Collect(ch)
+	e.clusterPodMemory.Collect(ch)
 }

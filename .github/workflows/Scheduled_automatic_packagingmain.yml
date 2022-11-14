@@ -72,7 +72,7 @@ jobs:
         uses: actions/setup-go@v2.1.3
         with:
           # The Go version to download (if necessary) and use. Supports semver spec and ranges.
-          go-version: 1.13
+          go-version: 1.17
 
       - name: Pull code and Build the Docker image
         env:
@@ -120,7 +120,7 @@ jobs:
           DOMESTIC_NAMESPACE: ${{ secrets.DOMESTIC_NAMESPACE }}
           VERSION: ${{ github.event.client_payload.version }}
         run: |
-          git clone -b release-2.1 ${{ github.event.client_payload.clone_url }}/rainbond-operator.git
+          git clone -b ${{ secrets.OPERATOR_BRANCH }} ${{ github.event.client_payload.clone_url }}/rainbond-operator.git
           cd rainbond-operator
           chmod +x ./release.sh
           ./release.sh

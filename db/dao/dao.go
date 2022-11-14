@@ -428,6 +428,7 @@ type EventDao interface {
 	ListByTargetID(targetID string) ([]*model.ServiceEvent, error)
 	GetEventsByTarget(target, targetID string, offset, liimt int) ([]*model.ServiceEvent, int, error)
 	GetEventsByTenantID(tenantID string, offset, limit int) ([]*model.ServiceEvent, int, error)
+	GetEventsByTenantIDs(tenantID []string, offset, limit int) ([]*model.ServiceEvent, int, error)
 	GetLastASyncEvent(target, targetID string) (*model.ServiceEvent, error)
 	UnfinishedEvents(target, targetID string, optTypes ...string) ([]*model.ServiceEvent, error)
 	LatestFailurePodEvent(podName string) (*model.ServiceEvent, error)
@@ -436,6 +437,7 @@ type EventDao interface {
 	UpdateInBatch(events []*model.ServiceEvent) error
 	GetExceptionEventsByTime(eventTypes []string, createTime time.Time) ([]*model.ServiceEvent, error)
 	CountEvents(tenantID, serviceID string, eventType string) int64
+	UpdateBuildVersion(eventID, deployVersion string) error
 }
 
 //VersionInfoDao VersionInfoDao
