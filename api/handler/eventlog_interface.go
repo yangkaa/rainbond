@@ -32,5 +32,5 @@ type EventHandler interface {
 	GetLogFile(serviceAlias, fileName string) (string, string, error)
 	GetEvents(target, targetID string, page, size int) ([]*dbmodel.ServiceEvent, int, error)
 	GetLatestExceptionEvents(interval int) ([]*model.PodExceptionEvent, error)
-	GetMyTeamsEvents(target string, targetIDs []string, page, size int) ([]*dbmodel.ServiceEvent, int, error)
+	GetMyTeamsEvents(target string, tenantIDs []string, page, size int) ([]*dbmodel.EventAndBuild, error)
 }
