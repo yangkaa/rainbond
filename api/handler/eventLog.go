@@ -106,7 +106,7 @@ func (l *LogAction) GetLatestExceptionEvents(interval int) ([]*model.PodExceptio
 }
 
 // GetEvents get target logs
-func (l *LogAction) GetMyTeamsEvents(target string, targetIDs []string, page, size int) ([]*dbmodel.ServiceEvent, int, error) {
+func (l *LogAction) GetMyTeamsEvents(target string, tenantIDs []string, page, size int) ([]*dbmodel.EventAndBuild, error) {
 	if target == "tenant" {
 		return db.GetManager().ServiceEventDao().GetEventsByTenantIDs(tenantIDs, (page-1)*size, size)
 	}
