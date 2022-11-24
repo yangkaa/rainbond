@@ -437,7 +437,6 @@ type EventDao interface {
 	UpdateInBatch(events []*model.ServiceEvent) error
 	GetExceptionEventsByTime(eventTypes []string, createTime time.Time) ([]*model.ServiceEvent, error)
 	CountEvents(tenantID, serviceID string, eventType string) int64
-	UpdateBuildVersion(eventID, deployVersion string) error
 }
 
 //VersionInfoDao VersionInfoDao
