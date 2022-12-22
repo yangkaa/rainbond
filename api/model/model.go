@@ -40,7 +40,8 @@ const (
 	YamlSourceHelm = "Helm"
 )
 
-//ServiceGetCommon path参数
+// ServiceGetCommon path参数
+//
 //swagger:parameters getVolumes getDepVolumes
 type ServiceGetCommon struct {
 	// in: path
@@ -51,7 +52,7 @@ type ServiceGetCommon struct {
 	ServiceAlias string `json:"service_alias"`
 }
 
-//ComposerStruct ComposerStruct
+// ComposerStruct ComposerStruct
 // swagger:parameters resolve
 type ComposerStruct struct {
 	// in : body
@@ -73,7 +74,7 @@ type ComposerStruct struct {
 	}
 }
 
-//CreateServiceStruct serviceCreate struct
+// CreateServiceStruct serviceCreate struct
 // swagger:parameters createService
 type CreateServiceStruct struct {
 	// in: path
@@ -242,7 +243,7 @@ type UpdateServiceStruct struct {
 	}
 }
 
-//StartStopStruct start struct
+// StartStopStruct start struct
 type StartStopStruct struct {
 	ServiceID     string
 	TenantID      string
@@ -251,13 +252,13 @@ type StartStopStruct struct {
 	TaskType      string
 }
 
-//LanguageSet set language
+// LanguageSet set language
 type LanguageSet struct {
 	ServiceID string `json:"service_id"`
 	Language  string `json:"language"`
 }
 
-//ServiceStruct service struct
+// ServiceStruct service struct
 type ServiceStruct struct {
 	TenantID string `json:"tenant_id" validate:"tenant_id"`
 	// in: path
@@ -390,7 +391,7 @@ type EndpointKubernetes struct {
 	ServiceName string `json:"serviceName"`
 }
 
-//TenantServiceVolumeStruct -
+// TenantServiceVolumeStruct -
 type TenantServiceVolumeStruct struct {
 	ServiceID string ` json:"service_id"`
 	//服务类型
@@ -423,7 +424,7 @@ type TenantServiceVolumeStruct struct {
 	VolumeProviderName string `json:"volume_provider_name"`
 }
 
-//DependService struct for depend service
+// DependService struct for depend service
 type DependService struct {
 	TenantID       string `json:"tenant_id"`
 	ServiceID      string `json:"service_id"`
@@ -432,7 +433,7 @@ type DependService struct {
 	Action         string `json:"action"`
 }
 
-//Attr attr
+// Attr attr
 type Attr struct {
 	Action    string `json:"action"`
 	TenantID  string `json:"tenant_id"`
@@ -456,14 +457,14 @@ type DeleteServicePort struct {
 	Port int `json:"port"`
 }
 
-//AddHandleResource -
+// AddHandleResource -
 type AddHandleResource struct {
 	Namespace    string `json:"namespace"`
 	AppID        string `json:"app_id"`
 	ResourceYaml string `json:"resource_yaml"`
 }
 
-//HandleResource -
+// HandleResource -
 type HandleResource struct {
 	Name         string `json:"name"`
 	AppID        string `json:"app_id"`
@@ -477,7 +478,7 @@ type SyncResources struct {
 	K8sResources []HandleResource `json:"k8s_resources"`
 }
 
-//YamlResource -
+// YamlResource -
 type YamlResource struct {
 	EventID   string `json:"event_id"`
 	AppID     string `json:"region_app_id"`
@@ -486,7 +487,7 @@ type YamlResource struct {
 	Yaml      string `json:"yaml"`
 }
 
-//HelmAppInstall -
+// HelmAppInstall -
 type HelmAppInstall struct {
 	Name      string   `json:"name"`
 	Chart     string   `json:"chart"`
@@ -497,12 +498,12 @@ type HelmAppInstall struct {
 	Namespace string   `json:"namespace"`
 }
 
-//CommandHelmStruct -
+// CommandHelmStruct -
 type CommandHelmStruct struct {
 	Command string `json:"command"`
 }
 
-//CheckHelmApp -
+// CheckHelmApp -
 type CheckHelmApp struct {
 	Name      string   `json:"name"`
 	Chart     string   `json:"chart"`
@@ -515,7 +516,7 @@ type CheckHelmApp struct {
 	Password  string   `json:"password"`
 }
 
-//ChartInformation -
+// ChartInformation -
 type ChartInformation struct {
 	RepoURL   string `json:"repo_url"`
 	ChartName string `json:"chart_name"`
@@ -543,7 +544,7 @@ type JobStrategy struct {
 	Completions           string `json:"completions"`
 }
 
-//TenantResources TenantResources
+// TenantResources TenantResources
 // swagger:parameters tenantResources
 type TenantResources struct {
 	// in: body
@@ -554,7 +555,7 @@ type TenantResources struct {
 	}
 }
 
-//ServicesResources ServicesResources
+// ServicesResources ServicesResources
 // swagger:parameters serviceResources
 type ServicesResources struct {
 	// in: body
@@ -627,7 +628,7 @@ type ServiceLBPortChange struct {
 	}
 }
 
-//RollbackStruct struct
+// RollbackStruct struct
 type RollbackStruct struct {
 	TenantID      string `json:"tenant_id"`
 	ServiceID     string `json:"service_id"`
@@ -636,7 +637,7 @@ type RollbackStruct struct {
 	DeployVersion string `json:"deploy_version"`
 }
 
-//StatusList status list
+// StatusList status list
 type StatusList struct {
 	TenantID      string     `json:"tenant_id"`
 	ServiceID     string     `json:"service_id"`
@@ -651,7 +652,7 @@ type StatusList struct {
 	PodList       []PodsList `json:"pod_list"`
 }
 
-//PodsList pod list
+// PodsList pod list
 type PodsList struct {
 	PodIP    string `json:"pod_ip"`
 	Phase    string `json:"phase"`
@@ -659,19 +660,19 @@ type PodsList struct {
 	NodeName string `json:"node_name"`
 }
 
-//StatsInfo stats info
+// StatsInfo stats info
 type StatsInfo struct {
 	UUID string `json:"uuid"`
 	CPU  int    `json:"cpu"`
 	MEM  int    `json:"memory"`
 }
 
-//TotalStatsInfo total stats info
+// TotalStatsInfo total stats info
 type TotalStatsInfo struct {
 	Data []*StatsInfo `json:"data"`
 }
 
-//LicenseInfo license info
+// LicenseInfo license info
 type LicenseInfo struct {
 	Code       string   `json:"code"`
 	Company    string   `json:"company"`
@@ -750,7 +751,8 @@ type SetLanguageStruct struct {
 	}
 }
 
-//StartServiceStruct StartServiceStruct
+// StartServiceStruct StartServiceStruct
+//
 //swagger:parameters startService stopService restartService
 type StartServiceStruct struct {
 	// in: path
@@ -768,7 +770,8 @@ type StartServiceStruct struct {
 	}
 }
 
-//VerticalServiceStruct VerticalServiceStruct
+// VerticalServiceStruct VerticalServiceStruct
+//
 //swagger:parameters verticalService
 type VerticalServiceStruct struct {
 	// in: path
@@ -794,7 +797,8 @@ type VerticalServiceStruct struct {
 	}
 }
 
-//HorizontalServiceStruct HorizontalServiceStruct
+// HorizontalServiceStruct HorizontalServiceStruct
+//
 //swagger:parameters horizontalService
 type HorizontalServiceStruct struct {
 	// in: path
@@ -816,7 +820,8 @@ type HorizontalServiceStruct struct {
 	}
 }
 
-//BuildServiceStruct BuildServiceStruct
+// BuildServiceStruct BuildServiceStruct
+//
 //swagger:parameters serviceBuild
 type BuildServiceStruct struct {
 	// in: path
@@ -886,7 +891,7 @@ type BuildServiceStruct struct {
 	}
 }
 
-//V1BuildServiceStruct V1BuildServiceStruct
+// V1BuildServiceStruct V1BuildServiceStruct
 type V1BuildServiceStruct struct {
 	// in: path
 	// required: true
@@ -905,7 +910,8 @@ type V1BuildServiceStruct struct {
 	}
 }
 
-//UpgradeServiceStruct UpgradeServiceStruct
+// UpgradeServiceStruct UpgradeServiceStruct
+//
 //swagger:parameters upgradeService
 type UpgradeServiceStruct struct {
 	// in: path
@@ -931,7 +937,8 @@ type UpgradeServiceStruct struct {
 	}
 }
 
-//StatusServiceStruct StatusServiceStruct
+// StatusServiceStruct StatusServiceStruct
+//
 //swagger:parameters serviceStatus
 type StatusServiceStruct struct {
 	// in: path
@@ -942,7 +949,8 @@ type StatusServiceStruct struct {
 	ServiceAlias string `json:"service_alias"`
 }
 
-//StatusServiceListStruct StatusServiceListStruct
+// StatusServiceListStruct StatusServiceListStruct
+//
 //swagger:parameters serviceStatuslist
 type StatusServiceListStruct struct {
 	// in: path
@@ -958,7 +966,8 @@ type StatusServiceListStruct struct {
 	}
 }
 
-//AddServiceLabelStruct AddServiceLabelStruct
+// AddServiceLabelStruct AddServiceLabelStruct
+//
 //swagger:parameters addServiceLabel updateServiceLabel
 type AddServiceLabelStruct struct {
 	// in: path
@@ -976,7 +985,8 @@ type AddServiceLabelStruct struct {
 	}
 }
 
-//AddNodeLabelStruct AddNodeLabelStruct
+// AddNodeLabelStruct AddNodeLabelStruct
+//
 //swagger:parameters addNodeLabel deleteNodeLabel
 type AddNodeLabelStruct struct {
 	// in: path
@@ -1005,7 +1015,8 @@ type LabelStruct struct {
 	LabelValue string `json:"label_value" validate:"label_value|required"`
 }
 
-//GetSingleServiceInfoStruct GetSingleServiceInfoStruct
+// GetSingleServiceInfoStruct GetSingleServiceInfoStruct
+//
 //swagger:parameters getService deleteService
 type GetSingleServiceInfoStruct struct {
 	// in: path
@@ -1016,7 +1027,8 @@ type GetSingleServiceInfoStruct struct {
 	ServiceAlias string `json:"service_alias"`
 }
 
-//CheckCodeStruct CheckCodeStruct
+// CheckCodeStruct CheckCodeStruct
+//
 //swagger:parameters checkCode
 type CheckCodeStruct struct {
 	// in: path
@@ -1060,7 +1072,8 @@ type CheckCodeStruct struct {
 	}
 }
 
-//ServiceCheckStruct 应用检测，支持源码检测，镜像检测，dockerrun检测
+// ServiceCheckStruct 应用检测，支持源码检测，镜像检测，dockerrun检测
+//
 //swagger:parameters serviceCheck
 type ServiceCheckStruct struct {
 	// in: path
@@ -1091,7 +1104,8 @@ type ServiceCheckStruct struct {
 	}
 }
 
-//GetServiceCheckInfoStruct 获取应用检测信息
+// GetServiceCheckInfoStruct 获取应用检测信息
+//
 //swagger:parameters getServiceCheckInfo
 type GetServiceCheckInfoStruct struct {
 	// in: path
@@ -1102,7 +1116,7 @@ type GetServiceCheckInfoStruct struct {
 	UUID string `json:"uuid"`
 }
 
-//PublicShare share共用结构
+// PublicShare share共用结构
 type PublicShare struct {
 	ServiceKey string         `json:"service_key" validate:"service_key"`
 	APPVersion string         `json:"app_version" validate:"app_version"`
@@ -1115,7 +1129,7 @@ type PublicShare struct {
 	ShareConf  ShareConfItems `json:"share_conf" validate:"share_conf"`
 }
 
-//SlugShare Slug 类型
+// SlugShare Slug 类型
 type SlugShare struct {
 	PublicShare
 	ServiceKey    string `json:"service_key" validate:"service_key"`
@@ -1125,13 +1139,13 @@ type SlugShare struct {
 	Dest          string `json:"dest" validate:"dest|in:yb,ys"`
 }
 
-//ImageShare image 类型
+// ImageShare image 类型
 type ImageShare struct {
 	PublicShare
 	Image string `json:"image" validate:"image"`
 }
 
-//ShareConfItems 分享相关配置
+// ShareConfItems 分享相关配置
 type ShareConfItems struct {
 	FTPHost       string `json:"ftp_host" validate:"ftp_host"`
 	FTPPort       int    `json:"ftp_port" validate:"ftp_port"`
@@ -1141,7 +1155,8 @@ type ShareConfItems struct {
 	OuterRegistry string `json:"outer_registry" validate:"outer_registry"`
 }
 
-//AddDependencyStruct AddDependencyStruct
+// AddDependencyStruct AddDependencyStruct
+//
 //swagger:parameters addDependency deleteDependency
 type AddDependencyStruct struct {
 	// in: path
@@ -1167,7 +1182,8 @@ type AddDependencyStruct struct {
 	}
 }
 
-//AddEnvStruct AddEnvStruct
+// AddEnvStruct AddEnvStruct
+//
 //swagger:parameters addEnv deleteEnv
 type AddEnvStruct struct {
 	// in: path
@@ -1205,7 +1221,8 @@ type AddEnvStruct struct {
 	}
 }
 
-//RollBackStruct RollBackStruct
+// RollBackStruct RollBackStruct
+//
 //swagger:parameters rollback
 type RollBackStruct struct {
 	// in: path
@@ -1231,7 +1248,8 @@ type RollBackStruct struct {
 	}
 }
 
-//AddProbeStruct AddProbeStruct
+// AddProbeStruct AddProbeStruct
+//
 //swagger:parameters addProbe updateProbe
 type AddProbeStruct struct {
 	// in: path
@@ -1297,7 +1315,8 @@ type AddProbeStruct struct {
 	}
 }
 
-//DeleteProbeStruct DeleteProbeStruct
+// DeleteProbeStruct DeleteProbeStruct
+//
 //swagger:parameters deleteProbe
 type DeleteProbeStruct struct {
 	// in: path
@@ -1315,7 +1334,8 @@ type DeleteProbeStruct struct {
 	}
 }
 
-//PodsStructStruct PodsStructStruct
+// PodsStructStruct PodsStructStruct
+//
 //swagger:parameters getPodsInfo
 type PodsStructStruct struct {
 	// in: path
@@ -1326,7 +1346,8 @@ type PodsStructStruct struct {
 	ServiceAlias string `json:"service_alias"`
 }
 
-//Login SSHLoginStruct
+// Login SSHLoginStruct
+//
 //swagger:parameters login
 type Login struct {
 	// in: body
@@ -1350,7 +1371,8 @@ type Login struct {
 	}
 }
 
-//Labels LabelsStruct
+// Labels LabelsStruct
+//
 //swagger:parameters labels
 type Labels struct {
 	// in: path
@@ -1365,13 +1387,13 @@ type Labels struct {
 	}
 }
 
-//Model 默认字段
+// Model 默认字段
 type Model struct {
 	ID uint
 	//CreatedAt time.Time
 }
 
-//AddTenantServiceEnvVar  应用环境变量
+// AddTenantServiceEnvVar  应用环境变量
 type AddTenantServiceEnvVar struct {
 	Model
 	TenantID      string `validate:"tenant_id|between:30,33" json:"tenant_id"`
@@ -1398,7 +1420,7 @@ func (a *AddTenantServiceEnvVar) DbModel(tenantID, componentID string) *dbmodel.
 	}
 }
 
-//DelTenantServiceEnvVar  应用环境变量
+// DelTenantServiceEnvVar  应用环境变量
 type DelTenantServiceEnvVar struct {
 	Model
 	TenantID      string `validate:"tenant_id|between:30,33" json:"tenant_id"`
@@ -1411,12 +1433,12 @@ type DelTenantServiceEnvVar struct {
 	Scope         string `validate:"scope|in:outer,inner,both,build" json:"scope"`
 }
 
-//ServicePorts service ports
+// ServicePorts service ports
 type ServicePorts struct {
 	Port []*TenantServicesPort
 }
 
-//TenantServicesPort 应用端口信息
+// TenantServicesPort 应用端口信息
 type TenantServicesPort struct {
 	Model
 	TenantID       string `gorm:"column:tenant_id;size:32" validate:"tenant_id|between:30,33" json:"tenant_id"`
@@ -1502,7 +1524,7 @@ type plugin struct {
 	Outer bool `json:"is_outer_service"`
 }
 
-//ServiceProbe 应用探针信息
+// ServiceProbe 应用探针信息
 type ServiceProbe struct {
 	Model
 	ServiceID string `gorm:"column:service_id;size:32" json:"service_id" validate:"service_id|between:30,33"`
@@ -1550,7 +1572,7 @@ func (p *ServiceProbe) DbModel(componentID string) *dbmodel.TenantServiceProbe {
 	}
 }
 
-//TenantServiceVolume 应用持久化记录
+// TenantServiceVolume 应用持久化记录
 type TenantServiceVolume struct {
 	Model
 	ServiceID string `gorm:"column:service_id;size:32" json:"service_id" validate:"service_id"`
@@ -1569,7 +1591,7 @@ type GetSupportProtocols struct {
 	TenantName string `json:"tenant_name"`
 }
 
-//ServiceShare service share
+// ServiceShare service share
 // swagger:parameters shareService
 type ServiceShare struct {
 	// in: path
@@ -1604,7 +1626,7 @@ type ServiceShare struct {
 	}
 }
 
-//ExportAppStruct -
+// ExportAppStruct -
 type ExportAppStruct struct {
 	SourceDir string `json:"source_dir"`
 	Body      struct {
@@ -1629,7 +1651,7 @@ type BatchOperationReq struct {
 	}
 }
 
-//BuildImageInfo -
+// BuildImageInfo -
 type BuildImageInfo struct {
 	// 镜像地址
 	// in: body
@@ -1640,7 +1662,7 @@ type BuildImageInfo struct {
 	Cmd      string `json:"cmd"`
 }
 
-//BuildCodeInfo -
+// BuildCodeInfo -
 type BuildCodeInfo struct {
 	// git地址
 	// in: body
@@ -1665,7 +1687,7 @@ type BuildCodeInfo struct {
 	Cmd string `json:"cmd"`
 }
 
-//BuildSlugInfo -
+// BuildSlugInfo -
 type BuildSlugInfo struct {
 	SlugPath    string `json:"slug_path"`
 	FTPHost     string `json:"ftp_host"`
@@ -1674,16 +1696,16 @@ type BuildSlugInfo struct {
 	FTPPassword string `json:"ftp_password"`
 }
 
-//FromImageBuildKing build from image
+// FromImageBuildKing build from image
 var FromImageBuildKing = "build_from_image"
 
-//FromCodeBuildKing build from code
+// FromCodeBuildKing build from code
 var FromCodeBuildKing = "build_from_source_code"
 
-//FromMarketImageBuildKing build from market image
+// FromMarketImageBuildKing build from market image
 var FromMarketImageBuildKing = "build_from_market_image"
 
-//FromMarketSlugBuildKing build from market slug
+// FromMarketSlugBuildKing build from market slug
 var FromMarketSlugBuildKing = "build_from_market_slug"
 
 // ComponentBuildReq -
@@ -1768,7 +1790,7 @@ type UpdateBuildVersionReq struct {
 	PlanVersion string `json:"plan_version" validate:"required"`
 }
 
-//ComponentUpgradeReq -
+// ComponentUpgradeReq -
 type ComponentUpgradeReq struct {
 	ComponentOpGeneralReq
 	//UpgradeVersion The target version of the upgrade
@@ -1827,7 +1849,7 @@ func (u *ComponentUpgradeReq) OpType() string {
 	return "upgrade-service"
 }
 
-//RollbackInfoRequestStruct -
+// RollbackInfoRequestStruct -
 type RollbackInfoRequestStruct struct {
 	//RollBackVersion The target version of the rollback
 	RollBackVersion string `json:"upgrade_version"`
@@ -1837,7 +1859,7 @@ type RollbackInfoRequestStruct struct {
 	Configs   map[string]string `json:"configs"`
 }
 
-//BuildMQBodyFrom -
+// BuildMQBodyFrom -
 func BuildMQBodyFrom(app *ExportAppStruct) *MQBody {
 	return &MQBody{
 		EventID:   app.Body.EventID,
@@ -1848,7 +1870,7 @@ func BuildMQBodyFrom(app *ExportAppStruct) *MQBody {
 	}
 }
 
-//MQBody -
+// MQBody -
 type MQBody struct {
 	EventID   string `json:"event_id"`
 	GroupKey  string `json:"group_key"`
@@ -1857,7 +1879,7 @@ type MQBody struct {
 	SourceDir string `json:"source_dir"`
 }
 
-//NewAppStatusFromExport -
+// NewAppStatusFromExport -
 func NewAppStatusFromExport(app *ExportAppStruct) *dbmodel.AppStatus {
 	return &dbmodel.AppStatus{
 		Format:    app.Body.Format,
@@ -1867,7 +1889,7 @@ func NewAppStatusFromExport(app *ExportAppStruct) *dbmodel.AppStatus {
 	}
 }
 
-//ImportAppStruct -
+// ImportAppStruct -
 type ImportAppStruct struct {
 	EventID      string       `json:"event_id"`
 	SourceDir    string       `json:"source_dir"`
@@ -1877,7 +1899,7 @@ type ImportAppStruct struct {
 	ServiceSlug  ServiceSlug  `json:"service_slug"`
 }
 
-//ServiceImage -
+// ServiceImage -
 type ServiceImage struct {
 	HubURL      string `json:"hub_url"`
 	HubUser     string `json:"hub_user"`
@@ -1885,7 +1907,7 @@ type ServiceImage struct {
 	NameSpace   string `json:"namespace"`
 }
 
-//ServiceSlug -
+// ServiceSlug -
 type ServiceSlug struct {
 	FtpHost     string `json:"ftp_host"`
 	FtpPort     string `json:"ftp_port"`
@@ -1894,7 +1916,7 @@ type ServiceSlug struct {
 	NameSpace   string `json:"namespace"`
 }
 
-//NewAppStatusFromImport -
+// NewAppStatusFromImport -
 func NewAppStatusFromImport(app *ImportAppStruct) *dbmodel.AppStatus {
 	var apps string
 	for _, app := range app.Apps {
@@ -2134,4 +2156,16 @@ type RbdResp struct {
 type ShellPod struct {
 	RegionName string `json:"region_name"`
 	PodName    string `json:"pod_name"`
+}
+
+// RainbondPlugins -
+type RainbondPlugins struct {
+	RegionAppID string `json:"region_app_id"`
+	Name        string `json:"name"`
+	Namespace   string `json:"namespace"`
+	Icon        string `json:"icon"`
+	Description string `json:"description"`
+	Version     string `json:"version"`
+	Author      string `json:"author"`
+	Status      string `json:"status"`
 }
