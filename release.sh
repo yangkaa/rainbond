@@ -143,7 +143,7 @@ build::image::arm() {
 		"${source_dir}/test.sh" "${DOCKER_USERNAME}/rbd-$1:${VERSION}"
 	fi
 	if [ "$2" = "push" ]; then
-	    docker login ${IMAGE_DOMAIN} -u "$DOCKER_NAMESPACE" -p $DOCKER_PASSWORD
+	    docker login ${IMAGE_DOMAIN} -u "$DOCKER_USERNAME" -p $DOCKER_PASSWORD
 	    docker push "${IMAGE_DOMAIN}/${DOCKER_NAMESPACE}/rbd-$1:${VERSION}"
 	fi
 	popd
