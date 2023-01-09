@@ -134,7 +134,7 @@ build::image::arm() {
 		fi
 	fi
 	docker build --build-arg RELEASE_DESC="${release_desc}" --build-arg BASE_IMAGE_VERSION="${BASE_IMAGE_VERSION}" --build-arg GOARCH="${GOARCH}" -t "${IMAGE_DOMAIN}/${DOCKER_NAMESPACE}/rbd-$1:${VERSION}" -f "${DOCKERFILE_BASE}" .
-	docker run --rm "${DOCKER_USERNAME}/rbd-$1:${VERSION}" version
+	docker run --rm "${IMAGE_DOMAIN}/${DOCKER_NAMESPACE}/rbd-$1:${VERSION}" version
 	if [ $? -ne 0 ]; then
 		echo "image version is different ${release_desc}"
 		exit 1
