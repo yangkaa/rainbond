@@ -128,6 +128,7 @@ func (v2 *V2) clusterRouter() chi.Router {
 	r.Get("/abilities", controller.GetManager().ListAbilities)
 	r.Get("/abilities/{ability_id}", controller.GetManager().GetAbility)
 	r.Put("/abilities/{ability_id}", controller.GetManager().UpdateAbility)
+	r.Get("/governance-mode", controller.GetManager().ListGovernanceMode)
 	return r
 }
 
@@ -359,6 +360,9 @@ func (v2 *V2) applicationRouter() chi.Router {
 	r.Use(middleware.InitApplication)
 	// app governance mode
 	r.Get("/governance/check", controller.GetManager().CheckGovernanceMode)
+	r.Post("/governance-cr", controller.GetManager().CreateGovernanceModeCR)
+	r.Put("/governance-cr", controller.GetManager().UpdateGovernanceModeCR)
+	r.Delete("/governance-cr", controller.GetManager().DeleteGovernanceModeCR)
 	// Operation application
 	r.Put("/", controller.GetManager().UpdateApp)
 	r.Delete("/", controller.GetManager().DeleteApp)
