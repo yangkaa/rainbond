@@ -31,6 +31,7 @@ import (
 	"github.com/goodrain/rainbond/worker/client"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
@@ -48,6 +49,7 @@ func InitHandle(conf option.Config,
 	metricClient *metrics.Clientset,
 	config *rest.Config,
 	mapper meta.RESTMapper,
+	dynamicClient dynamic.Interface,
 ) error {
 	mq := api_db.MQManager{
 		EtcdClientArgs: etcdClientArgs,
@@ -87,13 +89,14 @@ func InitHandle(conf option.Config,
 	batchOperationHandler = CreateBatchOperationHandler(mqClient, statusCli, operationHandler)
 	defaultAppRestoreHandler = NewAppRestoreHandler()
 	defPodHandler = NewPodHandler(statusCli, kubeClient, metricClient)
-	defClusterHandler = NewClusterHandler(kubeClient, conf.RbdNamespace, conf.GrctlImage, config, mapper, prometheusCli)
+	defClusterHandler = NewClusterHandler(kubeClient, conf.RbdNamespace, conf.GrctlImage, config, mapper, prometheusCli, rainbondClient, statusCli, dynamicClient)
 	defaultVolumeTypeHandler = CreateVolumeTypeManger(statusCli)
 	defaultEtcdHandler = NewEtcdHandler(etcdcli)
 	defaultmonitorHandler = NewMonitorHandler(prometheusCli)
 	defServiceEventHandler = NewServiceEventHandler()
-	defApplicationHandler = NewApplicationHandler(statusCli, prometheusCli, rainbondClient, kubeClient)
+	defApplicationHandler = NewApplicationHandler(statusCli, prometheusCli, rainbondClient, kubeClient, dynamicClient)
 	defRegistryAuthSecretHandler = CreateRegistryAuthSecretManager(dbmanager, mqClient, etcdcli)
+	defNodesHandler = NewNodesHandler(kubeClient, conf.RbdNamespace, config, mapper, prometheusCli)
 	return nil
 }
 
@@ -232,6 +235,13 @@ var defClusterHandler ClusterHandler
 // GetClusterHandler returns the default cluster handler.
 func GetClusterHandler() ClusterHandler {
 	return defClusterHandler
+}
+
+var defNodesHandler NodesHandler
+
+// GetNodesHandler returns the default cluster handler.
+func GetNodesHandler() NodesHandler {
+	return defNodesHandler
 }
 
 var defApplicationHandler ApplicationHandler

@@ -68,6 +68,7 @@ func (c *EventDaoImpl) CreateEventsInBatch(events []*model.ServiceEvent) error {
 	dbType := c.DB.Dialect().GetName()
 	if dbType == "sqlite3" {
 		for _, event := range events {
+			event := event
 			if err := c.DB.Create(&event).Error; err != nil {
 				logrus.Error("batch create or update events error:", err)
 				return err
@@ -84,6 +85,11 @@ func (c *EventDaoImpl) CreateEventsInBatch(events []*model.ServiceEvent) error {
 		return errors.Wrap(err, "create events in batch")
 	}
 	return nil
+}
+
+//DeleteEvents delete event
+func (c *EventDaoImpl) DeleteEvents(eventIDs []string) error {
+	return c.DB.Where("event_id in (?)", eventIDs).Delete(&model.ServiceEvent{}).Error
 }
 
 // UpdateReason update reasion.
@@ -117,7 +123,7 @@ func (c *EventDaoImpl) UpdateInBatch(events []*model.ServiceEvent) error {
 	dbType := c.DB.Dialect().GetName()
 	if dbType == "sqlite3" {
 		for _, event := range events {
-			if err := c.DB.Update(&event).Error; err != nil {
+			if err := c.DB.Model(&event).Where("ID = ?", event.ID).Update(event).Error; err != nil {
 				logrus.Error("batch Update or update events error:", err)
 				return err
 			}
@@ -222,6 +228,8 @@ func (c *EventDaoImpl) GetEventsByTenantIDs(tenantIDs []string, offset, limit in
 		"from tenant_services_event "+
 		"where target = 'service' "+
 		"and tenant_id in (?)) as a "+
+		"left join "+
+		"tenant_service_version "+
 		"on a.target_id = tenant_service_version.service_id and a.event_id = tenant_service_version.event_id", tenantIDs).Order("start_time DESC").Offset(offset).Limit(limit).Scan(&EventAndBuild).Error; err != nil {
 		return nil, err
 	}

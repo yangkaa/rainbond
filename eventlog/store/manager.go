@@ -449,10 +449,14 @@ type containerLog struct {
 }
 
 const (
-	RBDSERVICEIDAPI     = "rbd-api"
-	RBDSERVICEIDWORKER  = "rbd-worker"
+	// RBDSERVICEIDAPI rbd service id api
+	RBDSERVICEIDAPI = "rbd-api"
+	// RBDSERVICEIDWORKER rbd service id worker
+	RBDSERVICEIDWORKER = "rbd-worker"
+	// RBDSERVICEIDGATEWAY rbd service id gateway
 	RBDSERVICEIDGATEWAY = "rbd-gateway"
-	RBDSERVICEIDCHAOS   = "rbd-chaos"
+	// RBDSERVICEIDCHAOS rbd service id chaos
+	RBDSERVICEIDCHAOS = "rbd-chaos"
 )
 
 func (s *storeManager) handleDockerLog() {

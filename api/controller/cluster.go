@@ -344,3 +344,68 @@ func (t *ClusterController) GetRbdPods(w http.ResponseWriter, r *http.Request) {
 	}
 	httputil.ReturnSuccess(r, w, res)
 }
+
+// ListRainbondComponents -
+func (t *ClusterController) ListRainbondComponents(w http.ResponseWriter, r *http.Request) {
+	components, err := handler.GetClusterHandler().ListRainbondComponents(r.Context())
+	if err != nil {
+		logrus.Errorf("get rainbond components error: %v", err)
+		httputil.ReturnError(r, w, 500, err.Error())
+		return
+	}
+	httputil.ReturnSuccess(r, w, components)
+}
+
+// ListPlugins -
+func (t *ClusterController) ListPlugins(w http.ResponseWriter, r *http.Request) {
+	res, err := handler.GetClusterHandler().ListPlugins()
+	if err != nil {
+		httputil.ReturnBcodeError(r, w, err)
+		return
+	}
+	httputil.ReturnSuccess(r, w, res)
+}
+
+// ListAbilities -
+func (t *ClusterController) ListAbilities(w http.ResponseWriter, r *http.Request) {
+	res, err := handler.GetClusterHandler().ListAbilities()
+	if err != nil {
+		httputil.ReturnError(r, w, 400, err.Error())
+		return
+	}
+	var abilities []model.AbilityResp
+	for _, ability := range res {
+		abilities = append(abilities, model.AbilityResp{
+			Name:       ability.GetName(),
+			Kind:       ability.GetKind(),
+			APIVersion: ability.GetAPIVersion(),
+			AbilityID:  handler.GetClusterHandler().GenerateAbilityID(&ability),
+		})
+	}
+	httputil.ReturnSuccess(r, w, abilities)
+}
+
+// GetAbility -
+func (t *ClusterController) GetAbility(w http.ResponseWriter, r *http.Request) {
+	abilityID := chi.URLParam(r, "ability_id")
+	res, err := handler.GetClusterHandler().GetAbility(abilityID)
+	if err != nil {
+		httputil.ReturnError(r, w, 400, err.Error())
+		return
+	}
+	httputil.ReturnSuccess(r, w, res)
+}
+
+// UpdateAbility -
+func (t *ClusterController) UpdateAbility(w http.ResponseWriter, r *http.Request) {
+	abilityID := chi.URLParam(r, "ability_id")
+	var req model.UpdateAbilityReq
+	if ok := httputil.ValidatorRequestStructAndErrorResponse(r, w, &req, nil); !ok {
+		return
+	}
+	if err := handler.GetClusterHandler().UpdateAbility(abilityID, req.Object); err != nil {
+		httputil.ReturnError(r, w, 400, err.Error())
+		return
+	}
+	httputil.ReturnSuccess(r, w, nil)
+}
