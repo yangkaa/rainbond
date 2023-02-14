@@ -87,6 +87,24 @@ func (v *VirtualService) Equals(c *VirtualService) bool {
 	if v.Port != c.Port {
 		return false
 	}
+	if v.EnableModSecurity != c.EnableModSecurity {
+		return false
+	}
+	if len(v.WhiteIP) != len(c.WhiteIP) {
+		return false
+	}
+	for _, vip := range v.WhiteIP {
+		flag := false
+		for _, cip := range c.WhiteIP {
+			if vip == cip {
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			return false
+		}
+	}
 
 	// TODO: this snippet needs improvement
 	if len(v.Listening) != len(c.Listening) {
