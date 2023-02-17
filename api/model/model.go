@@ -2203,3 +2203,9 @@ type GovernanceMode struct {
 	IsDefault   bool   `json:"is_default"`
 	Description string `json:"description"`
 }
+
+// FileInfo -
+type FileInfo struct {
+	Title  string `json:"title"`
+	IsLeaf bool   `json:"is_leaf"`
+}

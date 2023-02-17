@@ -20,6 +20,7 @@ package controller
 
 import (
 	"context"
+	httputil "github.com/goodrain/rainbond/util/http"
 	"net/http"
 	"os"
 	"path"
@@ -216,4 +217,41 @@ func (d PubSubControll) GetHistoryLog(w http.ResponseWriter, r *http.Request) {
 		r = r.WithContext(context.WithValue(r.Context(), proxy.ContextKey("host_id"), name))
 	}
 	d.socketproxy.Proxy(w, r)
+}
+
+
+var fileManage *FileManage
+
+//FileManage docker log
+type FileManage struct {
+	socketproxy proxy.Proxy
+}
+
+//GetFileManage get docker log
+func GetFileManage() *FileManage {
+	if fileManage == nil {
+		fileManage = &FileManage{
+			socketproxy: proxy.CreateProxy("acp_node", "http", []string{"127.0.0.1:6100"}),
+		}
+		discover.GetEndpointDiscover().AddProject("acp_node", fileManage.socketproxy)
+	}
+	return fileManage
+}
+
+//Get get
+func (f FileManage) Get(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	w.Header().Add("Access-Control-Allow-Origin", origin)
+	w.Header().Add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+	w.Header().Add("Access-Control-Allow-Credentials", "true")
+	w.Header().Add("Access-Control-Allow-Headers", "x-requested-with,Content-Type,X-Custom-Header")
+	switch r.Method {
+	case "GET":
+		w.Header().Set("Content-Type", "application/octet-stream")
+		f.socketproxy.Proxy(w, r)
+	case "POST":
+		f.socketproxy.Proxy(w, r)
+	case "OPTIONS":
+		httputil.ReturnSuccess(r, w, nil)
+	}
 }

@@ -124,3 +124,15 @@ func (p *PodController) InstancesMonitor(w http.ResponseWriter, r *http.Request)
 	}
 	httputil.ReturnSuccess(r, w, pods)
 }
+
+func (p *PodController) GetPodVolume(w http.ResponseWriter, r *http.Request) {
+	podName := r.URL.Query().Get("pod_name")
+	volumePath := r.URL.Query().Get("volume_path")
+	nameSpace := r.URL.Query().Get("namespace")
+	serviceAlias := chi.URLParam(r, "service_alias")
+	pd, err := handler.GetPodHandler().PodVolume(volumePath, nameSpace, podName, serviceAlias)
+	if err != nil{
+		return
+	}
+	httputil.ReturnSuccess(r, w, pd)
+}

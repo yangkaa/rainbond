@@ -60,3 +60,13 @@ func PackageBuildRoutes() chi.Router {
 	r.Options("/component/events/{eventID}", controller.GetManager().UploadPackage)
 	return r
 }
+
+//FileOperateRoutes 文件操作
+func FileOperateRoutes() chi.Router {
+	r := chi.NewRouter()
+	r.Get("/download/{fileName}", controller.GetFileManage().Get)
+	r.Options("/download/{fileName}", controller.GetFileManage().Get)
+	r.Post("/upload", controller.GetFileManage().Get)
+	r.Options("/upload", controller.GetFileManage().Get)
+	return r
+}

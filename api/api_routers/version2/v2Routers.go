@@ -315,6 +315,7 @@ func (v2 *V2) serviceRouter() chi.Router {
 
 	//获取应用实例情况(source)
 	r.Get("/pods", controller.GetManager().Pods)
+	r.Get("/pod-volume", controller.GetManager().GetPodVolume)
 
 	//应用探针 增 删 改(surce)
 	r.Post("/probe", middleware.WrapEL(controller.GetManager().Probe, dbmodel.TargetTypeService, "add-service-probe", dbmodel.SYNEVENTTYPE))

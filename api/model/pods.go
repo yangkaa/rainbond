@@ -60,3 +60,9 @@ type PodResourceStatus struct {
 	MemoryUsage   int64  `json:"memory_usage"`
 	PodNameSuffix string `json:"pod_name_suffix"`
 }
+
+// PodVolume -
+type PodVolume struct {
+	PodUid     string `json:"pod_uid"`
+	PVName     string `json:"pv_name"`
+}
