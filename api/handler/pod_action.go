@@ -96,7 +96,7 @@ func (p *PodAction) getPodOwnerKind(pod corev1.Pod) string {
 }
 
 // PodVolume -
-func (p *PodAction) PodVolume(volumePath, namespace, podName, serviceAlias string) (model.PodVolume, error) {
+func (p *PodAction) PodVolume(volumePath, namespace, podName, k8sComponentName string) (model.PodVolume, error) {
 	var podVolume model.PodVolume
 	ctx := context.Background()
 	pod, err := p.clientset.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
@@ -106,7 +106,7 @@ func (p *PodAction) PodVolume(volumePath, namespace, podName, serviceAlias strin
 	podVolume.PodUid = string(pod.UID)
 	var volumeName string
 	for _, container := range pod.Spec.Containers {
-		if container.Name == serviceAlias {
+		if container.Name == k8sComponentName {
 			for _, vm := range container.VolumeMounts {
 				if vm.MountPath == volumePath {
 					volumeName = vm.Name
