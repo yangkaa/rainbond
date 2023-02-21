@@ -20,6 +20,9 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"github.com/goodrain/rainbond/api/util"
+	dbmodel "github.com/goodrain/rainbond/db/model"
 	httputil "github.com/goodrain/rainbond/util/http"
 	"net/http"
 	"os"
@@ -219,7 +222,6 @@ func (d PubSubControll) GetHistoryLog(w http.ResponseWriter, r *http.Request) {
 	d.socketproxy.Proxy(w, r)
 }
 
-
 var fileManage *FileManage
 
 //FileManage docker log
@@ -251,7 +253,25 @@ func (f FileManage) Get(w http.ResponseWriter, r *http.Request) {
 		f.socketproxy.Proxy(w, r)
 	case "POST":
 		f.socketproxy.Proxy(w, r)
+		f.UploadEvent(w, r)
 	case "OPTIONS":
 		httputil.ReturnSuccess(r, w, nil)
 	}
+}
+
+// UploadEvent volume file upload event
+func (f FileManage) UploadEvent(w http.ResponseWriter, r *http.Request) {
+	volumeName := w.Header().Get("volume_name")
+	userName := w.Header().Get("user_name")
+	tenantID := w.Header().Get("tenant_id")
+	serviceID := w.Header().Get("service_id")
+	fileName := w.Header().Get("file_name")
+	status := w.Header().Get("status")
+	msg := fmt.Sprintf("%v to upload file %v in storage %v", status, fileName, volumeName)
+	_, err := util.CreateEvent(dbmodel.TargetTypeService, "volume-file-upload", serviceID, tenantID, "", userName, status, msg, 1)
+	if err != nil {
+		logrus.Error("create event error: ", err)
+		httputil.ReturnError(r, w, 500, "操作失败")
+	}
+	httputil.ReturnSuccess(r, w, nil)
 }
