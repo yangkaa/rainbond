@@ -12,7 +12,7 @@ import (
 type PodHandler interface {
 	PodDetail(namespace, podName string) (*pb.PodDetail, error)
 	InstancesMonitor(nodeName, query string) ([]*model.PodResourceStatus, error)
-	PodVolume(volumePath, nameSpace, podName, serviceAlias string) (model.PodVolume, error)
+	PodVolume(volumePath, nameSpace, podName, k8sComponentName string) (model.PodVolume, error)
 }
 
 // NewPodHandler creates a new PodHandler.

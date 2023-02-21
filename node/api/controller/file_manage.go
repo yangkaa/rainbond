@@ -35,6 +35,11 @@ func GetFileDir(w http.ResponseWriter, r *http.Request) {
 
 // UploadFile -
 func UploadFile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("volume_name", r.FormValue("volume_name"))
+	w.Header().Add("user_name", r.FormValue("user_name"))
+	w.Header().Add("tenant_id", r.FormValue("tenant_id"))
+	w.Header().Add("service_id", r.FormValue("service_id"))
+	w.Header().Add("status", "failed")
 	path := r.FormValue("path")
 	if path == "" {
 		httputil.ReturnError(r, w, 400, "Path cannot be empty")
@@ -47,6 +52,7 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer reader.Close()
+	w.Header().Add("file_name", header.Filename)
 
 	fileName := fmt.Sprintf("%s/%s", path, header.Filename)
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0644)
@@ -61,11 +67,9 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 		logrus.Errorf("Failed to write file：%s", err.Error())
 		httputil.ReturnError(r, w, 503, "Failed to write file: "+err.Error())
 	}
-
 	logrus.Debug("successful write file to: ", fileName)
-	httputil.ReturnSuccess(r, w, nil)
+	w.Header().Set("status", "success")
 }
-
 
 //DownloadFile -
 func DownloadFile(w http.ResponseWriter, r *http.Request) {

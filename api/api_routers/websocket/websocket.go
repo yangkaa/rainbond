@@ -19,9 +19,8 @@
 package websocket
 
 import (
-	"github.com/goodrain/rainbond/api/controller"
-
 	"github.com/go-chi/chi"
+	"github.com/goodrain/rainbond/api/controller"
 )
 
 //Routes routes

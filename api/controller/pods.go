@@ -129,10 +129,10 @@ func (p *PodController) GetPodVolume(w http.ResponseWriter, r *http.Request) {
 	podName := r.URL.Query().Get("pod_name")
 	volumePath := r.URL.Query().Get("volume_path")
 	nameSpace := r.URL.Query().Get("namespace")
-	serviceAlias := chi.URLParam(r, "service_alias")
-	pd, err := handler.GetPodHandler().PodVolume(volumePath, nameSpace, podName, serviceAlias)
+	k8sComponentName:= r.URL.Query().Get("k8s_component_name")
+	pd, err := handler.GetPodHandler().PodVolume(volumePath, nameSpace, podName, k8sComponentName)
 	if err != nil{
-		return
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("get pod volume error: %v", err))
 	}
 	httputil.ReturnSuccess(r, w, pd)
 }
