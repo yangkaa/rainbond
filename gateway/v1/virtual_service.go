@@ -62,6 +62,9 @@ type VirtualService struct {
 	ExtensionConfig   map[string]interface{} `json:"extension_config"`
 	EnableModSecurity bool                   `json:"enable_mod_security"`
 	WhiteIP           []string               `json:"white_ip"`
+	BlackIP           []string               `json:"black_ip"`
+	BlackORWhite      string                 `json:"black_or_white"`
+	WAFRules          []string               `json:"waf_rules"`
 }
 
 //Equals equals vs
@@ -90,6 +93,9 @@ func (v *VirtualService) Equals(c *VirtualService) bool {
 	if v.EnableModSecurity != c.EnableModSecurity {
 		return false
 	}
+	if v.BlackORWhite != c.BlackORWhite {
+		return false
+	}
 	if len(v.WhiteIP) != len(c.WhiteIP) {
 		return false
 	}
@@ -105,7 +111,36 @@ func (v *VirtualService) Equals(c *VirtualService) bool {
 			return false
 		}
 	}
-
+	if len(v.BlackIP) != len(c.BlackIP) {
+		return false
+	}
+	for _, vip := range v.BlackIP {
+		flag := false
+		for _, cip := range c.BlackIP {
+			if vip == cip {
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			return false
+		}
+	}
+	if len(v.WAFRules) != len(c.WAFRules) {
+		return false
+	}
+	for _, vRule := range v.WAFRules {
+		flag := false
+		for _, cRule := range c.WAFRules {
+			if vRule == cRule {
+				flag = true
+				break
+			}
+		}
+		if !flag {
+			return false
+		}
+	}
 	// TODO: this snippet needs improvement
 	if len(v.Listening) != len(c.Listening) {
 		return false

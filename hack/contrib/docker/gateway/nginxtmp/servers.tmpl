@@ -8,12 +8,17 @@ server {
     {{ range $whiteIP := .WhiteIP }}
     allow {{$whiteIP}};
     {{ end }}
-    {{ if .OpenWhiteList }}deny all;{{end}}
+    {{ range $blackIP := .BlackIP }}
+    deny {{$blackIP}};
+    {{ end }}
+    {{ if eq .BlackORWhite "white" }}deny all;{{end}}
     access_log off;
     {{ if gt .KeepaliveTimeout.Num 0 }}
     keepalive_timeout {{.KeepaliveTimeout.Num}}{{.KeepaliveTimeout.Unit}};
     {{ end }}
-
+    {{ range $rule := .WAFRules }}
+    modsecurity_rules_file /usr/local/openresty/nginx/conf/modsecurity/{{$rule}}.conf;
+    {{ end }}
     {{ if .EnableModSecurity }}
     modsecurity on;
     modsecurity_rules_file /usr/local/openresty/nginx/conf/modsecurity/modsecurity.conf;

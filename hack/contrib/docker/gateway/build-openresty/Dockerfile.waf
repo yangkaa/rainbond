@@ -160,7 +160,7 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
     && mv unicode.mapping /usr/local/openresty/nginx/conf/modsecurity/unicode.mapping \
     && mv modsecurity.conf-recommended /usr/local/openresty/nginx/conf/modsecurity/modsecurity.conf \
     && sed -i -e "s/SecRuleEngine DetectionOnly/SecRuleEngine On/" \
-    -e '$a\Include /usr/local/openresty/nginx/conf/modsecurity/crs-setup.conf\nInclude /usr/local/openresty/nginx/conf/modsecurity/rules/*.conf' /usr/local/openresty/nginx/conf/modsecurity/modsecurity.conf \
+    -e '$a\Include /usr/local/openresty/nginx/conf/modsecurity/crs-setup.conf\nInclude /usr/local/openresty/nginx/conf/modsecurity/rules/REQUEST-901-INITIALIZATION.conf\nInclude /usr/local/openresty/nginx/conf/modsecurity/rules/REQUEST-949-BLOCKING-EVALUATION.conf' /usr/local/openresty/nginx/conf/modsecurity/modsecurity.conf \
     && wget https://github.com/coreruleset/coreruleset/archive/refs/tags/v${MODSEC_CRS_VERSION}.tar.gz \
     && tar xf v${MODSEC_CRS_VERSION}.tar.gz \
     && mv coreruleset-${MODSEC_CRS_VERSION}/crs-setup.conf.example /usr/local/openresty/nginx/conf/modsecurity/crs-setup.conf \

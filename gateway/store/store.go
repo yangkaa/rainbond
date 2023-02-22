@@ -649,12 +649,29 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 							}
 						}
 						vs.EnableModSecurity, _ = strconv.ParseBool(ing.Annotations["EnableModSecurity"])
-						var writeList []string
-						err := json.Unmarshal([]byte(ing.Annotations["WhiteIP"]), &writeList)
-						if err != nil {
-							logrus.Warnf("%v is a problem with the deserialization of white list JSON,err: %v", ingName, err)
+						var writeList, blackList, wafRulesList []string
+						if ing.Annotations["WhiteIP"] != "" {
+							err := json.Unmarshal([]byte(ing.Annotations["WhiteIP"]), &writeList)
+							if err != nil {
+								logrus.Warnf("%v is a problem with the deserialization of white list JSON,err: %v", ingName, err)
+							}
 						}
+						if ing.Annotations["BlackIP"] != "" {
+							err := json.Unmarshal([]byte(ing.Annotations["BlackIP"]), &blackList)
+							if err != nil {
+								logrus.Warnf("%v is a problem with the deserialization of black list JSON,err: %v", ingName, err)
+							}
+						}
+						if ing.Annotations["WAFRules"] != "" {
+							err := json.Unmarshal([]byte(ing.Annotations["WAFRules"]), &wafRulesList)
+							if err != nil {
+								logrus.Warnf("%v is a problem with the deserialization of black list JSON,err: %v", ingName, err)
+							}
+						}
+						vs.BlackORWhite = ing.Annotations["BlackORWhite"]
 						vs.WhiteIP = writeList
+						vs.BlackIP = blackList
+						vs.WAFRules = wafRulesList
 						l7vsMap[virSrvName] = vs
 						l7vs = append(l7vs, vs)
 					}
@@ -768,12 +785,29 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 							}
 						}
 						vs.EnableModSecurity, _ = strconv.ParseBool(ing.Annotations["EnableModSecurity"])
-						var writeList []string
-						err := json.Unmarshal([]byte(ing.Annotations["WhiteIP"]), &writeList)
-						if err != nil {
-							logrus.Warnf("%v is a problem with the deserialization of white list JSON,err: %v", ingName, err)
+						var writeList, blackList, wafRulesList []string
+						if ing.Annotations["WhiteIP"] != "" {
+							err := json.Unmarshal([]byte(ing.Annotations["WhiteIP"]), &writeList)
+							if err != nil {
+								logrus.Warnf("%v is a problem with the deserialization of white list JSON,err: %v", ingName, err)
+							}
 						}
+						if ing.Annotations["BlackIP"] != "" {
+							err := json.Unmarshal([]byte(ing.Annotations["BlackIP"]), &blackList)
+							if err != nil {
+								logrus.Warnf("%v is a problem with the deserialization of black list JSON,err: %v", ingName, err)
+							}
+						}
+						if ing.Annotations["WAFRules"] != "" {
+							err := json.Unmarshal([]byte(ing.Annotations["WAFRules"]), &wafRulesList)
+							if err != nil {
+								logrus.Warnf("%v is a problem with the deserialization of black list JSON,err: %v", ingName, err)
+							}
+						}
+						vs.BlackORWhite = ing.Annotations["BlackORWhite"]
 						vs.WhiteIP = writeList
+						vs.BlackIP = blackList
+						vs.WAFRules = wafRulesList
 						l7vsMap[virSrvName] = vs
 						l7vs = append(l7vs, vs)
 					}
