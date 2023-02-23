@@ -526,7 +526,15 @@ func (a *AppServiceBuild) parseAnnotations(rule *model.HTTPRule) (map[string]str
 	if rule.EnableModSecurity {
 		annos["EnableModSecurity"] = "true"
 	}
-	annos["WhiteIP"] = rule.WhiteIP
+	annos["BlackIP"] = ""
+	annos["WhiteIP"] = ""
+	if rule.BlackORWhite == "white" {
+		annos["WhiteIP"] = rule.WhiteIP
+	} else if rule.BlackORWhite == "black" {
+		annos["BlackIP"] = rule.BlackIP
+	}
+	annos["WAFRules"] = rule.WAFRules
+	annos["BlackORWhite"] = rule.BlackORWhite
 	// path-rewrite
 	if rule.PathRewrite {
 		annos[parser.GetAnnotationWithPrefix("path-rewrite")] = "true"

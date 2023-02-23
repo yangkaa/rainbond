@@ -49,7 +49,9 @@ type Server struct {
 	ProxyProtocol     ProxyProtocol
 	EnableModSecurity bool     `json:"enable_mod_security"`
 	WhiteIP           []string `json:"white_ip"`
-	OpenWhiteList     bool     `json:"open_white_list"`
+	BlackORWhite      string   `json:"black_or_white"`
+	BlackIP           []string `json:"black_ip"`
+	WAFRules          []string `json:"waf_rules"`
 }
 
 // ProxyProtocol describes the proxy protocol configuration

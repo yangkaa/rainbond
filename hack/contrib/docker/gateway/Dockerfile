@@ -12,7 +12,7 @@ RUN set -eux; \
     if [ "${GOARCH}" = "arm64" ]; then \
         wget https://rainbond-pkg.oss-cn-shanghai.aliyuncs.com/5.3-arm/librestychash.so -O /run/nginx/lua/vendor/so/librestychash.so; \
     fi
-
+RUN mv ./run/nginxtmp/waf_rules/*.conf /usr/local/openresty/nginx/conf/modsecurity/
 ENV NGINX_CONFIG_TMPL=/run/nginxtmp
 ENV NGINX_CUSTOM_CONFIG=/run/nginx/conf
 ENV RELEASE_DESC=${RELEASE_DESC}
