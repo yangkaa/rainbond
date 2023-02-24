@@ -358,7 +358,8 @@ func (t *ClusterController) ListRainbondComponents(w http.ResponseWriter, r *htt
 
 // ListPlugins -
 func (t *ClusterController) ListPlugins(w http.ResponseWriter, r *http.Request) {
-	res, err := handler.GetClusterHandler().ListPlugins()
+	official, _ := strconv.ParseBool(r.URL.Query().Get("official"))
+	res, err := handler.GetClusterHandler().ListPlugins(official)
 	if err != nil {
 		httputil.ReturnBcodeError(r, w, err)
 		return
