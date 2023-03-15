@@ -61,6 +61,12 @@ func (l *LicenseManager) Getlicense(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := lic.SetResp()
 	computeNodes, _ := handler.GetClusterHandler().GetComputeNodeNums(r.Context())
+	clusterInfo, err := handler.GetClusterHandler().GetClusterInfo(r.Context())
+	if err != nil{
+		httputil.ReturnError(r, w, 400, err.Error())
+		return
+	}
+	resp.UsedMemory = int64(clusterInfo.ReqMem) / 1024
 	resp.ActualNode = computeNodes
 	httputil.ReturnSuccess(r, w, resp)
 }

@@ -21,7 +21,9 @@ package license
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -33,37 +35,38 @@ import (
 
 //LicenseInfo license data
 type LicenseInfo struct {
-	Code        string    `json:"code"`
-	Company     string    `json:"company"`
-	Node        int64     `json:"node"`
-	Memory      int64     `json:"memory"`
-	EndTime     string    `json:"end_time"`
-	StartTime   string    `json:"start_time"`
-	Features    []Feature `json:"features"`
+	Code      string    `json:"code"`
+	Company   string    `json:"company"`
+	Node      int64     `json:"node"`
+	Memory    int64     `json:"memory"`
+	EndTime   string    `json:"end_time"`
+	StartTime string    `json:"start_time"`
+	Features  []Feature `json:"features"`
 }
 
 func (l *LicenseInfo) SetResp() *LicenseResp {
 	return &LicenseResp{
-		Code:        l.Code,
-		Company:     l.Company,
-		ExpectNode:  l.Node,
-		Memory:      l.Memory,
-		EndTime:     l.EndTime,
-		StartTime:   l.StartTime,
-		Features:    l.Features,
+		Code:       l.Code,
+		Company:    l.Company,
+		ExpectNode: l.Node,
+		Memory:     l.Memory,
+		EndTime:    l.EndTime,
+		StartTime:  l.StartTime,
+		Features:   l.Features,
 	}
 }
 
 //LicenseResp license resp data
 type LicenseResp struct {
-	Code        string    `json:"code" description:"code"`
-	Company     string    `json:"company" description:"公司名"`
-	ExpectNode  int64     `json:"expect_node" description:"授权节点数量"`
-	ActualNode  int64     `json:"actual_node" description:"实际节点数量"`
-	Memory      int64     `json:"memory" description:"授权内存"`
-	EndTime     string    `json:"end_time" description:"结束时间"`
-	StartTime   string    `json:"start_time" description:"开始时间"`
-	Features    []Feature `json:"features" description:"特性列表"`
+	Code       string    `json:"code" description:"code"`
+	Company    string    `json:"company" description:"公司名"`
+	ExpectNode int64     `json:"expect_node" description:"授权节点数量"`
+	ActualNode int64     `json:"actual_node" description:"实际节点数量"`
+	Memory     int64     `json:"memory" description:"授权内存"`
+	EndTime    string    `json:"end_time" description:"结束时间"`
+	StartTime  string    `json:"start_time" description:"开始时间"`
+	Features   []Feature `json:"features" description:"特性列表"`
+	UsedMemory int64     `json:"used_memory" description:"使用内存"`
 }
 
 func (l *LicenseInfo) HaveFeature(code string) bool {
@@ -102,14 +105,24 @@ func ReadLicense() *LicenseInfo {
 		logrus.Error("read LICENSE file failure：" + err.Error())
 		return nil
 	}
-
-	//step2 decryption info
+	// step2 decryption info
+	caPath := "/etc/goodrain/region.goodrain.me/ssl/ca.pem"
+	_, err = os.Stat(caPath)
+	if err != nil {
+		logrus.Error("read ca file failure：" + err.Error())
+		return nil
+	}
+	ca, err := ioutil.ReadFile(caPath)
+	if err != nil {
+		logrus.Error("read ca file failure：" + err.Error())
+		return nil
+	}
+	salt := []byte(md5String(string(ca) + string(defaultKey)))
 	key := os.Getenv("LICENSE_KEY")
 	if key == "" {
 		logrus.Error("not define license Key")
-		return nil
 	}
-	infoData, err := Decrypt(getKey(key), string(infoBody))
+	infoData, err := Decrypt(getKey(key, salt), string(infoBody))
 	if err != nil {
 		logrus.Error("decrypt LICENSE failure " + err.Error())
 		return nil
@@ -143,11 +156,20 @@ func Decrypt(key []byte, encrypted string) ([]byte, error) {
 	cfb.XORKeyStream(ciphertext, ciphertext)
 	return ciphertext, nil
 }
-func getKey(source string) []byte {
+
+// getKey -
+func getKey(source string, salt []byte) []byte {
 	if len(source) > 32 {
 		return []byte(source[:32])
 	}
-	return append(defaultKey[len(source):], []byte(source)...)
+	return append(salt[len(source):], []byte(source)...)
+}
+
+// md5String -
+func md5String(s string) string {
+	h := md5.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 var defaultKey = []byte{113, 119, 101, 114, 116, 121, 117, 105, 111, 112, 97, 115, 100, 102, 103, 104, 106, 107, 108, 122, 120, 99, 118, 98, 110, 109, 49, 50, 51, 52, 53, 54}

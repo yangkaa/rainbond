@@ -22,20 +22,23 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
-	"net/http"
-	"strings"
-
+	"fmt"
 	"github.com/go-chi/chi"
 	"github.com/goodrain/rainbond/api/handler"
 	"github.com/goodrain/rainbond/api/util"
 	ctxutil "github.com/goodrain/rainbond/api/util/ctx"
+	"github.com/goodrain/rainbond/api/util/license"
 	"github.com/goodrain/rainbond/db"
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	"github.com/goodrain/rainbond/event"
 	httputil "github.com/goodrain/rainbond/util/http"
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 )
 
 var pool []string
@@ -243,10 +246,15 @@ func (w *resWriter) WriteHeader(statusCode int) {
 }
 
 // WrapEL wrap eventlog, handle event log before and after process
-func WrapEL(f http.HandlerFunc, target, optType string, synType int) http.HandlerFunc {
+func WrapEL(f http.HandlerFunc, target, optType string, synType int, ResourceValidation bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		err := LicenseVerification(w, r, ResourceValidation)
+		if err != nil {
+			err.Handle(r, w)
+			return
+		}
 		var (
-			serviceKind  string
+			serviceKind string
 		)
 		serviceObj := r.Context().Value(ctxutil.ContextKey("service"))
 		if serviceObj != nil {
@@ -298,7 +306,7 @@ func WrapEL(f http.HandlerFunc, target, optType string, synType int) http.Handle
 			tenantID := r.Context().Value(ctxutil.ContextKey("tenant_id")).(string)
 			var ctx context.Context
 
-			event, err := util.CreateEvent(target, optType, targetID, tenantID, string(body), operator,"", "", synType)
+			event, err := util.CreateEvent(target, optType, targetID, tenantID, string(body), operator, "", "", synType)
 			if err != nil {
 				logrus.Error("create event error : ", err)
 				httputil.ReturnError(r, w, 500, "操作失败")
@@ -326,4 +334,62 @@ func debugRequestBody(r *http.Request) {
 		// set a new body, which will simulate the same data we read
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	}
+}
+
+func LicenseVerification(w http.ResponseWriter, r *http.Request, ResourceValidation bool) *util.APIHandleError {
+	// LICENSE Verification
+	timeCache := os.Getenv("LICENSE_CACHE_TIME")
+	licenseCache := os.Getenv("LICENSE_CACHE")
+	t := time.Now().Format("2006-01-02 15:04:05")
+	now, _ := time.Parse("2006-01-02 15:04:05", t)
+	isEnvExpire := false
+	if timeCache != "" {
+		expire, err := time.Parse("2006-01-02 15:04:05", licenseCache)
+		if err == nil && expire.Before(now) {
+			isEnvExpire = true
+		}
+	}
+	if licenseCache == "" || isEnvExpire {
+		lic := license.ReadLicense()
+		if lic == nil {
+			return util.CreateAPIHandleError(412, fmt.Errorf("authorize_cluster_lack_of_license"))
+		}
+		resp := lic.SetResp()
+		computeNodes, _ := handler.GetClusterHandler().GetComputeNodeNums(r.Context())
+		clusterInfo, err := handler.GetClusterHandler().GetClusterInfo(r.Context())
+		if err != nil {
+			httputil.ReturnError(r, w, 400, err.Error())
+			return nil
+		}
+		resp.UsedMemory = int64(clusterInfo.ReqMem) / 1024
+		resp.ActualNode = computeNodes
+		cache, err := json.Marshal(resp)
+		if err != nil {
+			httputil.ReturnError(r, w, 400, err.Error())
+			return nil
+		}
+		_ = os.Setenv("LICENSE_CACHE", string(cache))
+		_ = os.Setenv("LICENSE_CACHE_TIME", now.Add(time.Minute).Format("2006-01-02 15:04:05"))
+		licenseCache = string(cache)
+	}
+
+	var licenseResp license.LicenseResp
+	err := json.Unmarshal([]byte(licenseCache), &licenseResp)
+	if err != nil {
+		httputil.ReturnError(r, w, 400, err.Error())
+		return nil
+	}
+	if licenseResp.Memory != -1 && licenseResp.UsedMemory > licenseResp.Memory && ResourceValidation {
+		return util.CreateAPIHandleError(412, fmt.Errorf("authorize_cluster_lack_of_memory"))
+	}
+	if licenseResp.ExpectNode != -1 && licenseResp.ActualNode > licenseResp.ExpectNode && ResourceValidation {
+		return util.CreateAPIHandleError(412, fmt.Errorf("authorize_cluster_lack_of_node"))
+	}
+	if licenseResp.EndTime != "" {
+		endTime, err := time.Parse("2006-01-02 15:04:05", licenseResp.EndTime)
+		if err == nil && endTime.Before(now) {
+			return util.CreateAPIHandleError(412, fmt.Errorf("authorize_expiration_of_authorization"))
+		}
+	}
+	return nil
 }

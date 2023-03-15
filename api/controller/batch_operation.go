@@ -21,6 +21,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/goodrain/rainbond/api/middleware"
 	"net/http"
 
 	"github.com/goodrain/rainbond/api/handler"
@@ -47,27 +48,52 @@ func BatchOperation(w http.ResponseWriter, r *http.Request) {
 	var f func(ctx context.Context, tenant *dbmodel.Tenants, operator string, batchOpReqs model.BatchOpRequesters) (model.BatchOpResult, error)
 	switch build.Body.Operation {
 	case "build":
+		err := middleware.LicenseVerification(w, r, true)
+		if err != nil {
+			err.Handle(r, w)
+			return
+		}
 		for _, build := range build.Body.Builds {
 			build.TenantName = tenant.Name
 			batchOpReqs = append(batchOpReqs, build)
 		}
 		f = handler.GetBatchOperationHandler().Build
 	case "start":
+		err := middleware.LicenseVerification(w, r, true)
+		if err != nil {
+			err.Handle(r, w)
+			return
+		}
 		for _, start := range build.Body.Starts {
 			batchOpReqs = append(batchOpReqs, start)
 		}
 		f = handler.GetBatchOperationHandler().Start
 	case "stop":
+		err := middleware.LicenseVerification(w, r, false)
+		if err != nil {
+			err.Handle(r, w)
+			return
+		}
 		for _, stop := range build.Body.Stops {
 			batchOpReqs = append(batchOpReqs, stop)
 		}
 		f = handler.GetBatchOperationHandler().Stop
 	case "upgrade":
+		err := middleware.LicenseVerification(w, r, true)
+		if err != nil {
+			err.Handle(r, w)
+			return
+		}
 		for _, upgrade := range build.Body.Upgrades {
 			batchOpReqs = append(batchOpReqs, upgrade)
 		}
 		f = handler.GetBatchOperationHandler().Upgrade
 	case "export":
+		err := middleware.LicenseVerification(w, r, false)
+		if err != nil {
+			err.Handle(r, w)
+			return
+		}
 		for _, build := range build.Body.Builds {
 			build.TenantName = tenant.Name
 			batchOpReqs = append(batchOpReqs, build)
