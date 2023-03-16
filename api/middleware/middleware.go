@@ -344,7 +344,7 @@ func LicenseVerification(w http.ResponseWriter, r *http.Request, ResourceValidat
 	now, _ := time.Parse("2006-01-02 15:04:05", t)
 	isEnvExpire := false
 	if timeCache != "" {
-		expire, err := time.Parse("2006-01-02 15:04:05", licenseCache)
+		expire, err := time.Parse("2006-01-02 15:04:05", timeCache)
 		if err == nil && expire.Before(now) {
 			isEnvExpire = true
 		}
