@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/goodrain/rainbond/api/middleware"
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	"net/http"
 	"strconv"
@@ -111,6 +112,11 @@ func (a *ApplicationController) ListConfigGroups(w http.ResponseWriter, r *http.
 
 // SyncComponents -
 func (a *ApplicationController) SyncComponents(w http.ResponseWriter, r *http.Request) {
+	AuthError := middleware.LicenseVerification(w, r, true)
+	if AuthError != nil {
+		AuthError.Handle(r, w)
+		return
+	}
 	var syncComponentReq model.SyncComponentReq
 	app := r.Context().Value(ctxutil.ContextKey("application")).(*dbmodel.Application)
 	if !httputil.ValidatorRequestStructAndErrorResponse(r, w, &syncComponentReq, nil) {
