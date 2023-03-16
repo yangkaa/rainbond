@@ -361,7 +361,7 @@ func LicenseVerification(w http.ResponseWriter, r *http.Request, ResourceValidat
 			httputil.ReturnError(r, w, 400, err.Error())
 			return nil
 		}
-		resp.UsedMemory = int64(clusterInfo.ReqMem) / 1024
+		resp.UsedMemory = int64(clusterInfo.RainbondReqMem) / 1024
 		resp.ActualNode = computeNodes
 		cache, err := json.Marshal(resp)
 		if err != nil {
