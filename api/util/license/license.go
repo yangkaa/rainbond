@@ -117,7 +117,9 @@ func ReadLicense() *LicenseInfo {
 		logrus.Error("read ca file failure：" + err.Error())
 		return nil
 	}
-	salt := []byte(md5String(string(ca) + string(defaultKey)))
+	// Remove all line breaks
+	caStr := strings.Replace(string(ca), "\n", "", -1)
+	salt := []byte(md5String(caStr + string(defaultKey)))
 	key := os.Getenv("LICENSE_KEY")
 	if key == "" {
 		logrus.Error("not define license Key")
