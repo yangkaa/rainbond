@@ -731,7 +731,8 @@ func (r *RuntimeServer) GetAppVolumeStatus(ctx context.Context, re *pb.ServiceRe
 		for _, volume := range pod.Spec.Volumes {
 			volumeName := volume.Name
 			prefix := "manual" // all volume name start with manual but config file, volume name style: fmt.Sprintf("manual%d", TenantServiceVolume.ID)
-			if strings.HasPrefix(volumeName, prefix) {
+			nfsPrefix := "nfs"
+			if strings.HasPrefix(volumeName, prefix) || strings.HasPrefix(volumeName, nfsPrefix) {
 				volumeName = strings.TrimPrefix(volumeName, prefix)
 				switch podStatus.Type {
 				case pb.PodStatus_SCHEDULING:
@@ -753,7 +754,6 @@ func (r *RuntimeServer) GetAppVolumeStatus(ctx context.Context, re *pb.ServiceRe
 			}
 		}
 	}
-
 	return ret, nil
 }
 

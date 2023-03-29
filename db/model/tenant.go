@@ -498,6 +498,9 @@ var CephRBDVolumeType VolumeType = "ceph-rbd"
 // AliCloudVolumeType alicloud volume type
 var AliCloudVolumeType VolumeType = "alicloud-disk"
 
+// NFSdVolumeType nfs volume type
+var NFSdVolumeType VolumeType = "nfs"
+
 // MakeNewVolume make volumeType
 func MakeNewVolume(name string) VolumeType {
 	return VolumeType(name)
@@ -537,7 +540,11 @@ type TenantServiceVolume struct {
 	AllowExpansion bool `gorm:"column:allow_expansion" json:"allow_expansion"`
 	// VolumeProviderName 使用的存储驱动别名
 	VolumeProviderName string `gorm:"column:volume_provider_name" json:"volume_provider_name"`
-	Mode               *int32 `gorm:"column:mode" json:"mode"`
+	// NfsServer NFS存储服务地址
+	NFSServer string `gorm:"column:nfs_server" json:"nfs_server"`
+	// NFSPath NFS存储路径
+	NFSPath string `gorm:"column:nfs_path" json:"nfs_path"`
+	Mode    *int32 `gorm:"column:mode" json:"mode"`
 }
 
 //TableName 表名

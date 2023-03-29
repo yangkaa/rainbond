@@ -171,6 +171,8 @@ type ComponentVolume struct {
 	ReclaimPolicy      string `json:"reclaim_policy"`
 	AllowExpansion     bool   `json:"allow_expansion"`
 	VolumeProviderName string `json:"volume_provider_name"`
+	NFSServer          string `json:"nfs_server"`
+	NFSPath            string `json:"nfs_path"`
 	Mode               *int32 `json:"mode"`
 }
 
@@ -196,6 +198,8 @@ func (v *ComponentVolume) DbModel(componentID string) *dbmodel.TenantServiceVolu
 		ReclaimPolicy:      v.ReclaimPolicy,
 		AllowExpansion:     v.AllowExpansion,
 		VolumeProviderName: v.VolumeProviderName,
+		NFSPath:            v.NFSPath,
+		NFSServer:          v.NFSServer,
 		Mode:               v.Mode,
 	}
 }

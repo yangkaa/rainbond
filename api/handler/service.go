@@ -663,6 +663,9 @@ func (s *ServiceAction) ServiceCreate(sc *api_model.ServiceStruct) error {
 					v.HostPath = fmt.Sprintf("%s/tenant/%s/service/%s%s", localPath, sc.TenantID, ts.ServiceID, volumn.VolumePath)
 				case dbmodel.ConfigFileVolumeType.String(), dbmodel.MemoryFSVolumeType.String():
 					logrus.Debug("simple volume type : ", volumn.VolumeType)
+				case dbmodel.NFSdVolumeType.String():
+					v.NFSPath = volumn.NFSPath
+					v.NFSServer = volumn.NFSServer
 				default:
 					if !dbmodel.ServiceType(sc.ExtendMethod).IsState() {
 						tx.Rollback()
@@ -1760,6 +1763,10 @@ func (s *ServiceAction) UpdVolume(sid string, req *api_model.UpdVolumeReq) error
 		return err
 	}
 	v.VolumePath = req.VolumePath
+	if v.VolumeType == "nfs"{
+		v.NFSServer = req.NFSServer
+		v.NFSPath = req.NFSPath
+	}
 	v.Mode = req.Mode
 	if err := db.GetManager().TenantServiceVolumeDaoTransactions(tx).UpdateModel(v); err != nil {
 		tx.Rollback()
@@ -1816,7 +1823,13 @@ func (s *ServiceAction) GetVolumes(serviceID string) ([]*api_model.VolumeWithSta
 			AllowExpansion:     volume.AllowExpansion,
 			VolumeProviderName: volume.VolumeProviderName,
 		}
-		volumeID := strconv.FormatInt(int64(volume.ID), 10)
+		var volumeID string
+		if volume.VolumeType == "nfs" {
+			volumeID = fmt.Sprintf("nfs-%v", volume.ID)
+		} else {
+			volumeID = strconv.FormatInt(int64(volume.ID), 10)
+		}
+
 		if phrase, ok := volumeStatus[volumeID]; ok {
 			vws.Status = phrase.String()
 			if os.Getenv("ENABLE_SUBPATH") == "true" && vws.VolumeType == "share-file" && strings.HasPrefix(vws.HostPath, "/grdata") {
