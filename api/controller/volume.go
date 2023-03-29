@@ -379,6 +379,8 @@ func AddVolume(w http.ResponseWriter, r *http.Request) {
 		BackupPolicy:       avs.Body.BackupPolicy,
 		ReclaimPolicy:      avs.Body.ReclaimPolicy,
 		AllowExpansion:     avs.Body.AllowExpansion,
+		NFSServer:          avs.Body.NFSServer,
+		NFSPath:            avs.Body.NFSPath,
 		Mode:               avs.Body.Mode,
 	}
 
