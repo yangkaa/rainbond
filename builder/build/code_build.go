@@ -116,7 +116,7 @@ func (s *slugBuild) writeRunDockerfile(sourceDir, packageName string, envs map[s
 	return ioutil.WriteFile(path.Join(sourceDir, "Dockerfile"), []byte(result), 0755)
 }
 
-//buildRunnerImage Wrap slug in the runner image
+// buildRunnerImage Wrap slug in the runner image
 func (s *slugBuild) buildRunnerImage(slugPackage string) (string, error) {
 	imageName := CreateImageName(s.re.ServiceID, s.re.DeployVersion)
 	cacheDir := path.Join(path.Dir(slugPackage), "."+s.re.DeployVersion)
@@ -169,8 +169,8 @@ func (s *slugBuild) getSourceCodeTarFile(re *Request) (string, error) {
 	return sourceTarFile, nil
 }
 
-//stopPreBuildJob Stops previous build tasks for the same component
-//The same component retains only one build task to perform
+// stopPreBuildJob Stops previous build tasks for the same component
+// The same component retains only one build task to perform
 func (s *slugBuild) stopPreBuildJob(re *Request) error {
 	jobList, err := jobc.GetJobController().GetServiceJobs(re.ServiceID)
 	if err != nil {
@@ -438,7 +438,7 @@ func (s *slugBuild) runBuildJob(re *Request) error {
 		podSpec.HostAliases = append(podSpec.HostAliases, corev1.HostAlias{IP: ha.IP, Hostnames: ha.Hostnames})
 	}
 	job.Spec = podSpec
-	s.setImagePullSecretsForPod(&job)
+	sources.SetImagePullSecretsForPod(&job)
 	writer := re.Logger.GetWriter("builder", "info")
 	reChan := channels.NewRingChannel(10)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -502,18 +502,7 @@ func (s *slugBuild) waitingComplete(re *Request, reChan *channels.RingChannel) (
 	}
 }
 
-func (s *slugBuild) setImagePullSecretsForPod(pod *corev1.Pod) {
-	imagePullSecretName := os.Getenv("IMAGE_PULL_SECRET")
-	if imagePullSecretName == "" {
-		return
-	}
-
-	pod.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
-		{Name: imagePullSecretName},
-	}
-}
-
-//ErrorBuild build error
+// ErrorBuild build error
 type ErrorBuild struct {
 	Code int
 }

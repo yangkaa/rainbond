@@ -65,7 +65,7 @@ func (d *dockerfileBuild) Build(re *Request) (*Response, error) {
 	}, nil
 }
 
-//The same component retains only one build task to perform
+// The same component retains only one build task to perform
 func (d *dockerfileBuild) stopPreBuildJob(re *Request) error {
 	jobList, err := jobc.GetJobController().GetServiceJobs(re.ServiceID)
 	if err != nil {
@@ -122,6 +122,7 @@ func (d *dockerfileBuild) runBuildJob(re *Request, buildImageName string) error 
 	container.VolumeMounts = mounts
 	podSpec.Containers = append(podSpec.Containers, container)
 	job.Spec = podSpec
+	sources.SetImagePullSecretsForPod(&job)
 	writer := re.Logger.GetWriter("builder", "info")
 	reChan := channels.NewRingChannel(10)
 	ctx, cancel := context.WithCancel(context.Background())
