@@ -78,6 +78,7 @@ type ApplicationDao interface {
 	ListByAppIDs(appIDs []string) ([]*model.Application, error)
 	IsK8sAppDuplicate(tenantID, AppID, k8sApp string) bool
 	GetAppByName(tenantID, k8sAppName string) (*model.Application, error)
+	DeleteAppByK8sApp(tenantID, k8sAppName string) error
 }
 
 //AppConfigGroupDao Application config group Dao
@@ -640,6 +641,7 @@ type ComponentK8sAttributeDao interface {
 type K8sResourceDao interface {
 	Dao
 	ListByAppID(appID string) ([]model.K8sResource, error)
+	DeleteK8sResourceByIDs(ids []uint) error
 	CreateK8sResource(k8sResources []*model.K8sResource) error
 	DeleteK8sResource(appID, name string, kind string) error
 	GetK8sResourceByName(appID, name, kind string) (model.K8sResource, error)

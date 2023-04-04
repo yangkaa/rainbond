@@ -109,6 +109,7 @@ func (v2 *V2) clusterRouter() chi.Router {
 	r.Get("/builder/mavensetting/{name}", controller.GetManager().MavenSettingDetail)
 	r.Put("/builder/mavensetting/{name}", controller.GetManager().MavenSettingUpdate)
 	r.Delete("/builder/mavensetting/{name}", controller.GetManager().MavenSettingDelete)
+	r.Get("/batch-gateway", controller.GetManager().BatchGetGateway)
 	r.Get("/namespace", controller.GetManager().GetNamespace)
 	r.Get("/resource", controller.GetManager().GetNamespaceResource)
 	r.Get("/convert-resource", controller.GetManager().ConvertResource)
@@ -116,6 +117,7 @@ func (v2 *V2) clusterRouter() chi.Router {
 	r.Get("/k8s-resource", controller.GetManager().GetResource)
 	r.Post("/k8s-resource", controller.GetManager().AddResource)
 	r.Delete("/k8s-resource", controller.GetManager().DeleteResource)
+	r.Delete("/batch-k8s-resource", controller.GetManager().BatchDeleteResource)
 	r.Put("/k8s-resource", controller.GetManager().UpdateResource)
 	r.Post("/sync-k8s-resources", controller.GetManager().SyncResource)
 	r.Get("/yaml_resource_name", controller.GetManager().YamlResourceName)
@@ -195,6 +197,7 @@ func (v2 *V2) tenantNameRouter() chi.Router {
 	r.Post("/apps", controller.GetManager().CreateApp)
 	r.Post("/batch_create_apps", controller.GetManager().BatchCreateApp)
 	r.Get("/apps", controller.GetManager().ListApps)
+	r.Delete("/k8s-app/{k8s_app}", controller.GetManager().DeleteK8sApp)
 	r.Post("/checkResourceName", controller.GetManager().CheckResourceName)
 	r.Get("/appstatuses", controller.GetManager().ListAppStatuses)
 	r.Mount("/apps/{app_id}", v2.applicationRouter())
@@ -218,6 +221,19 @@ func (v2 *V2) tenantNameRouter() chi.Router {
 	r.Post("/http-rule", controller.GetManager().HTTPRule)
 	r.Delete("/http-rule", controller.GetManager().HTTPRule)
 	r.Put("/http-rule", controller.GetManager().HTTPRule)
+
+	r.Get("/gateway-http-route", controller.GetManager().GatewayHTTPRoute)
+	r.Post("/gateway-http-route", controller.GetManager().GatewayHTTPRoute)
+	r.Put("/gateway-http-route", controller.GetManager().GatewayHTTPRoute)
+	r.Delete("/gateway-http-route", controller.GetManager().GatewayHTTPRoute)
+
+	r.Get("/batch-gateway-http-route", controller.GetManager().BatchGatewayHTTPRoute)
+
+	r.Post("/gateway-certificate", controller.GetManager().GatewayCertificate)
+	r.Get("/gateway-certificate", controller.GetManager().GatewayCertificate)
+	r.Delete("/gateway-certificate", controller.GetManager().GatewayCertificate)
+	r.Put("/gateway-certificate", controller.GetManager().GatewayCertificate)
+
 	r.Post("/tcp-rule", controller.GetManager().TCPRule)
 	r.Delete("/tcp-rule", controller.GetManager().TCPRule)
 	r.Put("/tcp-rule", controller.GetManager().TCPRule)

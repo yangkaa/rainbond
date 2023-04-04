@@ -84,3 +84,12 @@ type ExceptionNode struct {
 	ExceptionType string `json:"exception_type"`
 	Reason        string `json:"reason"`
 }
+
+//GatewayResource -
+type GatewayResource struct {
+	Name           string   `json:"name"`
+	Namespace      string   `json:"namespace"`
+	LoadBalancerIP []string `json:"load_balancer_ip,omitempty"`
+	NodePortIP     []string `json:"node_port_ip,omitempty"`
+	ListenerNames  []string `json:"listener_names"`
+}

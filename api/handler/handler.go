@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/rest"
 	metrics "k8s.io/metrics/pkg/client/clientset/versioned"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	gateway "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 )
 
 //InitHandle 初始化handle
@@ -50,6 +51,7 @@ func InitHandle(conf option.Config,
 	config *rest.Config,
 	mapper meta.RESTMapper,
 	dynamicClient dynamic.Interface,
+	gatewayClient *gateway.GatewayV1beta1Client,
 ) error {
 	mq := api_db.MQManager{
 		EtcdClientArgs: etcdClientArgs,
@@ -83,13 +85,13 @@ func InitHandle(conf option.Config,
 		logrus.Errorf("create token identification mannager error, %v", err)
 		return err
 	}
-	defaultGatewayHandler = CreateGatewayManager(dbmanager, mqClient, etcdcli)
+	defaultGatewayHandler = CreateGatewayManager(dbmanager, mqClient, etcdcli, gatewayClient, kubeClient)
 	def3rdPartySvcHandler = Create3rdPartySvcHandler(dbmanager, statusCli)
 	operationHandler = CreateOperationHandler(mqClient)
 	batchOperationHandler = CreateBatchOperationHandler(mqClient, statusCli, operationHandler)
 	defaultAppRestoreHandler = NewAppRestoreHandler()
 	defPodHandler = NewPodHandler(statusCli, kubeClient, metricClient)
-	defClusterHandler = NewClusterHandler(kubeClient, conf.RbdNamespace, conf.GrctlImage, config, mapper, prometheusCli, rainbondClient, statusCli, dynamicClient)
+	defClusterHandler = NewClusterHandler(kubeClient, conf.RbdNamespace, conf.GrctlImage, config, mapper, prometheusCli, rainbondClient, statusCli, dynamicClient, gatewayClient)
 	defaultVolumeTypeHandler = CreateVolumeTypeManger(statusCli)
 	defaultEtcdHandler = NewEtcdHandler(etcdcli)
 	defaultmonitorHandler = NewMonitorHandler(prometheusCli)
