@@ -19,6 +19,7 @@
 package dao
 
 import (
+	"errors"
 	"fmt"
 	gormbulkups "github.com/atcdot/gorm-bulk-upsert"
 	"os"
@@ -28,7 +29,7 @@ import (
 
 	"github.com/goodrain/rainbond/api/util/bcode"
 	"github.com/goodrain/rainbond/db/dao"
-	"github.com/goodrain/rainbond/db/errors"
+	dberr "github.com/goodrain/rainbond/db/errors"
 	"github.com/goodrain/rainbond/db/model"
 	"github.com/jinzhu/gorm"
 	pkgerr "github.com/pkg/errors"
@@ -717,7 +718,7 @@ func (t *TenantServicesPortDaoImpl) AddModel(mo model.Interface) error {
 			return err
 		}
 	} else {
-		return errors.ErrRecordAlreadyExist
+		return dberr.ErrRecordAlreadyExist
 	}
 	return nil
 }
@@ -930,7 +931,7 @@ func (t *TenantServiceRelationDaoImpl) AddModel(mo model.Interface) error {
 			return err
 		}
 	} else {
-		return errors.ErrRecordAlreadyExist
+		return dberr.ErrRecordAlreadyExist
 	}
 	return nil
 }
@@ -1079,7 +1080,7 @@ func (t *TenantServiceEnvVarDaoImpl) AddModel(mo model.Interface) error {
 			return err
 		}
 	} else {
-		return errors.ErrRecordAlreadyExist
+		return dberr.ErrRecordAlreadyExist
 	}
 	return nil
 }
@@ -1225,7 +1226,7 @@ func (t *TenantServiceMountRelationDaoImpl) AddModel(mo model.Interface) error {
 			return err
 		}
 	} else {
-		return errors.ErrRecordAlreadyExist
+		return dberr.ErrRecordAlreadyExist
 	}
 	return nil
 }
@@ -1982,7 +1983,7 @@ func (t *TenantServceAutoscalerRulesDaoImpl) AddModel(mo model.Interface) error 
 			return err
 		}
 	} else {
-		return errors.ErrRecordAlreadyExist
+		return dberr.ErrRecordAlreadyExist
 	}
 	return nil
 }
@@ -2080,7 +2081,7 @@ func (t *TenantServceAutoscalerRuleMetricsDaoImpl) AddModel(mo model.Interface) 
 			return err
 		}
 	} else {
-		return errors.ErrRecordAlreadyExist
+		return dberr.ErrRecordAlreadyExist
 	}
 	return nil
 }
@@ -2177,7 +2178,7 @@ func (t *TenantServiceScalingRecordsDaoImpl) AddModel(mo model.Interface) error 
 			return err
 		}
 	} else {
-		return errors.ErrRecordAlreadyExist
+		return dberr.ErrRecordAlreadyExist
 	}
 	return nil
 }
@@ -2237,7 +2238,7 @@ func (t *ComponentK8sAttributeDaoImpl) AddModel(mo model.Interface) error {
 	if ok := t.DB.Where("component_id=? and name=?", attr.ComponentID, attr.Name).Find(&old).RecordNotFound(); ok {
 		return t.DB.Create(attr).Error
 	}
-	return errors.ErrRecordAlreadyExist
+	return dberr.ErrRecordAlreadyExist
 }
 
 // UpdateModel -
@@ -2250,6 +2251,9 @@ func (t *ComponentK8sAttributeDaoImpl) UpdateModel(mo model.Interface) error {
 func (t *ComponentK8sAttributeDaoImpl) GetByComponentIDAndName(componentID, name string) (*model.ComponentK8sAttributes, error) {
 	var record model.ComponentK8sAttributes
 	if err := t.DB.Where("component_id=? and name=?", componentID, name).Take(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &record, nil
