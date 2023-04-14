@@ -36,7 +36,7 @@ import (
 	ctxutil "github.com/goodrain/rainbond/api/util/ctx"
 	"github.com/goodrain/rainbond/cmd"
 	"github.com/goodrain/rainbond/db"
-	"github.com/goodrain/rainbond/db/errors"
+	dberrors "github.com/goodrain/rainbond/db/errors"
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	mqclient "github.com/goodrain/rainbond/mq/client"
 	validation "github.com/goodrain/rainbond/util/endpoint"
@@ -803,7 +803,41 @@ func (t *TenantStruct) SetLanguage(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-//StatusService StatusService
+//SecurityContextService -
+func (t *TenantStruct) SecurityContextService(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "DELETE":
+		t.CloseSecurityContext(w, r)
+	case "PUT":
+		t.OpenSecurityContext(w, r)
+	}
+
+}
+func (t *TenantStruct) CloseSecurityContext(w http.ResponseWriter, r *http.Request) {
+	serviceID := r.Context().Value(ctxutil.ContextKey("service_id")).(string)
+	err := handler.GetServiceManager().CloseServiceSecurityContext(serviceID)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("delete service safety failure: %v", err))
+		return
+	}
+	httputil.ReturnSuccess(r, w, "删除成功")
+	return
+}
+func (t *TenantStruct) OpenSecurityContext(w http.ResponseWriter, r *http.Request) {
+	var ss api_model.ServiceSecurityContext
+	if !httputil.ValidatorRequestStructAndErrorResponse(r, w, &ss, nil) {
+		return
+	}
+	err := handler.GetServiceManager().OpenServiceSecurityContext(&ss)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("update service safety failure: %v", err))
+		return
+	}
+	httputil.ReturnSuccess(r, w, "修改成功")
+	return
+}
+
+//StatusService -
 func (t *TenantStruct) StatusService(w http.ResponseWriter, r *http.Request) {
 	// swagger:operation GET /v2/tenants/{tenant_name}/services/{service_alias}/status v2 serviceStatus
 	//
@@ -1183,7 +1217,7 @@ func (t *TenantStruct) AddEnv(w http.ResponseWriter, r *http.Request) {
 	envD.Name = envM.Name
 	envD.Scope = envM.Scope
 	if err := handler.GetServiceManager().EnvAttr("add", &envD); err != nil {
-		if err == errors.ErrRecordAlreadyExist {
+		if err == dberrors.ErrRecordAlreadyExist {
 			httputil.ReturnError(r, w, 400, fmt.Sprintf("%v", err))
 			return
 		}

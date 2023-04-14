@@ -282,6 +282,9 @@ func (v2 *V2) serviceRouter() chi.Router {
 	r.Post("/upgrade", middleware.WrapEL(controller.GetManager().UpgradeService, dbmodel.TargetTypeService, "upgrade-service", dbmodel.ASYNEVENTTYPE, true))
 	//应用状态获取(act)
 	r.Get("/status", controller.GetManager().StatusService)
+	//组件安全开关
+	r.Put("/security_context", controller.GetManager().SecurityContextService)
+	r.Delete("/security_context", controller.GetManager().SecurityContextService)
 	//构建版本列表
 	r.Get("/build-list", controller.GetManager().BuildList)
 	//构建版本操作
@@ -381,7 +384,7 @@ func (v2 *V2) serviceRouter() chi.Router {
 	//service monitor
 	r.Post("/service-monitors", middleware.WrapEL(controller.GetManager().AddServiceMonitors, dbmodel.TargetTypeService, "add-app-service-monitor", dbmodel.SYNEVENTTYPE, false))
 	r.Put("/service-monitors/{name}", middleware.WrapEL(controller.GetManager().UpdateServiceMonitors, dbmodel.TargetTypeService, "update-app-service-monitor", dbmodel.SYNEVENTTYPE, false))
-	r.Delete("/service-monitors/{name}", middleware.WrapEL(controller.GetManager().DeleteServiceMonitors, dbmodel.TargetTypeService, "delete-app-service-monitor", dbmodel.SYNEVENTTYPE,false))
+	r.Delete("/service-monitors/{name}", middleware.WrapEL(controller.GetManager().DeleteServiceMonitors, dbmodel.TargetTypeService, "delete-app-service-monitor", dbmodel.SYNEVENTTYPE, false))
 
 	r.Get("/log", controller.GetManager().Log)
 

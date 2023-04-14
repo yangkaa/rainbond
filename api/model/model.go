@@ -218,6 +218,23 @@ type CreateServiceStruct struct {
 	}
 }
 
+type ServiceSecurityContext struct {
+	ServiceID      string `json:"service_id"`
+	SeccompProfile struct {
+		SeccompProfileType string `json:"type"`
+		LocalhostProfile   string `json:"localhostProfile"`
+	} `json:"seccomp_profile"`
+	RunAsNonRoot             bool `json:"run_as_non_root"`
+	AllowPrivilegeEscalation bool `json:"allow_privilege_escalation"`
+	RunAsUser                int  `json:"run_as_user"`
+	RunAsGroup               int  `json:"run_as_group"`
+	Capabilities             struct {
+		Add  []corev1.Capability `json:"add"`
+		Drop []corev1.Capability `json:"drop"`
+	} `json:"capabilities"`
+	ReadOnlyRootFilesystem bool `json:"read_only_root_filesystem"`
+}
+
 // UpdateServiceStruct service update
 // swagger:parameters updateService
 type UpdateServiceStruct struct {
@@ -2190,14 +2207,14 @@ type RainbondPlugins struct {
 	Name        string `json:"name"`
 	TeamName    string `json:"team_name"`
 	//Namespace   string `json:"namespace"`
-	Icon         string            `json:"icon"`
-	Description  string            `json:"description"`
-	Version      string            `json:"version"`
-	Author       string            `json:"author"`
-	Status       string            `json:"status"`
-	Alias        string            `json:"alias"`
-	AccessURLs   []string          `json:"access_urls"`
-	Labels       map[string]string `json:"labels"`
+	Icon        string            `json:"icon"`
+	Description string            `json:"description"`
+	Version     string            `json:"version"`
+	Author      string            `json:"author"`
+	Status      string            `json:"status"`
+	Alias       string            `json:"alias"`
+	AccessURLs  []string          `json:"access_urls"`
+	Labels      map[string]string `json:"labels"`
 }
 
 // CreateUpdateGovernanceModeReq -

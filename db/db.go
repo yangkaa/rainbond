@@ -56,6 +56,8 @@ type Manager interface {
 	TenantServiceDeleteDao() dao.TenantServiceDeleteDao
 	TenantServiceDaoTransactions(db *gorm.DB) dao.TenantServiceDao
 	TenantServiceDeleteDaoTransactions(db *gorm.DB) dao.TenantServiceDeleteDao
+	TenantServicesSecurityContextDao() dao.TenantServiceSecurityContextDao
+	TenantServicesSecurityContextDaoTransactions(db *gorm.DB) dao.TenantServiceSecurityContextDao
 	TenantServicesPortDao() dao.TenantServicesPortDao
 	TenantServicesPortDaoTransactions(*gorm.DB) dao.TenantServicesPortDao
 	TenantServiceRelationDao() dao.TenantServiceRelationDao
@@ -152,7 +154,7 @@ func init() {
 	supportDrivers = map[string]struct{}{
 		"mysql":       {},
 		"cockroachdb": {},
-		"sqlite": {},
+		"sqlite":      {},
 	}
 }
 

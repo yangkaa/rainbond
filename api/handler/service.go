@@ -1191,6 +1191,46 @@ func (s *ServiceAction) ServiceDepend(action string, ds *api_model.DependService
 	return nil
 }
 
+//CloseServiceSecurityContext -
+func (s *ServiceAction) CloseServiceSecurityContext(seviceID string) error {
+	return db.GetManager().TenantServicesSecurityContextDao().DeleteTenantServiceSecurityContext(seviceID)
+}
+
+//OpenServiceSecurityContext -
+func (s *ServiceAction) OpenServiceSecurityContext(ss *api_model.ServiceSecurityContext) error {
+	oldSecurityContext, dbErr := db.GetManager().TenantServicesSecurityContextDao().GetTenantServiceSecurityContext(ss.ServiceID)
+	sp := &corev1.SeccompProfile{Type: corev1.SeccompProfileType(ss.SeccompProfile.SeccompProfileType), LocalhostProfile: &ss.SeccompProfile.LocalhostProfile}
+	spJSON, err := json.Marshal(sp)
+	if err != nil {
+		return err
+	}
+	capabilities := corev1.Capabilities{Drop: ss.Capabilities.Drop, Add: ss.Capabilities.Add}
+	capabilitiesJSON, err := json.Marshal(capabilities)
+	if err != nil {
+		return err
+	}
+	if dbErr != nil {
+		if errors.Is(dbErr, gorm.ErrRecordNotFound) {
+			safety := dbmodel.TenantServiceSecurityContext{
+				ServiceID:      ss.ServiceID,
+				SeccompProfile: string(spJSON),
+				Capabilities:   string(capabilitiesJSON),
+			}
+			return db.GetManager().TenantServicesSecurityContextDao().AddModel(&safety)
+		} else {
+			return err
+		}
+	}
+	oldSecurityContext.SeccompProfile = string(spJSON)
+	oldSecurityContext.RunAsNonRoot = ss.RunAsNonRoot
+	oldSecurityContext.AllowPrivilegeEscalation = ss.AllowPrivilegeEscalation
+	oldSecurityContext.RunAsUser = ss.RunAsUser
+	oldSecurityContext.RunAsGroup = ss.RunAsGroup
+	oldSecurityContext.Capabilities = string(capabilitiesJSON)
+	oldSecurityContext.ReadOnlyRootFilesystem = ss.ReadOnlyRootFilesystem
+	return db.GetManager().TenantServicesSecurityContextDao().UpdateModel(oldSecurityContext)
+}
+
 //EnvAttr env attr
 func (s *ServiceAction) EnvAttr(action string, at *dbmodel.TenantServiceEnvVar) error {
 	switch action {
@@ -1763,7 +1803,7 @@ func (s *ServiceAction) UpdVolume(sid string, req *api_model.UpdVolumeReq) error
 		return err
 	}
 	v.VolumePath = req.VolumePath
-	if v.VolumeType == "nfs"{
+	if v.VolumeType == "nfs" {
 		v.NFSServer = req.NFSServer
 		v.NFSPath = req.NFSPath
 	}
@@ -2267,6 +2307,7 @@ func (s *ServiceAction) deleteComponent(tx *gorm.DB, service *dbmodel.TenantServ
 		db.GetManager().EndpointsDaoTransactions(tx).DeleteByServiceID,
 		db.GetManager().ThirdPartySvcDiscoveryCfgDaoTransactions(tx).DeleteByServiceID,
 		db.GetManager().TenantServiceLabelDaoTransactions(tx).DeleteLabelByServiceID,
+		db.GetManager().TenantServicesSecurityContextDaoTransactions(tx).DeleteTenantServiceSecurityContext,
 		db.GetManager().VersionInfoDaoTransactions(tx).DeleteVersionByServiceID,
 		db.GetManager().TenantPluginVersionENVDaoTransactions(tx).DeleteEnvByServiceID,
 		db.GetManager().ServiceProbeDaoTransactions(tx).DELServiceProbesByServiceID,

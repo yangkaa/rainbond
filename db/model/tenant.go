@@ -373,6 +373,24 @@ func (t *TenantServicesDelete) TableName() string {
 	return "tenant_services_delete"
 }
 
+//TenantServiceSecurityContext 组件安全
+type TenantServiceSecurityContext struct {
+	Model
+	ServiceID                string `gorm:"column:service_id;size:32" json:"service_id"`
+	SeccompProfile           string `gorm:"column:attr_name;size:1024" json:"seccomp_profile"`
+	RunAsNonRoot             bool   `gorm:"column:run_as_non_root;default:1" json:"run_as_non_root"`
+	AllowPrivilegeEscalation bool   `gorm:"column:allow_privilege_escalation;default:0" json:"allow_privilege_escalation"`
+	RunAsUser                int    `gorm:"column:run_as_user;default:10001" json:"run_as_user"`
+	RunAsGroup               int    `gorm:"column:run_as_group;default:10001" json:"run_as_group"`
+	Capabilities             string `gorm:"column:capabilities;type:text" json:"capabilities"`
+	ReadOnlyRootFilesystem   bool   `gorm:"column:read_only_root_filesystem;default:1" json:"read_only_root_filesystem"`
+}
+
+//TableName 表名
+func (t *TenantServiceSecurityContext) TableName() string {
+	return "tenant_services_security_context"
+}
+
 //TenantServicesPort 应用端口信息
 type TenantServicesPort struct {
 	Model
