@@ -118,6 +118,7 @@ type AppServiceBase struct {
 	GovernanceMode   string
 	K8sApp           string
 	K8sComponentName string
+	Safety           *dbmodel.TenantServiceSecurityContext
 	DryRun           bool
 }
 

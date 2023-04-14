@@ -153,6 +153,7 @@ type TenantServiceDao interface {
 	GetPagedTenantService(offset, len int, serviceIDs []string) ([]map[string]interface{}, int, error)
 	GetAllServicesID() ([]*model.TenantServices, error)
 	UpdateDeployVersion(serviceID, deployversion string) error
+	UpdateSafety(serviceID string, safety bool) error
 	ListThirdPartyServices() ([]*model.TenantServices, error)
 	ListServicesByTenantID(tenantID string) ([]*model.TenantServices, error)
 	GetServiceTypeByID(serviceID string) (*model.TenantServices, error)
@@ -169,6 +170,12 @@ type TenantServiceDeleteDao interface {
 	GetTenantServicesDeleteByCreateTime(createTime time.Time) ([]*model.TenantServicesDelete, error)
 	DeleteTenantServicesDelete(record *model.TenantServicesDelete) error
 	List() ([]*model.TenantServicesDelete, error)
+}
+
+type TenantServiceSecurityContextDao interface {
+	Dao
+	GetTenantServiceSecurityContext(serviceID string) (*model.TenantServiceSecurityContext, error)
+	DeleteTenantServiceSecurityContext(serviceID string) error
 }
 
 //TenantServicesPortDao TenantServicesPortDao

@@ -88,6 +88,20 @@ func (m *Manager) TenantServiceDeleteDaoTransactions(db *gorm.DB) dao.TenantServ
 	}
 }
 
+//TenantServicesSecurityContextDao TenantServicesSecurityContextDao
+func (m *Manager) TenantServicesSecurityContextDao() dao.TenantServiceSecurityContextDao {
+	return &mysqldao.TenantServiceSecurityContextDaoImpl{
+		DB: m.db,
+	}
+}
+
+//TenantServicesSecurityContextDaoTransactions TenantServicesSecurityContextDaoTransactions
+func (m *Manager) TenantServicesSecurityContextDaoTransactions(db *gorm.DB) dao.TenantServiceSecurityContextDao {
+	return &mysqldao.TenantServiceSecurityContextDaoImpl{
+		DB: db,
+	}
+}
+
 //TenantServicesPortDao TenantServicesPortDao
 func (m *Manager) TenantServicesPortDao() dao.TenantServicesPortDao {
 	return &mysqldao.TenantServicesPortDaoImpl{

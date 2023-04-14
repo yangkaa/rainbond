@@ -146,6 +146,7 @@ type TenantInterfaceWithV1 interface {
 	DeployService(w http.ResponseWriter, r *http.Request)
 	UpgradeService(w http.ResponseWriter, r *http.Request)
 	StatusService(w http.ResponseWriter, r *http.Request)
+	SecurityContextService(w http.ResponseWriter, r *http.Request)
 	StatusServiceList(w http.ResponseWriter, r *http.Request)
 	StatusContainerID(w http.ResponseWriter, r *http.Request)
 }

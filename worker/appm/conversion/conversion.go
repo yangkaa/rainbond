@@ -19,7 +19,9 @@
 package conversion
 
 import (
+	"errors"
 	"fmt"
+	"github.com/jinzhu/gorm"
 
 	"github.com/goodrain/rainbond/api/util/bcode"
 	"github.com/goodrain/rainbond/db"
@@ -87,6 +89,11 @@ func InitAppService(dryRun bool, dbmanager db.Manager, serviceID string, configs
 		appService.AppServiceBase.GovernanceMode = app.GovernanceMode
 		appService.AppServiceBase.K8sApp = app.K8sApp
 	}
+	safety, err := dbmanager.TenantServicesSecurityContextDao().GetTenantServiceSecurityContext(serviceID)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("get service safety on service id(%s) failure: %v", serviceID, err)
+	}
+	appService.AppServiceBase.Safety = safety
 	if dryRun {
 		appService.AppServiceBase.GovernanceMode = model.GovernanceModeKubernetesNativeService
 	}
