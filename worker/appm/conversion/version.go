@@ -211,6 +211,36 @@ func getMainContainer(as *v1.AppService, version *dbmodel.VersionInfo, dv *volum
 			imagename = version.DeliveredPath
 		}
 	}
+	var securityContext *corev1.SecurityContext
+	if as.Safety != nil {
+		readOnlyRootFilesystem := as.Safety.ReadOnlyRootFilesystem
+		runAsGroup := int64(as.Safety.RunAsGroup)
+		runAsUser := int64(as.Safety.RunAsUser)
+		allowPrivilegeEscalation := as.Safety.AllowPrivilegeEscalation
+		runAsNonRoot := as.Safety.RunAsNonRoot
+		var seccompProfile corev1.SeccompProfile
+		err := json.Unmarshal([]byte(as.Safety.SeccompProfile), &seccompProfile)
+		if err != nil {
+			return nil, fmt.Errorf("json unmarshal seccomp profile failure: %v", err)
+		}
+		var capabilities corev1.Capabilities
+		err = json.Unmarshal([]byte(as.Safety.Capabilities), &capabilities)
+		if err != nil {
+			return nil, fmt.Errorf("json unmarshal seccomp capabilities: %v", err)
+		}
+		if seccompProfile.Type != corev1.SeccompProfileTypeLocalhost {
+			seccompProfile.LocalhostProfile = nil
+		}
+		securityContext = &corev1.SecurityContext{
+			SeccompProfile:           &seccompProfile,
+			RunAsNonRoot:             &runAsNonRoot,
+			AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+			RunAsUser:                &runAsUser,
+			RunAsGroup:               &runAsGroup,
+			Capabilities:             &capabilities,
+			ReadOnlyRootFilesystem:   &readOnlyRootFilesystem,
+		}
+	}
 	vm, err := createVolumeMounts(dv, as, dbmanager)
 	if err != nil {
 		return nil, err
@@ -226,6 +256,7 @@ func getMainContainer(as *v1.AppService, version *dbmodel.VersionInfo, dv *volum
 		LivenessProbe:  createProbe(as, dbmanager, "liveness"),
 		ReadinessProbe: createProbe(as, dbmanager, "readiness"),
 		Resources:      resources,
+		SecurityContext: securityContext,
 	}
 	label, err := dbmanager.TenantServiceLabelDao().GetPrivilegedLabel(as.ServiceID)
 	if err != nil && err != gorm.ErrRecordNotFound {

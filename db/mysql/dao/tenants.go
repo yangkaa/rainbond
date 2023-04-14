@@ -226,6 +226,13 @@ func (t *TenantServicesDaoImpl) UpdateDeployVersion(serviceID, deployversion str
 	return nil
 }
 
+func (t *TenantServicesDaoImpl) UpdateSafety(serviceID string, safety bool) error {
+	if err := t.DB.Exec("update tenant_services set safety=? where service_id=?", safety, serviceID).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 //AddModel 添加租户应用
 func (t *TenantServicesDaoImpl) AddModel(mo model.Interface) error {
 	service := mo.(*model.TenantServices)
@@ -667,6 +674,34 @@ func (t *TenantServicesDeleteImpl) List() ([]*model.TenantServicesDelete, error)
 		return nil, pkgerr.Wrap(err, "list deleted components")
 	}
 	return components, nil
+}
+
+//TenantServiceSecurityContextDaoImpl 组件安全操作
+type TenantServiceSecurityContextDaoImpl struct {
+	DB *gorm.DB
+}
+
+func (t *TenantServiceSecurityContextDaoImpl) AddModel(mo model.Interface) error {
+	securityContext := mo.(*model.TenantServiceSecurityContext)
+	return t.DB.Create(securityContext).Error
+}
+
+//UpdateModel 更新租户
+func (t *TenantServiceSecurityContextDaoImpl) UpdateModel(mo model.Interface) error {
+	securityContext := mo.(*model.TenantServiceSecurityContext)
+	return t.DB.Save(securityContext).Error
+}
+func (t *TenantServiceSecurityContextDaoImpl) GetTenantServiceSecurityContext(serviceID string) (*model.TenantServiceSecurityContext, error) {
+	var securityContext model.TenantServiceSecurityContext
+	if err := t.DB.Where("service_id = ?", serviceID).Find(&securityContext).Error; err != nil {
+		return nil, err
+	}
+	return &securityContext, nil
+}
+
+func (t *TenantServiceSecurityContextDaoImpl) DeleteTenantServiceSecurityContext(serviceID string) error {
+	var securityContext model.TenantServiceSecurityContext
+	return t.DB.Where("service_id = ?", serviceID).Delete(&securityContext).Error
 }
 
 //TenantServicesPortDaoImpl 租户应用端口操作

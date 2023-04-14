@@ -51,6 +51,8 @@ type ServiceHandler interface {
 	CodeCheck(c *api_model.CheckCodeStruct) error
 	ServiceDepend(action string, ds *api_model.DependService) error
 	EnvAttr(action string, at *dbmodel.TenantServiceEnvVar) error
+	CloseServiceSecurityContext(seviceID string) error
+	OpenServiceSecurityContext(ss *api_model.ServiceSecurityContext) error
 	PortVar(action string, tenantID, serviceID string, vp *api_model.ServicePorts, oldPort int) error
 	CreatePorts(tenantID, serviceID string, vps *api_model.ServicePorts) error
 	PortOuter(tenantName, serviceID string, containerPort int, servicePort *api_model.ServicePortInnerOrOuter) (*dbmodel.TenantServiceLBMappingPort, string, error)
@@ -81,7 +83,7 @@ type ServiceHandler interface {
 	GetServiceCheckInfo(uuid string) (*exector.ServiceCheckResult, *util.APIHandleError)
 	GetServiceDeployInfo(tenantID, serviceID string) (*pb.DeployInfo, *util.APIHandleError)
 	ListVersionInfo(serviceID string) (*api_model.BuildListRespVO, error)
-    EventBuildVersion(serviceID, buildVersion string) (*api_model.BuildListRespVO, error)
+	EventBuildVersion(serviceID, buildVersion string) (*api_model.BuildListRespVO, error)
 
 	AddAutoscalerRule(req *api_model.AutoscalerRuleReq) error
 	UpdAutoscalerRule(req *api_model.AutoscalerRuleReq) error
