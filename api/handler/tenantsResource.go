@@ -10,7 +10,7 @@ import (
 )
 
 // CheckTenantResource check tenant's resource is support action or not
-func CheckTenantResource(ctx context.Context, tenant *dbmodel.Tenants, needMemory int) error {
+func CheckTenantResource(ctx context.Context, tenant *dbmodel.Tenants, needMemory, needCPU, noMemory, noCPU int) error {
 	ts, err := GetServiceManager().GetTenantRes(tenant.UUID)
 	if err != nil {
 		return err
@@ -23,7 +23,18 @@ func CheckTenantResource(ctx context.Context, tenant *dbmodel.Tenants, needMemor
 			return errors.New("tenant_lack_of_memory")
 		}
 	}
-
+	if tenant.LimitCPU != 0 {
+		avaiCPU := tenant.LimitCPU - ts.UsedCPU
+		if needCPU > avaiCPU {
+			logrus.Errorf("tenant available CPU is %d, To apply for %d, not enough", avaiCPU, needCPU)
+			return errors.New("tenant_lack_of_cpu")
+		}
+	}
+	// check tenant resource quota
+	err = GetTenantManager().CheckTenantResourceQuotaAndLimitRange(ctx, tenant.Namespace, noMemory, noCPU)
+	if err != nil{
+		return err
+	}
 	allcm, err := ClusterAllocMemory(ctx)
 	if err != nil {
 		return err

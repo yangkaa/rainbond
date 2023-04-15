@@ -86,7 +86,7 @@ type TenantInterface interface {
 	TransPlugins(w http.ResponseWriter, r *http.Request)
 	ServicesCount(w http.ResponseWriter, r *http.Request)
 	GetManyDeployVersion(w http.ResponseWriter, r *http.Request)
-	LimitTenantMemory(w http.ResponseWriter, r *http.Request)
+	LimitTenantResource(w http.ResponseWriter, r *http.Request)
 	TenantResourcesStatus(w http.ResponseWriter, r *http.Request)
 	CheckResourceName(w http.ResponseWriter, r *http.Request)
 	Log(w http.ResponseWriter, r *http.Request)

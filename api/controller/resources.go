@@ -690,9 +690,21 @@ func (t *TenantStruct) CreateService(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
 	tenantID := r.Context().Value(ctxutil.ContextKey("tenant_id")).(string)
 	ss.TenantID = tenantID
+	// check tenant source
+	tenant := r.Context().Value(ctxutil.ContextKey("tenant")).(*dbmodel.Tenants)
+	var noMemory, noCPU int
+	if ss.ContainerCPU == 0 {
+		noCPU = ss.Replicas
+	}
+	if ss.ContainerMemory == 0 {
+		noMemory = ss.Replicas
+	}
+	if err := handler.CheckTenantResource(r.Context(), tenant, ss.Replicas*ss.ContainerMemory, ss.Replicas*ss.ContainerCPU, noMemory, noCPU); err != nil {
+		httputil.ReturnResNotEnough(r, w, "", err.Error())
+		return
+	}
 	if err := handler.GetServiceManager().ServiceCreate(&ss); err != nil {
 		if strings.Contains(err.Error(), "is exist in tenant") {
 			httputil.ReturnError(r, w, 400, fmt.Sprintf("create service error, %v", err))

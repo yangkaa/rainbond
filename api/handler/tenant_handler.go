@@ -50,4 +50,6 @@ type TenantHandler interface {
 	DeleteTenant(ctx context.Context, tenantID string) error
 	GetClusterResource(ctx context.Context) *ClusterResourceStats
 	CheckResourceName(ctx context.Context, namespace string, req *model.CheckResourceNameReq) (*model.CheckResourceNameResp, error)
+	TenantResourceQuota(ctx context.Context, namespace string, limitCPU, limitMemory int) error
+	CheckTenantResourceQuotaAndLimitRange(ctx context.Context, namespace string, noMemory, noCPU int) error
 }
