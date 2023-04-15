@@ -122,7 +122,14 @@ func (a *ApplicationController) SyncComponents(w http.ResponseWriter, r *http.Re
 	if !httputil.ValidatorRequestStructAndErrorResponse(r, w, &syncComponentReq, nil) {
 		return
 	}
-	err := handler.GetApplicationHandler().SyncComponents(app, syncComponentReq.Components, syncComponentReq.DeleteComponentIDs)
+	// check resource
+	tenant := r.Context().Value(ctxutil.ContextKey("tenant")).(*dbmodel.Tenants)
+	err := CheckComponentSource(r.Context(), tenant, &syncComponentReq, nil)
+	if err != nil{
+		httputil.ReturnResNotEnough(r, w, "", err.Error())
+		return
+	}
+	err = handler.GetApplicationHandler().SyncComponents(app, syncComponentReq.Components, syncComponentReq.DeleteComponentIDs)
 	if err != nil {
 		httputil.ReturnBcodeError(r, w, err)
 		return

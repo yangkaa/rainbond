@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/goodrain/rainbond/api/middleware"
+	"github.com/goodrain/rainbond/db"
 	"net/http"
 
 	"github.com/goodrain/rainbond/api/handler"
@@ -57,6 +58,11 @@ func BatchOperation(w http.ResponseWriter, r *http.Request) {
 			build.TenantName = tenant.Name
 			batchOpReqs = append(batchOpReqs, build)
 		}
+		checkError := CheckComponentSource(r.Context(), tenant, nil, batchOpReqs)
+		if checkError != nil {
+			httputil.ReturnResNotEnough(r, w, "", checkError.Error())
+			return
+		}
 		f = handler.GetBatchOperationHandler().Build
 	case "start":
 		err := middleware.LicenseVerification(w, r, true)
@@ -66,6 +72,11 @@ func BatchOperation(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, start := range build.Body.Starts {
 			batchOpReqs = append(batchOpReqs, start)
+		}
+		checkError := CheckComponentSource(r.Context(), tenant, nil, batchOpReqs)
+		if checkError != nil {
+			httputil.ReturnResNotEnough(r, w, "", checkError.Error())
+			return
 		}
 		f = handler.GetBatchOperationHandler().Start
 	case "stop":
@@ -119,4 +130,42 @@ func BatchOperation(w http.ResponseWriter, r *http.Request) {
 	httputil.ReturnSuccess(r, w, map[string]interface{}{
 		"batch_result": res,
 	})
+}
+
+func CheckComponentSource(ctx context.Context, tenant *dbmodel.Tenants, componentReq *model.SyncComponentReq, batchOpReqs model.BatchOpRequesters) error {
+	// componentReq  Check the application resources installed in the application market
+	// batchOpReqs  Check resources for batch operations
+	var needMemory, needCPU, noMemory, noCPU int
+	if batchOpReqs != nil {
+		componentIDs := batchOpReqs.ComponentIDs()
+		services, err := db.GetManager().TenantServiceDao().GetServiceByIDs(componentIDs)
+		if err != nil {
+			return err
+		}
+		for _, service := range services {
+			if service.ContainerCPU == 0 {
+				noCPU += service.Replicas
+			}
+			if service.ContainerMemory == 0 {
+				noMemory += service.Replicas
+			}
+			needMemory += service.Replicas * service.ContainerMemory
+			needCPU += service.Replicas * service.ContainerCPU
+		}
+	} else {
+		for _, components := range componentReq.Components {
+			if components.ComponentBase.ContainerCPU == 0 {
+				noCPU += components.ComponentBase.Replicas
+			}
+			if components.ComponentBase.ContainerMemory == 0 {
+				noMemory += components.ComponentBase.Replicas
+			}
+			needMemory += components.ComponentBase.Replicas * components.ComponentBase.ContainerMemory
+			needCPU += components.ComponentBase.Replicas * components.ComponentBase.ContainerCPU
+		}
+	}
+	if err := handler.CheckTenantResource(ctx, tenant, needMemory, needCPU, noMemory, noCPU); err != nil {
+		return err
+	}
+	return nil
 }

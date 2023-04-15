@@ -65,6 +65,7 @@ type Tenants struct {
 	Name        string `gorm:"column:name;size:40;unique_index"`
 	UUID        string `gorm:"column:uuid;size:33;unique_index"`
 	EID         string `gorm:"column:eid"`
+	LimitCPU    int    `gorm:"column:limit_cpu"`
 	LimitMemory int    `gorm:"column:limit_memory"`
 	Status      string `gorm:"column:status;default:'normal'"`
 	Namespace   string `gorm:"column:namespace;size:32;unique_index"`

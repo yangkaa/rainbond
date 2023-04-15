@@ -22,9 +22,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/shirou/gopsutil/disk"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/fields"
 	os_runtime "runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -702,4 +704,140 @@ func (t *TenantAction) CheckResourceName(ctx context.Context, namespace string, 
 	return &model.CheckResourceNameResp{
 		Name: req.Name,
 	}, nil
+}
+
+// TenantResourceQuota -
+func (t *TenantAction) TenantResourceQuota(ctx context.Context, namespace string, limitCPU, limitMemory int) error {
+	memory := ConvertMemory(limitMemory)
+	cpu := ConvertCPU(limitCPU)
+	resources := make(map[corev1.ResourceName]resource.Quantity)
+	if limitCPU != 0 {
+		resources[corev1.ResourceLimitsCPU] = resource.MustParse(cpu)
+	}
+	if limitMemory != 0 {
+		resources[corev1.ResourceLimitsMemory] = resource.MustParse(memory)
+	}
+	quota := &corev1.ResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%v-%v", namespace, "limits-quota"),
+			Namespace: namespace,
+		},
+		Spec: corev1.ResourceQuotaSpec{
+			Hard: resources,
+		},
+	}
+	_, err := t.kubeClient.CoreV1().ResourceQuotas(namespace).Create(ctx, quota, metav1.CreateOptions{})
+	if err != nil {
+		if k8sErrors.IsAlreadyExists(err) {
+			if limitCPU == 0 && limitMemory == 0 {
+				err = t.kubeClient.CoreV1().ResourceQuotas(namespace).Delete(ctx, fmt.Sprintf("%v-limits-quota", namespace), metav1.DeleteOptions{})
+				if err != nil {
+					return errors.Wrap(err, "delete tenant quotas failure")
+				}
+			} else {
+				_, err = t.kubeClient.CoreV1().ResourceQuotas(namespace).Update(ctx, quota, metav1.UpdateOptions{})
+				if err != nil {
+					return errors.Wrap(err, "update tenant quotas failure")
+				}
+			}
+		} else {
+			return err
+		}
+	}
+
+	var lrs []v1.LimitRangeItem
+	lrsResource := corev1.ResourceList{
+		corev1.ResourceCPU:    resource.MustParse("128m"),
+		corev1.ResourceMemory: resource.MustParse("512Mi"),
+	}
+	lrs = append(lrs, v1.LimitRangeItem{
+		Default:        lrsResource,
+		DefaultRequest: lrsResource,
+		Type:           corev1.LimitTypeContainer,
+	})
+	lr := &v1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%v-%v", namespace, "limits-range"),
+			Namespace: namespace,
+		},
+		Spec: v1.LimitRangeSpec{
+			Limits: lrs,
+		},
+	}
+	_, err = t.kubeClient.CoreV1().LimitRanges(namespace).Create(ctx, lr, metav1.CreateOptions{})
+	if err != nil {
+		if k8sErrors.IsAlreadyExists(err) {
+			if limitCPU == 0 && limitMemory == 0 {
+				err = t.kubeClient.CoreV1().LimitRanges(namespace).Delete(ctx, fmt.Sprintf("%v-limits-range", namespace), metav1.DeleteOptions{})
+				if err != nil {
+					return errors.Wrap(err, "delete tenant limit range failure")
+				}
+			}
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
+func ConvertMemory(memory int) string {
+	if memory >= 1024 {
+		return fmt.Sprintf("%vGi", memory/1024)
+	}
+	return fmt.Sprintf("%vMi", memory)
+}
+
+func ConvertCPU(cpu int) string {
+	if cpu >= 1000 {
+		return fmt.Sprintf("%v", strconv.Itoa(cpu/1000))
+	}
+	return fmt.Sprintf("%vm", cpu)
+}
+
+func (t *TenantAction) CheckTenantResourceQuotaAndLimitRange(ctx context.Context, namespace string, noMemory, noCPU int) error {
+	quotas, err := t.kubeClient.CoreV1().ResourceQuotas(namespace).Get(ctx, fmt.Sprintf("%v-%v", namespace, "limits-quota"), metav1.GetOptions{})
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil
+		}
+		return errors.Wrap(err, "get tenant limit range failure")
+	}
+	hardCpu := quotas.Status.Hard["limits.cpu"]
+	userCpu := quotas.Status.Used["limits.cpu"]
+	hardMemory := quotas.Status.Hard["limits.memory"]
+	userMemory := quotas.Status.Used["limits.memory"]
+
+	surplusCPU := ConvertCpuToInt(hardCpu.String()) - ConvertCpuToInt(userCpu.String())
+	surplusMemory := hardMemory.Value() - userMemory.Value()
+	limitRanges, err := t.kubeClient.CoreV1().LimitRanges(namespace).Get(ctx, fmt.Sprintf("%v-%v", namespace, "limits-range"), metav1.GetOptions{})
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil
+		}
+		return errors.Wrap(err, "get tenant limit range failure")
+	}
+	var defaultCpu, defaultMemory int64
+	for _, limit := range limitRanges.Spec.Limits {
+		cpu := limit.Default["cpu"]
+		defaultCpu = ConvertCpuToInt(cpu.String())
+		defaultMemory = limit.Default.Memory().Value()
+	}
+	if int64(noCPU)*defaultCpu > surplusCPU {
+		return errors.New("tenant_quota_cpu_lack")
+	}
+	if int64(noMemory)*defaultMemory > surplusMemory {
+		return errors.New("tenant_quota_memory_lack")
+	}
+	return nil
+}
+
+func ConvertCpuToInt(cpu string) int64 {
+	var res int64
+	if strings.Contains(cpu, "m") {
+		s := strings.TrimRight(cpu, "m")
+		res, _ = strconv.ParseInt(s, 10, 64)
+		return res
+	}
+	res, _ = strconv.ParseInt(cpu, 10, 64)
+	return res * 1000
 }
