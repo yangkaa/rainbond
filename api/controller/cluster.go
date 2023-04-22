@@ -19,7 +19,6 @@
 package controller
 
 import (
-	"strconv"
 	"fmt"
 	"github.com/go-chi/chi"
 	"github.com/goodrain/rainbond/api/handler"
@@ -29,6 +28,7 @@ import (
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"strconv"
 
 	httputil "github.com/goodrain/rainbond/util/http"
 )
@@ -239,7 +239,9 @@ func (t *ClusterController) DeleteResource(w http.ResponseWriter, r *http.Reques
 	if ok := httputil.ValidatorRequestStructAndErrorResponse(r, w, &hr, nil); !ok {
 		return
 	}
-	handler.GetClusterHandler().DeleteAppK8SResource(r.Context(), hr.Namespace, hr.AppID, hr.Name, hr.ResourceYaml, hr.Kind)
+	if hr.State == model.CreateSuccess || hr.State == model.UpdateSuccess {
+		handler.GetClusterHandler().DeleteAppK8SResource(r.Context(), hr.Namespace, hr.AppID, hr.Name, hr.ResourceYaml, hr.Kind)
+	}
 	err := db.GetManager().K8sResourceDao().DeleteK8sResource(hr.AppID, hr.Name, hr.Kind)
 	if err != nil {
 		e := &util.APIHandleError{Code: 400, Err: fmt.Errorf("delete app k8s resource failure: %v", err)}
@@ -272,12 +274,14 @@ func (c *ClusterController) BatchDeleteResource(w http.ResponseWriter, r *http.R
 	}
 	var deleteResourcesID []uint
 	for _, hr := range req.K8sResources {
-		handler.GetClusterHandler().DeleteAppK8SResource(r.Context(), hr.Namespace, hr.AppID, hr.Name, hr.ResourceYaml, hr.Kind)
-		nameResource, ok := resourceMap[hr.Name]
-		if ok {
-			for _, dbResource := range nameResource {
-				if dbResource.Kind == hr.Kind {
-					deleteResourcesID = append(deleteResourcesID, dbResource.ID)
+		if hr.State == model.CreateSuccess || hr.State == model.UpdateSuccess {
+			handler.GetClusterHandler().DeleteAppK8SResource(r.Context(), hr.Namespace, hr.AppID, hr.Name, hr.ResourceYaml, hr.Kind)
+			nameResource, ok := resourceMap[hr.Name]
+			if ok {
+				for _, dbResource := range nameResource {
+					if dbResource.Kind == hr.Kind {
+						deleteResourcesID = append(deleteResourcesID, dbResource.ID)
+					}
 				}
 			}
 		}
