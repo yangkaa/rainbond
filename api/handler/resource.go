@@ -3,12 +3,16 @@ package handler
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/goodrain/rainbond/api/model"
 	"github.com/goodrain/rainbond/api/util"
 	"github.com/goodrain/rainbond/db"
 	dbmodel "github.com/goodrain/rainbond/db/model"
+	"github.com/goodrain/rainbond/mq/client"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -40,6 +44,7 @@ func (c *clusterAction) AddAppK8SResource(ctx context.Context, namespace string,
 				State:         resource.State,
 			})
 		} else {
+			resourceObject.Resource = c.ResourceProcessing(resourceObject.Resource, namespace)
 			rsYaml, _ := ObjectToJSONORYaml("yaml", resourceObject.Resource)
 			resourceList = append(resourceList, &dbmodel.K8sResource{
 				AppID:         appID,
@@ -98,7 +103,17 @@ func (c *clusterAction) UpdateAppK8SResource(ctx context.Context, namespace, app
 
 // DeleteAppK8SResource -
 func (c *clusterAction) DeleteAppK8SResource(ctx context.Context, namespace, appID, name, resourceYaml, kind string) {
-	c.HandleResourceYaml([]byte(resourceYaml), namespace, "delete", name, nil)
+	body := make(map[string]interface{})
+	body["resource_yaml"] = resourceYaml
+	err := c.mqclient.SendBuilderTopic(client.TaskStruct{
+		Topic:    client.WorkerTopic,
+		TaskType: "delete_k8s_resource",
+		TaskBody: body,
+	})
+	if err != nil {
+		fmt.Errorf("unexpected error occurred while sending task: %v", err)
+		return
+	}
 }
 
 // SyncAppK8SResources -
@@ -261,6 +276,7 @@ func (c *clusterAction) HandleResourceYaml(resourceYaml []byte, namespace string
 			unstructuredObj.SetUID("")
 			fallthrough
 		case "create":
+			unstructuredObj = c.ResourceProcessing(unstructuredObj, namespace)
 			addLabelsFunc(unstructuredObj)
 			obj, err := buildResource.Dri.Create(context.TODO(), unstructuredObj, metav1.CreateOptions{})
 			if err != nil {
@@ -296,4 +312,49 @@ func (c *clusterAction) HandleResourceYaml(resourceYaml []byte, namespace string
 		}
 	}
 	return buildResourceList
+}
+
+// ResourceProcessing -
+func (c *clusterAction) ResourceProcessing(unstructuredObj *unstructured.Unstructured, namespace string) *unstructured.Unstructured {
+	if unstructuredObj.GetKind() == model.RoleBinding {
+		var rb v1.RoleBinding
+		var subjects []v1.Subject
+		rbJSON, _ := json.Marshal(unstructuredObj)
+		_ = json.Unmarshal(rbJSON, &rb)
+		for _, subject := range rb.Subjects {
+			if subject.Namespace != "" {
+				subject.Namespace = namespace
+				subjects = append(subjects, subject)
+			}
+		}
+		rb.Subjects = subjects
+		unstructuredMap, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(&rb)
+		unstructuredObj.Object = unstructuredMap
+	}
+	if unstructuredObj.GetKind() == model.ClusterRoleBinding {
+		var crb v1.ClusterRoleBinding
+		var subjects []v1.Subject
+		crbJSON, _ := json.Marshal(unstructuredObj)
+		_ = json.Unmarshal(crbJSON, &crb)
+		for _, subject := range crb.Subjects {
+			if subject.Namespace != "" {
+				subject.Namespace = namespace
+				subjects = append(subjects, subject)
+			}
+		}
+		crb.Subjects = subjects
+		unstructuredMap, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(&crb)
+		unstructuredObj.Object = unstructuredMap
+	}
+	if unstructuredObj.GetKind() == model.Service {
+		var service corev1.Service
+		serviceJSON, _ := json.Marshal(unstructuredObj)
+		_ = json.Unmarshal(serviceJSON, &service)
+		service.Spec.ClusterIP = ""
+		service.Spec.ClusterIPs = nil
+		unstructuredMap, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(&service)
+		unstructuredObj.Object = unstructuredMap
+		return unstructuredObj
+	}
+	return unstructuredObj
 }

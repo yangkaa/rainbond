@@ -493,7 +493,7 @@ type HandleResource struct {
 	Kind         string `json:"kind"`
 	Namespace    string `json:"namespace"`
 	ResourceYaml string `json:"resource_yaml"`
-	State        int `json:"state"`
+	State        int    `json:"state"`
 }
 
 // SyncResources -
