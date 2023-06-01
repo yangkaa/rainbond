@@ -58,6 +58,7 @@ func NewVolumeManager(as *v1.AppService,
 	}
 	if serviceMountR != nil {
 		volumeType = serviceMountR.VolumeType
+		as.SharedStorageClass = ""
 	}
 	if volumeType == "" {
 		logrus.Warn("unknown volume Type, can't create volume")
@@ -78,6 +79,10 @@ func NewVolumeManager(as *v1.AppService,
 		v = new(NFSVolume)
 	default:
 		logrus.Warnf("other volume type[%s]", volumeType)
+		v = new(OtherVolume)
+	}
+	css := as.SharedStorageClass
+	if css != "" {
 		v = new(OtherVolume)
 	}
 	v.setBaseInfo(as, serviceVolume, serviceMountR, version, dbmanager)
