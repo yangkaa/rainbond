@@ -133,17 +133,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v2
       - name: Setup Go environment
         uses: actions/setup-go@v2.1.3
         with:
           # The Go version to download (if necessary) and use. Supports semver spec and ranges.
           go-version: 1.18
-      - name: install-golint
-        run: |
-          git clone https://github.com/golang/lint.git
-          cd lint/golint
-          go install
 
       - name: Build and push
         env:
@@ -156,6 +150,9 @@ jobs:
           DOMESTIC_NAMESPACE: ${{ vars.DOMESTIC_NAMESPACE }}
           VERSION: ${{ github.event.client_payload.version }}
         run: |
+          echo ${DOCKER_USERNAME}
+          echo ${{ vars.DOCKER_USERNAME }}
+          echo ${{ secrets.DOCKER_USERNAME }}
           git clone -b ${{ vars.OPERATOR_BRANCH }} ${{ github.event.client_payload.clone_url }}/rainbond-operator.git
           cd rainbond-operator
           chmod +x ./release.sh
