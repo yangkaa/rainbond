@@ -150,7 +150,7 @@ jobs:
           DOMESTIC_NAMESPACE: ${{ vars.DOMESTIC_NAMESPACE }}
           VERSION: ${{ github.event.client_payload.version }}
         run: |
-          echo ${DOCKER_USERNAME}
+          echo ${{ env.DOCKER_USERNAME }}
           echo ${{ vars.DOCKER_USERNAME }}
           echo ${{ secrets.DOCKER_USERNAME }}
           git clone -b ${{ vars.OPERATOR_BRANCH }} ${{ github.event.client_payload.clone_url }}/rainbond-operator.git
