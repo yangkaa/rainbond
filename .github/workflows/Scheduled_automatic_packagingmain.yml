@@ -21,19 +21,34 @@ env:
   BUILD_RBD_APP_UI: false
 
 jobs:
-  build-ui:
+  build-rainbond-operator:
     runs-on: ubuntu-22.04
+    environment: ${{ vars.ENVIRONMENT }}
     steps:
-      - name: Build the Docker image
-        run: |
-          if [ ${{ github.event.action }} == 'GitHub' ];then
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui.git
-          else
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui-cloud.git
-          fi
-          cd rainbond-ui
-          chmod +x ./build.sh
-          ./build.sh
+      - name: list
+        run: env
+      - uses: .github/workflows/build_region.yaml
+        with:
+          branch: ${{ github.event.client_payload.branch }}
+          clone_url: ${{ github.event.client_payload.clone_url }}
+          repository: rainbond-operator
+          environment: ${{ vars.ENVIRONMENT }}
+          rbdcomponent: rainbond-operator
+          version: ${{ github.event.client_payload.version }}
+
+#  build-ui:
+#    runs-on: ubuntu-22.04
+#    steps:
+#      - name: Build the Docker image
+#        run: |
+#          if [ ${{ github.event.action }} == 'GitHub' ];then
+#            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui.git
+#          else
+#            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui-cloud.git
+#          fi
+#          cd rainbond-ui
+#          chmod +x ./build.sh
+#          ./build.sh
 
 #  build-rainbond-region:
 #    runs-on: ubuntu-22.04
@@ -51,20 +66,6 @@ jobs:
 #            rbdcomponent: ${{ matrix.target }}
 #            version: ${{ github.event.client_payload.version }}
 #
-#  build-rainbond-operator:
-#    runs-on: ubuntu-22.04
-#    environment: ${{ vars.ENVIRONMENT }}
-#    steps:
-#      - name: list
-#        run: env
-#      - uses: .github/workflows/build_region.yaml
-#        with:
-#          - branch: ${{ github.event.client_payload.branch }}
-#            clone_url: ${{ github.event.client_payload.clone_url }}
-#            repository: rainbond-operator
-#            environment: ${{ vars.ENVIRONMENT }}
-#            rbdcomponent: rainbond-operator
-#            version: ${{ github.event.client_payload.version }}
 
 #  build-rainbond-allinone:
 #    needs: build-ui
