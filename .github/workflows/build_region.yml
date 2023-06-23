@@ -64,7 +64,7 @@ jobs:
           DISABLE_GOPROXY: true
         run: |
           git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git
-          cd ${{ inputs.repository }}
+          cd ${{ inputs.repo }}
           chmod +x ./release.sh
           ./release.sh
 #          if ${{ inputs.repository == "rainbond-operator" }}; then
