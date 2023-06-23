@@ -20,18 +20,25 @@ env:
   BUILD_RBD_APP_UI: false
 
 jobs:
-  build-rainbond-operator:
+  test:
     runs-on: ubuntu-22.04
+    steps:
+      - name: list
+        run: env
+
+  checkout:
     uses: actions/checkout@v2
-#  - uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
-#    with:
-#      branch: ${{ github.event.client_payload.branch }}
-#      clone_url: ${{ github.event.client_payload.clone_url }}
-#      repo: rainbond-operator
-#      environment: ${{ vars.ENVIRONMENT }}
-#      rbdcomponent: rainbond-operator
-#      version: ${{ github.event.client_payload.version }}
-#    secrets: inherit
+
+  build-rainbond-operator:
+    uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
+    with:
+      branch: ${{ github.event.client_payload.branch }}
+      clone_url: ${{ github.event.client_payload.clone_url }}
+      repo: rainbond-operator
+      environment: ${{ vars.ENVIRONMENT }}
+      rbdcomponent: rainbond-operator
+      version: ${{ github.event.client_payload.version }}
+    secrets: inherit
 
 #  build-ui:
 #    runs-on: ubuntu-22.04
