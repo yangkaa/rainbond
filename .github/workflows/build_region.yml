@@ -61,8 +61,7 @@ jobs:
         go-version: 1.18
 
 
-
-      - name: Pull code and Build the Docker image
+      - name: "Pull code and Build the Docker image"
         env:
           DISABLE_GOPROXY: true
         run: |
