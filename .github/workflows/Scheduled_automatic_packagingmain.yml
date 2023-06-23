@@ -3,6 +3,7 @@ on:
   repository_dispatch:
     types:
       - GitHub
+      - GitLab
 
 env:
   IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
