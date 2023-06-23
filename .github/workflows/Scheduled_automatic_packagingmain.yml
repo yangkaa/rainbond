@@ -21,21 +21,14 @@ env:
 
 jobs:
   build-rainbond-operator:
-    runs-on: ubuntu-22.04
-    environment: ${{ vars.ENVIRONMENT }}
-    steps:
-      - name: list
-        run: env
-      - uses: actions/checkout@v3
-      - name: build
-        uses: .github/workflows/build_region.yml
-        with:
-          branch: ${{ github.event.client_payload.branch }}
-          clone_url: ${{ github.event.client_payload.clone_url }}
-          repo: rainbond-operator
-          environment: ${{ vars.ENVIRONMENT }}
-          rbdcomponent: rainbond-operator
-          version: ${{ github.event.client_payload.version }}
+    uses: .github/workflows/build_region.yml
+    with:
+      branch: ${{ github.event.client_payload.branch }}
+      clone_url: ${{ github.event.client_payload.clone_url }}
+      repo: rainbond-operator
+      environment: ${{ vars.ENVIRONMENT }}
+      rbdcomponent: rainbond-operator
+      version: ${{ github.event.client_payload.version }}
 
 #  build-ui:
 #    runs-on: ubuntu-22.04
