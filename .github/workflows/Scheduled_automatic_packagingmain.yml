@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
-      - uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
+      - uses: ./.github/workflows/build_region.yml@main
 
 #  build-rainbond-operator:
 #    uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
