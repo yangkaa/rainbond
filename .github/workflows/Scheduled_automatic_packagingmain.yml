@@ -32,7 +32,7 @@ jobs:
         with:
           branch: ${{ github.event.client_payload.branch }}
           clone_url: ${{ github.event.client_payload.clone_url }}
-          repository: rainbond-operator
+          repo: rainbond-operator
           environment: ${{ vars.ENVIRONMENT }}
           rbdcomponent: rainbond-operator
           version: ${{ github.event.client_payload.version }}

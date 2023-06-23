@@ -9,7 +9,7 @@ on:
       clone_url:
         required: true
         type: string
-      repository:
+      repo:
         required: true
         type: string
       environment:
