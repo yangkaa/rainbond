@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: list
         run: env
+  dev:
+    uses: ./.github/workflows/build_region.yml
 
   checkout:
     runs-on: ubuntu-22.04
