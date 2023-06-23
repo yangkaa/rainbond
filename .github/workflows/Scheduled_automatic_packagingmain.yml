@@ -1,8 +1,5 @@
 name: Scheduled automatic packaging
 on:
-  release:
-    branches: [ main, V5.3, V5.4 ]
-  workflow_dispatch:
   repository_dispatch:
     types:
       - GitHub
