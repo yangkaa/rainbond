@@ -63,7 +63,7 @@ jobs:
         env:
           DISABLE_GOPROXY: true
         run: |
-          git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repository }}.git
+          git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git
           cd ${{ inputs.repository }}
           chmod +x ./release.sh
           ./release.sh
