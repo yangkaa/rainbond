@@ -28,7 +28,7 @@ jobs:
         run: env
       - uses: actions/checkout@v3
       - name: build
-        uses: ./.github/workflows/build_region.yml
+        uses: .github/workflows/build_region.yml
         with:
           branch: ${{ github.event.client_payload.branch }}
           clone_url: ${{ github.event.client_payload.clone_url }}
