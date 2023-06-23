@@ -18,21 +18,21 @@ on:
       rbdcomponent:
         required: true
         type: string
-#        options:
-#          - api
-#          - chaos
-#          - gateway
-#          - monitor
-#          - mq
-#          - webcli
-#          - worker
-#          - eventlog
-#          - init-probe
-#          - mesh-data-panel
-#          - grctl
-#          - node
-#          - resource-proxy
-#          - shell
+        options:
+          - api
+          - chaos
+          - gateway
+          - monitor
+          - mq
+          - webcli
+          - worker
+          - eventlog
+          - init-probe
+          - mesh-data-panel
+          - grctl
+          - node
+          - resource-proxy
+          - shell
       version:
         required: true
         type: string
