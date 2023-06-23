@@ -21,7 +21,7 @@ env:
 
 jobs:
   build-rainbond-operator:
-    uses: .github/workflows/build_region.yml
+    uses: yangkaa/rainbond/.github/workflows/build_region.yml
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
@@ -29,6 +29,7 @@ jobs:
       environment: ${{ vars.ENVIRONMENT }}
       rbdcomponent: rainbond-operator
       version: ${{ github.event.client_payload.version }}
+    secrets: inherit
 
 #  build-ui:
 #    runs-on: ubuntu-22.04
