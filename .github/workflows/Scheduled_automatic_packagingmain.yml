@@ -27,8 +27,8 @@ jobs:
       - name: list
         run: env
       - uses: actions/checkout@v3
-      - uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
-        name: build
+      - name: build
+        uses: ./.github/workflows/build_region.yml
         with:
           branch: ${{ github.event.client_payload.branch }}
           clone_url: ${{ github.event.client_payload.clone_url }}
