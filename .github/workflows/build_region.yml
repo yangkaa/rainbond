@@ -67,8 +67,8 @@ jobs:
           git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repository }}.git
           cd ${{ inputs.repository }}
           chmod +x ./release.sh
-          if ${{ inputs.repository == "rainbond-operator" }}; then
-            ./release.sh
-          else
-            ./release.sh ${{ inputs.rbdcomponent }} push
-          fi
+#          if ${{ inputs.repository == "rainbond-operator" }}; then
+          ./release.sh
+#          else
+#            ./release.sh ${{ inputs.rbdcomponent }} push
+#          fi
