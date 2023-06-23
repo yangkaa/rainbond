@@ -20,11 +20,6 @@ env:
   BUILD_RBD_APP_UI: false
 
 jobs:
-  test:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: list
-        run: env
   build-rainbond-operator:
     uses: ./.github/workflows/build_region.yml
     with:
@@ -35,6 +30,20 @@ jobs:
       rbdcomponent: rainbond-operator
       version: ${{ github.event.client_payload.version }}
     secrets: inherit
+
+  build-rainbond-region:
+    uses: ./.github/workflows/build_region.yml
+    strategy:
+      matrix:
+        target: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy, shell ]
+    with:
+      branch: ${{ github.event.client_payload.branch }}
+      clone_url: ${{ github.event.client_payload.clone_url }}
+      repo: rainbond
+      environment: ${{ vars.ENVIRONMENT }}
+      rbdcomponent: ${{ matrix.target }}
+      version: ${{ github.event.client_payload.version }}
+      secrets: inherit
 
 #  build-rainbond-operator:
 #    uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
@@ -61,22 +70,6 @@ jobs:
 #          chmod +x ./build.sh
 #          ./build.sh
 
-#  build-rainbond-region:
-#    runs-on: ubuntu-22.04
-#    environment: ${{ vars.ENVIRONMENT }}
-#    steps:
-#      - uses: .github/workflows/build_region.yaml
-#        strategy:
-#          matrix:
-#            target: [api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy, shell]
-#        with:
-#          - branch: ${{ github.event.client_payload.branch }}
-#            clone_url: ${{ github.event.client_payload.clone_url }}
-#            repository: rainbond
-#            environment: ${{ vars.ENVIRONMENT }}
-#            rbdcomponent: ${{ matrix.target }}
-#            version: ${{ github.event.client_payload.version }}
-#
 
 #  build-rainbond-allinone:
 #    needs: build-ui
