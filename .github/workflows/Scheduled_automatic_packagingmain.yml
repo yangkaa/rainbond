@@ -32,6 +32,8 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: 'yangkaa/rainbond'
+      - name: show
+        run: pwd && ls /home/runner/work/rainbond/rainbond/.github/workflows
       - uses: ./.github/workflows/build_region.yml@main
 
 #  build-rainbond-operator:
