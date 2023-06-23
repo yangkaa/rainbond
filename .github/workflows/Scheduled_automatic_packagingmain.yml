@@ -35,7 +35,7 @@ jobs:
     uses: ./.github/workflows/build_region.yml
     strategy:
       matrix:
-        target: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy, shell ]
+        target: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy ]
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
