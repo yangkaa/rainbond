@@ -3,7 +3,6 @@ on:
   repository_dispatch:
     types:
       - GitHub
-      - GitLab
 
 env:
   IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
@@ -22,23 +21,17 @@ env:
 
 jobs:
   build-ui:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-22.04
     steps:
       - name: Build the Docker image
         run: |
-          if [ ${{ github.event.action }} == 'GitHub' ];then
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui.git
-          else
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui-cloud.git
-          fi
-          cd rainbond-ui
-          chmod +x ./build.sh
+          git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui.git
+          cd rainbond-ui && chmod +x ./build.sh
           ./build.sh
 
   build-rainbond-allinone:
     needs: build-ui
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     environment: ${{ vars.ENVIRONMENT }}
     steps:
       - name: Set up Python 3.6
@@ -55,111 +48,111 @@ jobs:
         env:
           ADAPTOR_BRANCH: ${{ vars.ADAPTOR_BRANCH}}
         run: |
-          if [ ${{ github.event.action }} == 'GitHub' ];then
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-console.git
-          else
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-console-cloud.git
-          fi
-          cd rainbond-console
-          chmod +x  ./release.sh
+          git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-console.git
+          cd rainbond-console && chmod +x  ./release.sh
           ./release.sh allinone
 
   build-rainbond-region:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     environment: ${{ vars.ENVIRONMENT }}
     steps:
-      - name: Setup Go environment
-        uses: actions/setup-go@v2.1.3
+      - uses: .github/workflows/build_region.yaml
+        strategy:
+          matrix:
+            target: [api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy, shell]
         with:
-          # The Go version to download (if necessary) and use. Supports semver spec and ranges.
-          go-version: 1.18
+          - branch: ${{ github.event.client_payload.branch }}
+            clone_url: ${{ github.event.client_payload.clone_url }}
+            repository: rainbond
+            environment: ${{ vars.ENVIRONMENT }}
+            rbdcomponent: ${{ matrix.target }}
+            version: ${{ github.event.client_payload.version }}
 
-      - name: Pull code and Build the Docker image
-        env:
-          DISABLE_GOPROXY: true
-        run: |
-          if [ ${{ github.event.action }} == 'GitHub' ];then
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond.git
-          else
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond.git
-          fi
-          cd rainbond
-          chmod +x ./release.sh
-          ./release.sh api push
-
-  build-rainbond-region-chaos:
-    runs-on: ubuntu-latest
-    environment: ${{ vars.ENVIRONMENT }}
-    steps:
-      - name: Setup Go environment
-        uses: actions/setup-go@v2.1.3
-        with:
-          # The Go version to download (if necessary) and use. Supports semver spec and ranges.
-          go-version: 1.18
-
-      - name: Pull code and Build the Docker image
-        env:
-          DISABLE_GOPROXY: true
-        run: |
-          if [ ${{ github.event.action }} == 'GitHub' ];then
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond.git
-          else
-            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond.git
-          fi
-          cd rainbond
-          chmod +x ./release.sh
-          ./release.sh chaos push
-
-  build-operator:
-    runs-on: ubuntu-latest
+  build-rainbond-operator:
+    runs-on: ubuntu-22.04
     environment: ${{ vars.ENVIRONMENT }}
     steps:
       - name: list
         run: env
-
-      - name: Setup Go environment
-        uses: actions/setup-go@v2.1.3
+      - uses: .github/workflows/build_region.yaml
         with:
-          # The Go version to download (if necessary) and use. Supports semver spec and ranges.
-          go-version: 1.18
+          - branch: ${{ github.event.client_payload.branch }}
+            clone_url: ${{ github.event.client_payload.clone_url }}
+            repository: rainbond-operator
+            environment: ${{ vars.ENVIRONMENT }}
+            rbdcomponent: rainbond-operator
+            version: ${{ github.event.client_payload.version }}
 
-      - name: Build and push
-        run: |
-          echo "variable from shell environment : $DOCKER_USERNAME"
-          echo ${{ vars.DOCKER_USERNAME }}
-          echo ${{ secrets.DOCKER_USERNAME }}
-          git clone -b ${{ vars.OPERATOR_BRANCH }} ${{ github.event.client_payload.clone_url }}/rainbond-operator.git
-          cd rainbond-operator
-          chmod +x ./release.sh
-          ./release.sh
+#  build-rainbond-region-chaos:
+#    runs-on: ubuntu-22.04
+#    environment: ${{ vars.ENVIRONMENT }}
+#    steps:
+#      - name: Setup Go environment
+#        uses: actions/setup-go@v2.1.3
+#        with:
+#          # The Go version to download (if necessary) and use. Supports semver spec and ranges.
+#          go-version: 1.18
+#
+#      - name: Pull code and Build the Docker image
+#        env:
+#          DISABLE_GOPROXY: true
+#        run: |
+#          if [ ${{ github.event.action }} == 'GitHub' ];then
+#            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond.git
+#          else
+#            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond.git
+#          fi
+#          cd rainbond
+#          chmod +x ./release.sh
+#          ./release.sh chaos push
+#
+#  build-operator:
+#    runs-on: ubuntu-22.04
+#    environment: ${{ vars.ENVIRONMENT }}
+#    steps:
+#      - name: list
+#        run: env
+#
+#      - name: Setup Go environment
+#        uses: actions/setup-go@v2.1.3
+#        with:
+#          # The Go version to download (if necessary) and use. Supports semver spec and ranges.
+#          go-version: 1.18
+#
+#      - name: Build and push
+#        run: |
+#          git clone -b ${{ vars.OPERATOR_BRANCH }} ${{ github.event.client_payload.clone_url }}/rainbond-operator.git
+#          cd rainbond-operator
+#          chmod +x ./release.sh
+#          ./release.sh
 
-  build-dind:
-    needs: [build-ui,build-rainbond-region,build-operator]
-    runs-on: ubuntu-20.04
-    environment: ${{ vars.ENVIRONMENT }}
-    if: ${{ github.event.action }} == 'GitHub'
-    steps:
-      - name: Set up Python 3.6
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.6
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8 yapf==0.26.0
-      - name: Pack offline packages
-        env:
-          RBD_VER: ${{ github.event.client_payload.version }}
-        run: |
-          git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-console.git   
-          cd rainbond-console
-          chmod +x ./release.sh
-      - name: Build the Docker image
-        env:
-          BUILD_IMAGE_NAMESPACE: ${{ vars.BUILD_IMAGE_NAMESPACE }}
-          OPERATOR_BRANCH: ${{ vars.OPERATOR_BRANCH }}
-          ADAPTOR_BRANCH: ${{ vars.ADAPTOR_BRANCH }}
-        run: |
-          cd rainbond-console
-          ./release.sh dind
+#  build-dind:
+#    needs: [build-ui,build-rainbond-region,build-operator]
+#    runs-on: ubuntu-22.04
+#    environment: ${{ vars.ENVIRONMENT }}
+#    if: ${{ github.event.action }} == 'GitHub'
+#    steps:
+#      - name: Set up Python 3.6
+#        uses: actions/setup-python@v2
+#        with:
+#          python-version: 3.6
+#
+#      - name: Install dependencies
+#        run: |
+#          python -m pip install --upgrade pip
+#          pip install flake8 yapf==0.26.0
+#      - name: Pack offline packages
+#        env:
+#          RBD_VER: ${{ github.event.client_payload.version }}
+#        run: |
+#          git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-console.git
+#          cd rainbond-console
+#          chmod +x ./release.sh
+#      - name: Build the Docker image
+#        env:
+#          BUILD_IMAGE_NAMESPACE: ${{ vars.BUILD_IMAGE_NAMESPACE }}
+#          OPERATOR_BRANCH: ${{ vars.OPERATOR_BRANCH }}
+#          ADAPTOR_BRANCH: ${{ vars.ADAPTOR_BRANCH }}
+#        run: |
+#          cd rainbond-console
+#          ./release.sh dind
