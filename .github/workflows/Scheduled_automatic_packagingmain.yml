@@ -25,9 +25,10 @@ jobs:
     steps:
       - name: list
         run: env
-#
-#  checkout:
-#    uses: actions/checkout@v2
+
+  checkout:
+    steps:
+      - uses: actions/checkout@v2
 
 #  build-rainbond-operator:
 #    uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
