@@ -43,7 +43,7 @@ jobs:
       environment: ${{ vars.ENVIRONMENT }}
       rbdcomponent: ${{ matrix.target }}
       version: ${{ github.event.client_payload.version }}
-      secrets: inherit
+    secrets: inherit
 
 #  build-rainbond-operator:
 #    uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
