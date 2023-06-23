@@ -3,9 +3,9 @@ on:
   release:
     branches: [ main, V5.3, V5.4 ]
   workflow_dispatch:
-#  repository_dispatch:
-#    types:
-#      - GitHub
+  repository_dispatch:
+    types:
+      - GitHub
 
 env:
   IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
@@ -25,15 +25,15 @@ env:
 jobs:
   build-rainbond-operator:
   - uses: actions/checkout@v2
-  - uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
-    with:
-      branch: ${{ github.event.client_payload.branch }}
-      clone_url: ${{ github.event.client_payload.clone_url }}
-      repo: rainbond-operator
-      environment: ${{ vars.ENVIRONMENT }}
-      rbdcomponent: rainbond-operator
-      version: ${{ github.event.client_payload.version }}
-    secrets: inherit
+#  - uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
+#    with:
+#      branch: ${{ github.event.client_payload.branch }}
+#      clone_url: ${{ github.event.client_payload.clone_url }}
+#      repo: rainbond-operator
+#      environment: ${{ vars.ENVIRONMENT }}
+#      rbdcomponent: rainbond-operator
+#      version: ${{ github.event.client_payload.version }}
+#    secrets: inherit
 
 #  build-ui:
 #    runs-on: ubuntu-22.04
