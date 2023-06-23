@@ -8,7 +8,7 @@ on:
 jobs:
   build-ui:
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ vars.ENVIRONMENT }}
     steps:
       - name: Build the Docker image
         env:
@@ -31,7 +31,7 @@ jobs:
   build-rainbond-allinone:
     needs: build-ui
     runs-on: ubuntu-20.04
-    environment: production
+    environment: ${{ vars.ENVIRONMENT }}
     steps:
       - name: Set up Python 3.6
         uses: actions/setup-python@v2
@@ -67,7 +67,7 @@ jobs:
 
   build-rainbond-region:
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ vars.ENVIRONMENT }}
     steps:
       - uses: actions/checkout@v2
       - name: Setup Go environment
@@ -99,7 +99,7 @@ jobs:
 
   build-rainbond-region-chaos:
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ vars.ENVIRONMENT }}
     steps:
       - uses: actions/checkout@v2
       - name: Setup Go environment
@@ -131,7 +131,7 @@ jobs:
 
   build-operator:
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ vars.ENVIRONMENT }}
     steps:
       - name: list
         run: env
@@ -145,12 +145,12 @@ jobs:
       - name: Build and push
         env:
           IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+#          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+#          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           DOMESTIC_DOCKER_PASSWORD: ${{ secrets.DOMESTIC_DOCKER_PASSWORD }}
           DOMESTIC_DOCKER_USERNAME: ${{ secrets.DOMESTIC_DOCKER_USERNAME }}
-          DOMESTIC_BASE_NAME: ${{ vars.DOMESTIC_BASE_NAME }}
-          DOMESTIC_NAMESPACE: ${{ vars.DOMESTIC_NAMESPACE }}
+#          DOMESTIC_BASE_NAME: ${{ vars.DOMESTIC_BASE_NAME }}
+#          DOMESTIC_NAMESPACE: ${{ vars.DOMESTIC_NAMESPACE }}
           VERSION: ${{ github.event.client_payload.version }}
         run: |
           echo "variable from shell environment : $DOCKER_USERNAME"
@@ -164,7 +164,7 @@ jobs:
   build-dind:
     needs: [build-ui,build-rainbond-region,build-operator]
     runs-on: ubuntu-20.04
-    environment: production
+    environment: ${{ vars.ENVIRONMENT }}
     if: ${{ github.event.action }} == 'GitHub'
     steps:
       - name: Set up Python 3.6
