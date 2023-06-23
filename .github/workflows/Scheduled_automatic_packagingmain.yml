@@ -21,7 +21,8 @@ env:
 
 jobs:
   build-rainbond-operator:
-    uses: yangkaa/rainbond/.github/workflows/build_region.yml
+  - uses: actions/checkout@v2
+  - uses: ./.github/workflows/build_region.yml
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
