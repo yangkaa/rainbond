@@ -25,9 +25,11 @@ jobs:
     steps:
       - name: Build the Docker image
         run: |
-          git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui.git
-          cd rainbond-ui && chmod +x ./build.sh
-          ./build.sh
+          if [ ${{ github.event.action }} == 'GitHub' ];then
+            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui.git
+          else
+            git clone -b ${{ github.event.client_payload.branch }} ${{ github.event.client_payload.clone_url }}/rainbond-ui-cloud.git
+          fi
 
 #  build-rainbond-allinone:
 #    needs: build-ui
