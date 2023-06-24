@@ -36,12 +36,13 @@ env:
   DOMESTIC_DOCKER_PASSWORD: ${{ secrets.DOMESTIC_DOCKER_PASSWORD }}
 
   VERSION: ${{ inputs.version }}
+  ARCH: ${{ inputs.arch }}
 
 jobs:
   build-amd:
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
-    if: ${{ inputs.arch }} == 'amd64'
+    if: ${{ env.ARCH }} == 'amd64'
     steps:
       - name: test arch
         run: arch
@@ -67,7 +68,7 @@ jobs:
   build-arm:
     runs-on: self-hosted
     environment: ${{ inputs.environment }}
-    if: ${{ inputs.arch }} == 'arm64'
+    if: ${{ env.ARCH }} == 'arm64'
     steps:
       - name: test arch
         run: arch
