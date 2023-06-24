@@ -51,6 +51,7 @@ jobs:
       environment: ${{ vars.ENVIRONMENT }}
       rbdcomponent: ${{ matrix.target }}
       version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
+      arch: ${{ matrix.arch }}
     secrets: inherit
 
   push-multi-manifest:
