@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ arm64 ]
+        arch: [ amd64, arm64 ]
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
