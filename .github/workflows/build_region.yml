@@ -38,10 +38,10 @@ env:
   VERSION: ${{ inputs.version }}
 
 jobs:
-  if: ${{ inputs.arch }} == 'amd64'
   build-amd:
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
+    if: ${{ inputs.arch }} == 'amd64'
     steps:
       - name: test arch
         run: arch
@@ -64,10 +64,10 @@ jobs:
             ./release.sh ${{ inputs.rbdcomponent }} push
           fi
 
-  if: ${{ inputs.arch }} == 'arm64'
   build-arm:
     runs-on: self-hosted
     environment: ${{ inputs.environment }}
+    if: ${{ inputs.arch }} == 'arm64'
     steps:
       - name: test arch
         run: arch
