@@ -93,6 +93,8 @@ type ServiceHandler interface {
 	DeleteServiceMonitor(tenantID, serviceID, name string) (*dbmodel.TenantServiceMonitor, error)
 	AddServiceMonitor(tenantID, serviceID string, add api_model.AddServiceMonitorRequestStruct) (*dbmodel.TenantServiceMonitor, error)
 
+	ReviseAttributeAffinityByArch(attributeValue string, arch string) (string, error)
+	GetK8sAttribute(componentID, name string) (*dbmodel.ComponentK8sAttributes, error)
 	CreateK8sAttribute(tenantID, componentID string, k8sAttr *api_model.ComponentK8sAttribute) error
 	UpdateK8sAttribute(componentID string, k8sAttributes *api_model.ComponentK8sAttribute) error
 	DeleteK8sAttribute(componentID, name string) error

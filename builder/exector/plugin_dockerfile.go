@@ -89,7 +89,7 @@ func (e *exectorManager) runD(t *model.BuildPluginTaskBody, logger event.Logger)
 	if err := util.CheckAndCreateDir(sourceDir); err != nil {
 		return err
 	}
-	if _, err := sources.GitClone(sources.CodeSourceInfo{RepositoryURL: t.GitURL, Branch: t.Repo, User: t.GitUsername, Password: t.GitPassword}, sourceDir, logger, 4); err != nil {
+	if _, _, err := sources.GitClone(sources.CodeSourceInfo{RepositoryURL: t.GitURL, Branch: t.Repo, User: t.GitUsername, Password: t.GitPassword}, sourceDir, logger, 4); err != nil {
 		logger.Error("拉取代码失败", map[string]string{"step": "builder-exector", "status": "failure"})
 		logrus.Errorf("[plugin]git clone code error %v", err)
 		return err
@@ -105,7 +105,7 @@ func (e *exectorManager) runD(t *model.BuildPluginTaskBody, logger event.Logger)
 	n1 := strings.Split(mm[len(mm)-1], ".")[0]
 	buildImageName := fmt.Sprintf(builder.REGISTRYDOMAIN+"/plugin_%s_%s:%s", n1, t.PluginID, t.DeployVersion)
 	logger.Info("start build image", map[string]string{"step": "builder-exector"})
-	err := sources.ImageBuild(sourceDir, "", "", "rbd-system", t.PluginID, t.DeployVersion, logger, "plug-build", buildImageName, e.KanikoImage, e.KanikoArgs)
+	err := sources.ImageBuild("", sourceDir, "", "", "rbd-system", t.PluginID, t.DeployVersion, logger, "plug-build", buildImageName, e.KanikoImage, e.KanikoArgs)
 	if err != nil {
 		logger.Error(fmt.Sprintf("build image %s failure,find log in rbd-chaos", buildImageName), map[string]string{"step": "builder-exector", "status": "failure"})
 		logrus.Errorf("[plugin]build image error: %s", err.Error())
