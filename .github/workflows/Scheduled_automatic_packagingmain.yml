@@ -22,27 +22,33 @@ env:
 jobs:
   build-rainbond-operator:
     uses: ./.github/workflows/build_region.yml
+    strategy:
+      matrix:
+        arch: [ amd64, arm64 ]
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
       repo: rainbond-operator
       environment: ${{ vars.ENVIRONMENT }}
       rbdcomponent: rainbond-operator
-      version: ${{ github.event.client_payload.version }}
+      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
     secrets: inherit
 
   build-rainbond-region:
     uses: ./.github/workflows/build_region.yml
+    continue-on-error: true
     strategy:
       matrix:
-        target: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy ]
+        target: [ api ]
+#        target: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy, shell ]
+        arch: [ amd64, arm64 ]
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
       repo: rainbond
       environment: ${{ vars.ENVIRONMENT }}
       rbdcomponent: ${{ matrix.target }}
-      version: ${{ github.event.client_payload.version }}
+      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
     secrets: inherit
 
 #  build-rainbond-operator:
