@@ -20,30 +20,47 @@ env:
   BUILD_RBD_APP_UI: false
 
 jobs:
-#  build-rainbond-operator:
-#    uses: ./.github/workflows/build_region.yml
-#    strategy:
-#      fail-fast: false
-#      matrix:
-#        arch: [ amd64, arm64 ]
-#    with:
-#      branch: ${{ github.event.client_payload.branch }}
-#      clone_url: ${{ github.event.client_payload.clone_url }}
-#      repo: rainbond-operator
-#      environment: ${{ vars.ENVIRONMENT }}
-#      rbdcomponent: rainbond-operator
-#      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
-#      arch: ${{ matrix.arch }}
-#    secrets: inherit
+  build-rainbond-operator:
+    uses: ./.github/workflows/build_region.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ amd64, arm64 ]
+    with:
+      branch: ${{ github.event.client_payload.branch }}
+      clone_url: ${{ github.event.client_payload.clone_url }}
+      repo: rainbond-operator
+      environment: ${{ vars.ENVIRONMENT }}
+      rbdcomponent: rainbond-operator
+      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
+      arch: ${{ matrix.arch }}
+    secrets: inherit
+
+  build-rainbond-region:
+    uses: ./.github/workflows/build_region.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ api ]
+#        target: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy, shell ]
+        arch: [ amd64, arm64 ]
+    with:
+      branch: ${{ github.event.client_payload.branch }}
+      clone_url: ${{ github.event.client_payload.clone_url }}
+      repo: rainbond
+      environment: ${{ vars.ENVIRONMENT }}
+      rbdcomponent: ${{ matrix.target }}
+      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
+    secrets: inherit
 
   push-multi-manifest:
-#    needs: build-rainbond-operator
+    needs: [ build-rainbond-operator, build-rainbond-region ]
     runs-on: ubuntu-22.04
     environment: ${{ vars.ENVIRONMENT }}
     strategy:
       fail-fast: false
       matrix:
-        component: [ rainbond-operator ]
+        component: [ rainbond-operator, rbd-api ]
     steps:
       - name: push-multi-manifest
         run: |
@@ -66,22 +83,6 @@ jobs:
 #          docker manifest annotate $new_tag $new_tag --os linux --arch amd64
 #          docker manifest annotate $new_tag $new_tag-arm64 --os linux --arch arm64 --variant v8
 
-
-#  build-rainbond-region:
-#    uses: ./.github/workflows/build_region.yml
-#    strategy:
-#      matrix:
-#        target: [ api ]
-##        target: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy, shell ]
-#        arch: [ amd64, arm64 ]
-#    with:
-#      branch: ${{ github.event.client_payload.branch }}
-#      clone_url: ${{ github.event.client_payload.clone_url }}
-#      repo: rainbond
-#      environment: ${{ vars.ENVIRONMENT }}
-#      rbdcomponent: ${{ matrix.target }}
-#      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
-#    secrets: inherit
 
 #  build-rainbond-operator:
 #    uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
