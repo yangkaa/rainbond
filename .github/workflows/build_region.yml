@@ -68,7 +68,7 @@ jobs:
   build-arm:
     runs-on: self-hosted
     environment: ${{ inputs.environment }}
-    if: $ARCH == 'arm64'
+    if: 'arm64' == 'arm64'
     steps:
       - name: test arch
         run: arch
