@@ -53,7 +53,9 @@ jobs:
       - name: "Pull code and Build the Docker image"
         env:
           DISABLE_GOPROXY: true
+          TEST_ARCH: ${{ inputs.arch }}
         run: |
+          env
           git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git
           cd ${{ inputs.repo }} && chmod +x ./release.sh
           if ${{ inputs.repo }} == "rainbond-operator"; then
