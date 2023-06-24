@@ -42,7 +42,7 @@ jobs:
   build-amd:
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
-    if: $ARCH == 'amd64'
+    if: 'arm64' == 'amd64'
     steps:
       - name: test arch
         run: arch
