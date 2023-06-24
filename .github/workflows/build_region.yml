@@ -21,6 +21,9 @@ on:
       version:
         required: true
         type: string
+      arch:
+        required: true
+        type: string
 
 env:
   IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
@@ -35,7 +38,8 @@ env:
   VERSION: ${{ inputs.version }}
 
 jobs:
-  build-item:
+  build-amd:
+    if: ${{ inputs.arch }} == "amd64"
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
     steps:
@@ -47,6 +51,29 @@ jobs:
       - name: "Pull code and Build the Docker image"
         env:
           DISABLE_GOPROXY: true
+        run: |
+          git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git
+          cd ${{ inputs.repo }} && chmod +x ./release.sh
+          if ${{ inputs.repo }} == "rainbond-operator"; then
+            ./release.sh
+          else
+            ./release.sh ${{ inputs.rbdcomponent }} push
+          fi
+
+  build-arm:
+    if: ${{ inputs.arch }} == "arm64"
+    runs-on: self-hosted
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Setup Go environment
+        uses: actions/setup-go@v2.1.3
+        with:
+          # The Go version to download (if necessary) and use. Supports semver spec and ranges.
+          go-version: 1.18
+      - name: "Pull code and Build the Docker image"
+        env:
+          DISABLE_GOPROXY: true
+          BUILD_GOARCH: arm64
         run: |
           git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git
           cd ${{ inputs.repo }} && chmod +x ./release.sh

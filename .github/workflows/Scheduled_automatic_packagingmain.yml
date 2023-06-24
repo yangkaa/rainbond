@@ -21,7 +21,7 @@ env:
 
 jobs:
   build-rainbond-operator:
-    uses: ./.github/workflows/build_region_arm.yml
+    uses: ./.github/workflows/build_region.yml
     strategy:
       matrix:
         arch: [ arm64 ]
@@ -32,6 +32,7 @@ jobs:
       environment: ${{ vars.ENVIRONMENT }}
       rbdcomponent: rainbond-operator
       version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
+      arch: ${{ matrix.arch }}
     secrets: inherit
 
 #  build-rainbond-region:
