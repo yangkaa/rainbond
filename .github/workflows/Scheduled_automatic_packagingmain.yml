@@ -44,24 +44,19 @@ jobs:
         run: |
           old_amd_image="$IMAGE_NAMESPACE/rainbond-operator:${{ github.event.client_payload.version }}-amd64"
           old_arm_image="$IMAGE_NAMESPACE/rainbond-operator:${{ github.event.client_payload.version }}-arm64"
-          
           new_amd_image="$DOMESTIC_BASE_NAME/$DOMESTIC_NAMESPACE/rainbond-operator:${{ github.event.client_payload.version }}-amd64"
           new_arm_image="$DOMESTIC_BASE_NAME/$DOMESTIC_NAMESPACE/rainbond-operator:${{ github.event.client_payload.version }}-arm64"
-          
           docker login -u $DOMESTIC_DOCKER_USERNAME -p $DOMESTIC_DOCKER_PASSWORD ${DOMESTIC_BASE_NAME}
-          
           docker pull $old_amd_image
           docker pull $old_arm_image
-          
           docker tag $old_amd_image $new_amd_image
           docker tag $old_arm_image $new_arm_image
-          
           manifest="$DOMESTIC_BASE_NAME/$DOMESTIC_NAMESPACE/rainbond-operator:${{ github.event.client_payload.version }}"
-          
           docker manifest create $manifest $new_amd_image $new_arm_image
+          docker manifest push $manifest
 #          docker manifest annotate $new_tag $new_tag --os linux --arch amd64
 #          docker manifest annotate $new_tag $new_tag-arm64 --os linux --arch arm64 --variant v8
-          docker manifest push $manifest
+
 
 #  build-rainbond-region:
 #    uses: ./.github/workflows/build_region.yml
