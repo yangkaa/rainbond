@@ -81,9 +81,6 @@ jobs:
           docker manifest create $ali_manifest $ali_amd_image $ali_arm_image
           docker manifest push $docker_manifest
           docker manifest push $ali_manifest
-#          docker manifest annotate $new_tag $new_tag --os linux --arch amd64
-#          docker manifest annotate $new_tag $new_tag-arm64 --os linux --arch arm64 --variant v8
-
 
 #  build-rainbond-operator:
 #    uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
