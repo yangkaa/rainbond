@@ -36,7 +36,6 @@ jobs:
 
   build-rainbond-region:
     uses: ./.github/workflows/build_region.yml
-    continue-on-error: true
     strategy:
       matrix:
         target: [ api ]
