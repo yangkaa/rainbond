@@ -21,7 +21,7 @@ env:
 
 jobs:
   build-rainbond-operator:
-    uses: ./.github/workflows/build_region.yml
+    uses: ./.github/workflows/build_region_arm.yml
     strategy:
       matrix:
         arch: [ arm64 ]
