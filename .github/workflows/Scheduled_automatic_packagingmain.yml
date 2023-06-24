@@ -39,6 +39,7 @@ jobs:
   push-multi-manifest:
 #    needs: build-rainbond-operator
     runs-on: ubuntu-22.04
+    environment: ${{ vars.ENVIRONMENT }}
     steps:
       - name: push-multi-manifest
         run: |
@@ -46,7 +47,7 @@ jobs:
           old_arm_image="$IMAGE_NAMESPACE/rainbond-operator:${{ github.event.client_payload.version }}-arm64"
           new_amd_image="$DOMESTIC_BASE_NAME/$DOMESTIC_NAMESPACE/rainbond-operator:${{ github.event.client_payload.version }}-amd64"
           new_arm_image="$DOMESTIC_BASE_NAME/$DOMESTIC_NAMESPACE/rainbond-operator:${{ github.event.client_payload.version }}-arm64"
-          docker login -u $DOMESTIC_DOCKER_USERNAME -p $DOMESTIC_DOCKER_PASSWORD ${DOMESTIC_BASE_NAME}
+          docker login -u $DOMESTIC_DOCKER_USERNAME -p $DOMESTIC_DOCKER_PASSWORD ${DOMESTIC_BASE_NAME} 
           docker pull $old_amd_image
           docker pull $old_arm_image
           docker tag $old_amd_image $new_amd_image
