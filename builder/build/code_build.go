@@ -457,7 +457,7 @@ func (s *slugBuild) runBuildJob(re *Request) error {
 		podSpec.HostAliases = append(podSpec.HostAliases, corev1.HostAlias{IP: ha.IP, Hostnames: ha.Hostnames})
 	}
 	job.Spec = podSpec
-	sources.SetImagePullSecretsForPod(&job)
+	s.setImagePullSecretsForPod(&job)
 	writer := re.Logger.GetWriter("builder", "info")
 	reChan := channels.NewRingChannel(10)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -521,7 +521,18 @@ func (s *slugBuild) waitingComplete(re *Request, reChan *channels.RingChannel) (
 	}
 }
 
-// ErrorBuild build error
+func (s *slugBuild) setImagePullSecretsForPod(pod *corev1.Pod) {
+	imagePullSecretName := os.Getenv("IMAGE_PULL_SECRET")
+	if imagePullSecretName == "" {
+		return
+	}
+
+	pod.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{Name: imagePullSecretName},
+	}
+}
+
+//ErrorBuild build error
 type ErrorBuild struct {
 	Code int
 }
@@ -547,6 +558,7 @@ func (s *slugBuild) HandleNodeJsDir(re *Request) error {
 		if dir, ok := re.BuildEnvs["DIST_DIR"]; !ok || dir == ""{
 			re.BuildEnvs["DIST_DIR"] = "dist"
 		}
+
 		_, err = io.WriteString(filePtr, fmt.Sprintf("{\"path\":\"%v\"}", re.BuildEnvs["DIST_DIR"]))
 		if err != nil {
 			logrus.Error("write nodestatic json error:", err)
