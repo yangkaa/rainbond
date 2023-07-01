@@ -20,6 +20,7 @@ package server
 
 import (
 	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
+	"k8s.io/client-go/restmapper"
 	"os"
 	"os/signal"
 	gateway "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
@@ -100,6 +101,12 @@ func Run(s *option.Worker) error {
 		logrus.Errorf("create kube gateway client error: %s", err.Error())
 		return err
 	}
+	// rest mapper
+	gr, err := restmapper.GetAPIGroupResources(clientset)
+	if err != nil {
+		return err
+	}
+	mapper := restmapper.NewDiscoveryRESTMapper(gr)
 	rainbondClient := versioned.NewForConfigOrDie(restConfig)
 	//step 3: create componentdefinition builder factory
 	componentdefinition.NewComponentDefinitionBuilder(s.Config.RBDNamespace)
@@ -113,7 +120,7 @@ func Run(s *option.Worker) error {
 	}
 
 	//step 5: create controller manager
-	controllerManager := controller.NewManager(cachestore, clientset, runtimeClient, kruiseClient, gatewayClient)
+	controllerManager := controller.NewManager(s.Config, cachestore, clientset, runtimeClient, kruiseClient, gatewayClient)
 	defer controllerManager.Stop()
 
 	//step 6 : start runtime master
@@ -128,7 +135,7 @@ func Run(s *option.Worker) error {
 
 	//step 7 : create discover module
 	garbageCollector := gc.NewGarbageCollector(clientset)
-	taskManager := discover.NewTaskManager(s.Config, cachestore, controllerManager, garbageCollector, kruiseClient, gatewayClient)
+	taskManager := discover.NewTaskManager(s.Config, cachestore, controllerManager, garbageCollector, kruiseClient, gatewayClient, restConfig, mapper, clientset)
 	if err := taskManager.Start(); err != nil {
 		return err
 	}

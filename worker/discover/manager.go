@@ -22,6 +22,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/openkruise/kruise-api/client/clientset/versioned"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"os"
 	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 	"time"
@@ -56,6 +59,9 @@ type TaskManager struct {
 	client        client.MQClient
 	kruiseClient  *versioned.Clientset
 	gatewayClient *v1beta1.GatewayV1beta1Client
+	restConfig    *rest.Config
+	mapper        meta.RESTMapper
+	clientset     *kubernetes.Clientset
 }
 
 //NewTaskManager return *TaskManager
@@ -64,10 +70,13 @@ func NewTaskManager(cfg option.Config,
 	controllermanager *controller.Manager,
 	garbageCollector *gc.GarbageCollector,
 	kruiseClient *versioned.Clientset,
-	gatewayClient *v1beta1.GatewayV1beta1Client) *TaskManager {
+	gatewayClient *v1beta1.GatewayV1beta1Client,
+	restConfig *rest.Config,
+	mapper meta.RESTMapper,
+	clientset *kubernetes.Clientset) *TaskManager {
 
 	ctx, cancel := context.WithCancel(context.Background())
-	handleManager := handle.NewManager(ctx, cfg, store, controllermanager, garbageCollector, kruiseClient, gatewayClient)
+	handleManager := handle.NewManager(ctx, cfg, store, controllermanager, garbageCollector, kruiseClient, gatewayClient, restConfig, mapper)
 	healthStatus["status"] = "health"
 	healthStatus["info"] = "worker service health"
 	return &TaskManager{
@@ -75,6 +84,9 @@ func NewTaskManager(cfg option.Config,
 		cancel:        cancel,
 		config:        cfg,
 		handleManager: handleManager,
+		restConfig:    restConfig,
+		mapper:        mapper,
+		clientset:     clientset,
 	}
 }
 

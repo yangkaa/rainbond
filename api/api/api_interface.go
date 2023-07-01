@@ -60,6 +60,7 @@ type ClusterInterface interface {
 // NodesInterface -
 type NodesInterface interface {
 	ListNodes(w http.ResponseWriter, r *http.Request)
+	ListNodeArch(w http.ResponseWriter, r *http.Request)
 	GetNode(w http.ResponseWriter, r *http.Request)
 	NodeAction(w http.ResponseWriter, r *http.Request)
 	ListLabels(w http.ResponseWriter, r *http.Request)
@@ -223,6 +224,7 @@ type ApplicationInterface interface {
 	ListServices(w http.ResponseWriter, r *http.Request)
 	ListHelmAppReleases(w http.ResponseWriter, r *http.Request)
 	DeleteConfigGroup(w http.ResponseWriter, r *http.Request)
+	BatchDeleteConfigGroup(w http.ResponseWriter, r *http.Request)
 	ListConfigGroups(w http.ResponseWriter, r *http.Request)
 	SyncComponents(w http.ResponseWriter, r *http.Request)
 	SyncAppConfigGroups(w http.ResponseWriter, r *http.Request)

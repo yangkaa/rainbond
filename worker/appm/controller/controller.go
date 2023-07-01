@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"github.com/openkruise/kruise-api/client/clientset/versioned"
 	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
+	"github.com/goodrain/rainbond/cmd/worker/option"
 	"sync"
 
 	"github.com/goodrain/rainbond/util"
@@ -78,10 +79,11 @@ type Manager struct {
 	lock          sync.Mutex
 	kruiseClient  *versioned.Clientset
 	gatewayClient *v1beta1.GatewayV1beta1Client
+	config        option.Config
 }
 
 //NewManager new manager
-func NewManager(store store.Storer, client kubernetes.Interface, runtimeClient client.Client, kruiseClient *versioned.Clientset, gatewayClient *v1beta1.GatewayV1beta1Client) *Manager {
+func NewManager(config option.Config, store store.Storer, client kubernetes.Interface, runtimeClient client.Client, kruiseClient *versioned.Clientset, gatewayClient *v1beta1.GatewayV1beta1Client) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Manager{
 		ctx:           ctx,
@@ -93,6 +95,7 @@ func NewManager(store store.Storer, client kubernetes.Interface, runtimeClient c
 		store:         store,
 		kruiseClient:  kruiseClient,
 		gatewayClient: gatewayClient,
+		config:        config,
 	}
 }
 
@@ -171,6 +174,7 @@ func (m *Manager) StartController(controllerType TypeController, apps ...v1.AppS
 			manager:      m,
 			stopChan:     make(chan struct{}),
 			ctx:          context.Background(),
+			cfg:          m.config,
 		}
 	case TypeApplyRuleController:
 		controller = &applyRuleController{

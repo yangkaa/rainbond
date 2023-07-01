@@ -2077,6 +2077,17 @@ func (s *ServiceAction) CreateTenant(t *dbmodel.Tenants) error {
 				return err
 			}
 		}
+		if t.Namespace == "default" {
+			ns, err := s.kubeClient.CoreV1().Namespaces().Get(context.Background(), t.Namespace, metav1.GetOptions{})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				return err
+			}
+			if err == nil {
+				ns.Labels = labels
+				_, err = s.kubeClient.CoreV1().Namespaces().Update(context.Background(), ns, metav1.UpdateOptions{})
+				return err
+			}
+		}
 		if _, err := s.kubeClient.CoreV1().Namespaces().Create(context.Background(), &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:   t.Namespace,
@@ -2243,9 +2254,6 @@ func (s *ServiceAction) TransServieToDelete(ctx context.Context, tenantID, servi
 	if err != nil && gorm.ErrRecordNotFound == err {
 		logrus.Infof("service[%s] of tenant[%s] do not exist, ignore it", serviceID, tenantID)
 		return nil
-	}
-	if err := s.isServiceClosed(serviceID); err != nil {
-		return err
 	}
 
 	body, err := s.gcTaskBody(tenantID, serviceID)

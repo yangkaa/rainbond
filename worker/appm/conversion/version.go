@@ -428,7 +428,11 @@ func createEnv(as *v1.AppService, dbmanager db.Manager, envVarSecrets []*corev1.
 	envs = append(envs, corev1.EnvVar{Name: "NAMESPACE", Value: as.GetNamespace()})
 	envs = append(envs, corev1.EnvVar{Name: "TENANT_ID", Value: as.TenantID})
 	envs = append(envs, corev1.EnvVar{Name: "SERVICE_ID", Value: as.ServiceID})
-	envs = append(envs, corev1.EnvVar{Name: "MEMORY_SIZE", Value: envutil.GetMemoryType(as.ContainerMemory)})
+	if envutil.IsCustomMemory(as.ContainerMemory) {
+		envs = append(envs, corev1.EnvVar{Name: "CUSTOM_MEMORY_SIZE", Value: strconv.Itoa(as.ContainerMemory)})
+	} else {
+		envs = append(envs, corev1.EnvVar{Name: "MEMORY_SIZE", Value: envutil.GetMemoryType(as.ContainerMemory)})
+	}
 	envs = append(envs, corev1.EnvVar{Name: "SERVICE_NAME", Value: as.GetK8sWorkloadName()})
 	envs = append(envs, corev1.EnvVar{Name: "TEAM_NAME", Value: as.TenantName})
 	envs = append(envs, corev1.EnvVar{Name: "K8S_APP", Value: as.K8sApp})
@@ -1229,6 +1233,28 @@ func createLifecycle(as *v1.AppService, dbmanager db.Manager) (*corev1.Lifecycle
 		}
 	}
 	return &lifecycle, nil
+}
+
+func createSecurityContext(as *v1.AppService, dbmanager db.Manager) (*corev1.SecurityContext, error) {
+	var securityContext corev1.SecurityContext
+	sc, err := dbmanager.ComponentK8sAttributeDao().GetByComponentIDAndName(as.ServiceID, model.K8sAttributeNameSecurityContext)
+	if err != nil {
+		logrus.Debug("get by securityContext attribute error", err)
+		return nil, err
+	}
+	if sc != nil {
+		securityContextJSON, err := yaml.YAMLToJSON([]byte(sc.AttributeValue))
+		if err != nil {
+			logrus.Debug("securityContext yaml to json error", err)
+			return nil, err
+		}
+		err = json.Unmarshal(securityContextJSON, &securityContext)
+		if err != nil {
+			logrus.Debug("securityContext json unmarshal error", err)
+			return nil, err
+		}
+	}
+	return &securityContext, nil
 }
 
 func handleResource(resources corev1.ResourceRequirements, customResources *corev1.ResourceRequirements) (res corev1.ResourceRequirements) {

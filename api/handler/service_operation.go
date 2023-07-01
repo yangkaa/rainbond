@@ -309,9 +309,9 @@ func (o *OperationHandler) buildFromMarketSlug(r *model.ComponentBuildReq, servi
 	body["slug_info"] = r.SlugInfo
 	body["configs"] = r.Configs
 	body["in_rolling"] = r.InRolling
-	return o.sendBuildTopic(service.ServiceID, "build_from_market_slug", body)
+	return o.sendBuildTopic(service.ServiceID, "build_from_market_slug", body, r.Arch)
 }
-func (o *OperationHandler) sendBuildTopic(serviceID, taskType string, body map[string]interface{}) error {
+func (o *OperationHandler) sendBuildTopic(serviceID, taskType string, body map[string]interface{}, arch string) error {
 
 	topic := gclient.BuilderTopic
 	if o.isWindowsService(serviceID) {
@@ -321,6 +321,7 @@ func (o *OperationHandler) sendBuildTopic(serviceID, taskType string, body map[s
 		Topic:    topic,
 		TaskType: taskType,
 		TaskBody: body,
+		Arch:     arch,
 	})
 }
 
@@ -368,7 +369,7 @@ func (o *OperationHandler) buildFromImage(r *model.ComponentBuildReq, service *d
 		body["password"] = r.ImageInfo.Password
 	}
 	body["configs"] = r.Configs
-	return o.sendBuildTopic(service.ServiceID, "build_from_image", body)
+	return o.sendBuildTopic(service.ServiceID, "build_from_image", body, r.Arch)
 }
 
 func (o *OperationHandler) buildFromSourceCode(r *model.ComponentBuildReq, service *dbmodel.TenantServices) error {
@@ -397,7 +398,7 @@ func (o *OperationHandler) buildFromSourceCode(r *model.ComponentBuildReq, servi
 	}
 	body["expire"] = 180
 	body["configs"] = r.Configs
-	return o.sendBuildTopic(service.ServiceID, "build_from_source_code", body)
+	return o.sendBuildTopic(service.ServiceID, "build_from_source_code", body, r.Arch)
 }
 
 func (o *OperationHandler) isWindowsService(serviceID string) bool {

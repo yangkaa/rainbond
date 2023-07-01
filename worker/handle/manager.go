@@ -19,9 +19,19 @@
 package handle
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/openkruise/kruise-api/client/clientset/versioned"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	yamlt "k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	"reflect"
 	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 	"strings"
@@ -54,6 +64,9 @@ type Manager struct {
 	garbageCollector  *gc.GarbageCollector
 	kruiseClient      *versioned.Clientset
 	gatewayClient     *v1beta1.GatewayV1beta1Client
+	restConfig        *rest.Config
+	mapper            meta.RESTMapper
+	clientset         *kubernetes.Clientset
 }
 
 //NewManager now handle
@@ -63,7 +76,9 @@ func NewManager(ctx context.Context,
 	controllerManager *controller.Manager,
 	garbageCollector *gc.GarbageCollector,
 	kruiseClient *versioned.Clientset,
-	gatewayClient *v1beta1.GatewayV1beta1Client) *Manager {
+	gatewayClient *v1beta1.GatewayV1beta1Client,
+	restConfig *rest.Config,
+	mapper meta.RESTMapper) *Manager {
 
 	return &Manager{
 		ctx:               ctx,
@@ -72,6 +87,8 @@ func NewManager(ctx context.Context,
 		store:             store,
 		controllerManager: controllerManager,
 		garbageCollector:  garbageCollector,
+		restConfig:        restConfig,
+		mapper:            mapper,
 		kruiseClient:      kruiseClient,
 		gatewayClient:     gatewayClient,
 	}
@@ -133,6 +150,9 @@ func (m *Manager) AnalystToExec(task *model.Task) error {
 	case "apply_registry_auth_secret":
 		logrus.Info("start a 'apply_registry_auth_secret' task worker")
 		return m.ExecApplyRegistryAuthSecretTask(task)
+	case "delete_k8s_resource":
+		logrus.Info("start a 'delete_k8s_resource' task worker")
+		return m.DeleteK8sResource(task)
 	default:
 		logrus.Warning("task can not execute because no type is identified")
 		return nil
@@ -153,7 +173,7 @@ func (m *Manager) startExec(task *model.Task) error {
 		event.GetManager().ReleaseLogger(logger)
 		return nil
 	}
-	newAppService, err := conversion.InitAppService(m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, body.Configs)
+	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, body.Configs)
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
 		logger.Error("component init create failure", event.GetCallbackLoggerOption())
@@ -316,7 +336,7 @@ func (m *Manager) verticalScalingExec(task *model.Task) error {
 	appService.ContainerMemory = service.ContainerMemory
 	appService.ContainerGPU = service.ContainerGPU
 	appService.Logger = logger
-	newAppService, err := conversion.InitAppService(m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil)
+	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil)
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
 		logger.Error("component init create failure", event.GetCallbackLoggerOption())
@@ -343,7 +363,7 @@ func (m *Manager) rollingUpgradeExec(task *model.Task) error {
 		return fmt.Errorf("rolling_upgrade body convert to taskbody error")
 	}
 	logger := event.GetManager().GetLogger(body.EventID)
-	newAppService, err := conversion.InitAppService(m.kruiseClient, m.gatewayClient, body.InRolling, body.DryRun, m.dbmanager, body.ServiceID, body.Configs)
+	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, body.InRolling, body.DryRun, m.dbmanager, body.ServiceID, body.Configs)
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
 		logger.Error("component init create failure", event.GetCallbackLoggerOption())
@@ -415,10 +435,10 @@ func (m *Manager) applyRuleExec(task *model.Task) error {
 	}
 	var newAppService *v1.AppService
 	if svc.Kind == dbmodel.ServiceKindThirdParty.String() {
-		newAppService, err = conversion.InitAppService(m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil,
+		newAppService, err = conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil,
 			"ServiceSource", "TenantServiceBase", "TenantServiceRegist")
 	} else {
-		newAppService, err = conversion.InitAppService(m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil)
+		newAppService, err = conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil)
 	}
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
@@ -451,7 +471,7 @@ func (m *Manager) applyPluginConfig(task *model.Task) error {
 		logrus.Debugf("service is closed,no need handle")
 		return nil
 	}
-	newApp, err := conversion.InitAppService(m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil, "ServiceSource", "TenantServiceBase", "TenantServicePlugin")
+	newApp, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil, "ServiceSource", "TenantServiceBase", "TenantServicePlugin")
 	if err != nil {
 		logrus.Errorf("component apply plugin config controller failure:%s", err.Error())
 		return err
@@ -476,6 +496,7 @@ func (m *Manager) ExecServiceGCTask(task *model.Task) error {
 	m.garbageCollector.DelVolumeData(serviceGCReq)
 	m.garbageCollector.DelKubernetesObjects(serviceGCReq)
 	m.garbageCollector.DelComponentPkg(serviceGCReq)
+	m.garbageCollector.DelShellPod()
 	return nil
 }
 
@@ -543,7 +564,7 @@ func (m *Manager) ExecRefreshHPATask(task *model.Task) error {
 		return nil
 	}
 
-	newAppService, err := conversion.InitAppService(m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil)
+	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil)
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
 		logger.Error("component init create failure", event.GetCallbackLoggerOption())
@@ -625,6 +646,86 @@ func (m *Manager) ExecApplyRegistryAuthSecretTask(task *model.Task) error {
 			logrus.Debugf("delete secret: %s", err.Error())
 		}
 		return err
+	}
+	return nil
+}
+
+// RefreshMapper -
+func (m *Manager) RefreshMapper() error {
+	gr, err := restmapper.GetAPIGroupResources(m.clientset)
+	if err != nil {
+		return err
+	}
+	m.mapper = restmapper.NewDiscoveryRESTMapper(gr)
+	return nil
+}
+
+// DeleteK8sResource -
+func (m *Manager) DeleteK8sResource(task *model.Task) error {
+	body, ok := task.Body.(*model.DeleteK8sResourceTaskBody)
+	if !ok {
+		return fmt.Errorf("can't convert %s to *model.DeleteK8sResourceTaskBody", reflect.TypeOf(task.Body))
+	}
+	var buildResourceList []*model.BuildResource
+	dc, err := dynamic.NewForConfig(m.restConfig)
+	if err != nil {
+		logrus.Errorf("HandleResourceYaml dynamic.NewForConfig error %v", err)
+		return err
+	}
+	decoder := yamlt.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(body.ResourceYaml)), 1000)
+	for {
+		var rawObj runtime.RawExtension
+		if err = decoder.Decode(&rawObj); err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			logrus.Errorf("HandleResourceYaml decoder.Decode error %v", err)
+			return err
+		}
+		obj, gvk, err := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(rawObj.Raw, nil, nil)
+		if err != nil {
+			logrus.Errorf("HandleResourceYaml yaml.NewDecodingSerializer error %v", err)
+			return err
+		}
+		//转化成map
+		unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+		if err != nil {
+			logrus.Errorf("HandleResourceYaml runtime.DefaultUnstructuredConverter.ToUnstructured error %v", err)
+			return err
+		}
+		//转化成对象
+		unstructuredObj := unstructured.Unstructured{Object: unstructuredMap}
+		mapping, err := m.mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			if !meta.IsNoMatchError(err) {
+				return err
+			}
+			err = m.RefreshMapper()
+			if err != nil {
+				return err
+			}
+			return err
+		}
+		var dri dynamic.ResourceInterface
+		if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+			dri = dc.Resource(mapping.Resource).Namespace(unstructuredObj.GetNamespace())
+		} else {
+			dri = dc.Resource(mapping.Resource)
+		}
+		br := &model.BuildResource{
+			Resource: &unstructuredObj,
+			Dri:      dri,
+		}
+		buildResourceList = append(buildResourceList, br)
+	}
+	for _, buildResource := range buildResourceList {
+		unstructuredObj := buildResource.Resource
+		err := buildResource.Dri.Delete(context.TODO(), unstructuredObj.GetName(), metav1.DeleteOptions{})
+		if err != nil {
+			logrus.Errorf("delete k8s resource %v(%v) error %v", unstructuredObj.GetName(), unstructuredObj.GetKind(), err)
+			return err
+		}
+		logrus.Debugf("delete k8s resource %v(%v) success", unstructuredObj.GetName(), unstructuredObj.GetKind())
 	}
 	return nil
 }

@@ -35,6 +35,8 @@ const (
 	HTTPRoute = "HTTPRoute"
 	//Rollout -
 	Rollout = "Rollout"
+	//ClusterRoleBinding -
+	ClusterRoleBinding = "ClusterRoleBinding"
 )
 
 const (
