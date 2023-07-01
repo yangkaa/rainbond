@@ -689,3 +689,17 @@ func (m *Manager) K8sResourceDaoTransactions(db *gorm.DB) dao.K8sResourceDao {
 		DB: db,
 	}
 }
+
+// AppGrayReleaseDao -
+func (m *Manager) AppGrayReleaseDao() dao.AppGrayReleaseDao {
+	return &mysqldao.AppGrayReleaseModeDaoImpl{
+		DB: m.db,
+	}
+}
+
+// AppGrayReleaseDaoTransactions -
+func (m *Manager) AppGrayReleaseDaoTransactions(db *gorm.DB) dao.AppGrayReleaseDao {
+	return &mysqldao.AppGrayReleaseModeDaoImpl{
+		DB: db,
+	}
+}

@@ -29,6 +29,7 @@ import (
 	"github.com/goodrain/rainbond/pkg/generated/clientset/versioned"
 	etcdutil "github.com/goodrain/rainbond/util/etcd"
 	"github.com/goodrain/rainbond/worker/client"
+	kruise_versioned "github.com/openkruise/kruise-api/client/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/dynamic"
@@ -52,6 +53,7 @@ func InitHandle(conf option.Config,
 	mapper meta.RESTMapper,
 	dynamicClient dynamic.Interface,
 	gatewayClient *gateway.GatewayV1beta1Client,
+	kruiseClient *kruise_versioned.Clientset,
 ) error {
 	mq := api_db.MQManager{
 		EtcdClientArgs: etcdClientArgs,
@@ -96,7 +98,7 @@ func InitHandle(conf option.Config,
 	defaultEtcdHandler = NewEtcdHandler(etcdcli)
 	defaultmonitorHandler = NewMonitorHandler(prometheusCli)
 	defServiceEventHandler = NewServiceEventHandler()
-	defApplicationHandler = NewApplicationHandler(statusCli, prometheusCli, rainbondClient, kubeClient, dynamicClient)
+	defApplicationHandler = NewApplicationHandler(statusCli, prometheusCli, rainbondClient, kubeClient, dynamicClient, kruiseClient, gatewayClient)
 	defRegistryAuthSecretHandler = CreateRegistryAuthSecretManager(dbmanager, mqClient, etcdcli)
 	defNodesHandler = NewNodesHandler(kubeClient, conf.RbdNamespace, config, mapper, prometheusCli)
 	return nil

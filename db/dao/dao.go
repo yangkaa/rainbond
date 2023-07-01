@@ -653,3 +653,8 @@ type K8sResourceDao interface {
 	DeleteK8sResource(appID, name string, kind string) error
 	GetK8sResourceByName(appID, name, kind string) (model.K8sResource, error)
 }
+
+type AppGrayReleaseDao interface {
+	Dao
+	GetGrayRelease(appID string) (model.AppGrayRelease, error)
+}

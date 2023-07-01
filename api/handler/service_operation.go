@@ -230,7 +230,8 @@ func (o *OperationHandler) upgrade(batchOpReq model.ComponentOpReq) error {
 			}
 		}
 	}
-
+	upgradeReq := batchOpReq.(*model.ComponentUpgradeReq)
+	batchOpReq.SetInRolling(upgradeReq.InRolling)
 	body := batchOpReq.TaskBody(component)
 	err = o.mqCli.SendBuilderTopic(gclient.TaskStruct{
 		TaskBody: body,
@@ -281,6 +282,7 @@ func (o *OperationHandler) RollBack(rollback model.RollbackInfoRequestStruct) (r
 			ServiceID:        service.ServiceID,
 			NewDeployVersion: rollback.RollBackVersion,
 			EventID:          rollback.EventID,
+			InRolling:        true,
 		},
 		TaskType: "rolling_upgrade",
 		Topic:    gclient.WorkerTopic,
@@ -306,6 +308,7 @@ func (o *OperationHandler) buildFromMarketSlug(r *model.ComponentBuildReq, servi
 	body["service_alias"] = service.ServiceAlias
 	body["slug_info"] = r.SlugInfo
 	body["configs"] = r.Configs
+	body["in_rolling"] = r.InRolling
 	return o.sendBuildTopic(service.ServiceID, "build_from_market_slug", body)
 }
 func (o *OperationHandler) sendBuildTopic(serviceID, taskType string, body map[string]interface{}) error {
@@ -359,6 +362,7 @@ func (o *OperationHandler) buildFromImage(r *model.ComponentBuildReq, service *d
 	body["service_alias"] = service.ServiceAlias
 	body["action"] = r.Action
 	body["code_from"] = "image_manual"
+	body["in_rolling"] = r.InRolling
 	if r.ImageInfo.User != "" && r.ImageInfo.Password != "" {
 		body["user"] = r.ImageInfo.User
 		body["password"] = r.ImageInfo.Password
@@ -386,6 +390,7 @@ func (o *OperationHandler) buildFromSourceCode(r *model.ComponentBuildReq, servi
 	body["branch"] = r.CodeInfo.Branch
 	body["server_type"] = r.CodeInfo.ServerType
 	body["service_alias"] = service.ServiceAlias
+	body["in_rolling"] = r.InRolling
 	if r.CodeInfo.User != "" && r.CodeInfo.Password != "" {
 		body["user"] = r.CodeInfo.User
 		body["password"] = r.CodeInfo.Password

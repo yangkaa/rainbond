@@ -49,6 +49,7 @@ type MarketSlugItem struct {
 	Action        string       `json:"action"`
 	TGZPath       string
 	Configs       map[string]string `json:"configs"`
+	InRolling     bool              `json:"in_rolling"`
 	SlugInfo      struct {
 		SlugPath    string `json:"slug_path"`
 		FTPHost     string `json:"ftp_host"`

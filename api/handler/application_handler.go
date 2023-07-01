@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/goodrain/rainbond/api/handler/app_governance_mode/adaptor"
+	kruise_versioned "github.com/openkruise/kruise-api/client/clientset/versioned"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"os"
+	gateway "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 	"sigs.k8s.io/yaml"
 	"sort"
 	"strconv"
@@ -43,6 +45,8 @@ type ApplicationAction struct {
 	rainbondClient versioned.Interface
 	kubeClient     clientset.Interface
 	dynamicClient  dynamic.Interface
+	kruiseClient   *kruise_versioned.Clientset
+	gatewayClient  *gateway.GatewayV1beta1Client
 }
 
 // ApplicationHandler defines handler methods to TenantApplication.
@@ -78,16 +82,25 @@ type ApplicationHandler interface {
 	UpdateServiceMeshCR(app *dbmodel.Application, governance string) (content string, err error)
 	DeleteServiceMeshCR(app *dbmodel.Application) error
 	ChangeVolumes(app *dbmodel.Application) error
+	AddAppGrayscaleRelease(gr *model.GrayReleaseModeReq) (string, error)
+	UpdateAppGrayscaleRelease(ctx context.Context, gr *model.GrayReleaseModeReq) (string, error)
+	GetAppGrayscaleRelease(ctx context.Context, appID, componentID, namespace string) ([]model.GrayReleaseModeRet, error)
+	CloseAppGrayscaleRelease(ctx context.Context, appID, namespace string) error
+	OpenAppGrayscaleRelease(appID, namespace string) (string, error)
+	NextBatchAppGrayscaleRelease(ctx context.Context, appID, namespace string) error
+	RollBackAppGrayscaleRelease(ctx context.Context, appID, namespace string) (map[string]map[string]string, error)
 }
 
 // NewApplicationHandler creates a new Tenant Application Handler.
-func NewApplicationHandler(statusCli *client.AppRuntimeSyncClient, promClient prometheus.Interface, rainbondClient versioned.Interface, kubeClient clientset.Interface, dynamicClient dynamic.Interface) ApplicationHandler {
+func NewApplicationHandler(statusCli *client.AppRuntimeSyncClient, promClient prometheus.Interface, rainbondClient versioned.Interface, kubeClient clientset.Interface, dynamicClient dynamic.Interface, kruiseClient *kruise_versioned.Clientset, gatewayClient *gateway.GatewayV1beta1Client) ApplicationHandler {
 	return &ApplicationAction{
 		statusCli:      statusCli,
 		promClient:     promClient,
 		rainbondClient: rainbondClient,
 		kubeClient:     kubeClient,
 		dynamicClient:  dynamicClient,
+		kruiseClient:   kruiseClient,
+		gatewayClient:  gatewayClient,
 	}
 }
 
@@ -233,6 +246,48 @@ func (a *ApplicationAction) UpdateApp(ctx context.Context, app *dbmodel.Applicat
 	return app, err
 }
 
+var wasmImageURL = "oci://zhangsetsail/wasm:v000"
+
+func (a *ApplicationAction) generateWasmObj(appID, k8sApp, namespace, GrayHeader, TraceType string) *unstructured.Unstructured {
+	desired := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "extensions.istio.io/v1alpha1",
+			"kind":       "WasmPlugin",
+			"metadata": map[string]interface{}{
+				"namespace": namespace,
+				"name":      k8sApp,
+				"labels": map[string]interface{}{
+					"rainbond.io/app": k8sApp,
+					"rainbond_app":    k8sApp,
+					"app_id":          appID,
+				},
+			},
+			"spec": map[string]interface{}{
+				"selector": map[string]interface{}{
+					"matchLabels": map[string]interface {
+					}{
+						"app_id": appID,
+					},
+				},
+				"url": wasmImageURL,
+				"vmConfig": map[string]interface{}{
+					"env": []map[string]interface{}{
+						{
+							"name":  "GrayHeader",
+							"value": GrayHeader,
+						},
+						{
+							"name":  "TraceType",
+							"value": TraceType,
+						},
+					},
+				},
+			},
+		},
+	}
+	return desired
+}
+
 func (a *ApplicationAction) generateServiceMeshObj(app *dbmodel.Application, governance string, team *dbmodel.Tenants) *unstructured.Unstructured {
 	desired := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -276,11 +331,11 @@ func (a *ApplicationAction) CreateServiceMeshCR(app *dbmodel.Application, govern
 			return "", err
 		}
 	}
-	return a.handleDBK8sResource(app, smcr, "create")
+	return a.handleDBK8sResource(app, smcr, "create", "ServiceMesh")
 }
 
-func (a *ApplicationAction) handleDBK8sResource(app *dbmodel.Application, smcr *unstructured.Unstructured, action string) (string, error) {
-	contentBytes, err := yaml.Marshal(smcr)
+func (a *ApplicationAction) handleDBK8sResource(app *dbmodel.Application, obj *unstructured.Unstructured, action string, kind string) (string, error) {
+	contentBytes, err := yaml.Marshal(obj)
 	if err != nil {
 		logrus.Warningf("marshal service mesh cr error: %v", err)
 	}
@@ -292,12 +347,12 @@ func (a *ApplicationAction) handleDBK8sResource(app *dbmodel.Application, smcr *
 	}
 	switch action {
 	case "create":
-		resource.Kind = smcr.GetKind()
+		resource.Kind = obj.GetKind()
 		if err := db.GetManager().K8sResourceDao().AddModel(resource); err != nil {
 			return "", err
 		}
 	case "update":
-		old, err := db.GetManager().K8sResourceDao().GetK8sResourceByName(app.AppID, app.K8sApp, smcr.GetKind())
+		old, err := db.GetManager().K8sResourceDao().GetK8sResourceByName(app.AppID, app.K8sApp, obj.GetKind())
 		if err != nil {
 			return "", err
 		}
@@ -306,7 +361,7 @@ func (a *ApplicationAction) handleDBK8sResource(app *dbmodel.Application, smcr *
 			return "", err
 		}
 	case "delete":
-		if err := db.GetManager().K8sResourceDao().DeleteK8sResource(app.AppID, app.K8sApp, "ServiceMesh"); err != nil {
+		if err := db.GetManager().K8sResourceDao().DeleteK8sResource(app.AppID, app.K8sApp, kind); err != nil {
 			return "", err
 		}
 	}
@@ -338,7 +393,7 @@ func (a *ApplicationAction) UpdateServiceMeshCR(app *dbmodel.Application, govern
 	if err != nil {
 		return "", err
 	}
-	return a.handleDBK8sResource(app, smcr, "update")
+	return a.handleDBK8sResource(app, smcr, "update", "ServiceMesh")
 }
 
 // DeleteServiceMeshCR delete service mesh custom resources
@@ -357,7 +412,7 @@ func (a *ApplicationAction) DeleteServiceMeshCR(app *dbmodel.Application) error 
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
-	_, err = a.handleDBK8sResource(app, nil, "delete")
+	_, err = a.handleDBK8sResource(app, nil, "delete", "ServiceMesh")
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
@@ -430,7 +485,7 @@ func (a *ApplicationAction) DeleteApp(ctx context.Context, app *dbmodel.Applicat
 func (a *ApplicationAction) DeleteAppByK8sApp(tenantID, k8sApp string) error {
 	err := db.GetManager().ApplicationDao().DeleteAppByK8sApp(tenantID, k8sApp)
 	if err != nil {
-		return  err
+		return err
 	}
 	return nil
 }

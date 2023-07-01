@@ -62,8 +62,10 @@ type GatewayHTTPRouteConcise struct {
 	Name             string   `json:"name"`
 	Hosts            []string `json:"hosts"`
 	AppID            string   `json:"app_id"`
-	GatewayName      string   `json:"gateway_class_name"`
-	GatewayNamespace string   `json:"gateway_class_namespace"`
+	GatewayName      string   `json:"gateway_name"`
+	GatewayKind      string   `json:"gateway_kind"`
+	CreateTime       string   `json:"create_time"`
+	GatewayNamespace string   `json:"gateway_namespace"`
 }
 
 //GatewayHTTPRouteStruct -
@@ -72,6 +74,7 @@ type GatewayHTTPRouteStruct struct {
 	AppID            string   `json:"app_id"`
 	SectionName      string   `json:"section_name"`
 	Namespace        string   `json:"namespace"`
+	GatewayKind      string   `json:"gateway_kind"`
 	GatewayName      string   `json:"gateway_name"`
 	GatewayNamespace string   `json:"gateway_namespace"`
 	Hosts            []string `json:"hosts"`

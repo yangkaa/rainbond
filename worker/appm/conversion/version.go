@@ -246,16 +246,16 @@ func getMainContainer(as *v1.AppService, version *dbmodel.VersionInfo, dv *volum
 		return nil, err
 	}
 	c := &corev1.Container{
-		Name:           as.K8sComponentName,
-		Image:          imagename,
-		Args:           args,
-		Ports:          ports,
-		Env:            envs,
-		EnvFrom:        envFromSecrets,
-		VolumeMounts:   vm,
-		LivenessProbe:  createProbe(as, dbmanager, "liveness"),
-		ReadinessProbe: createProbe(as, dbmanager, "readiness"),
-		Resources:      resources,
+		Name:            as.K8sComponentName,
+		Image:           imagename,
+		Args:            args,
+		Ports:           ports,
+		Env:             envs,
+		EnvFrom:         envFromSecrets,
+		VolumeMounts:    vm,
+		LivenessProbe:   createProbe(as, dbmanager, "liveness"),
+		ReadinessProbe:  createProbe(as, dbmanager, "readiness"),
+		Resources:       resources,
 		SecurityContext: securityContext,
 	}
 	label, err := dbmanager.TenantServiceLabelDao().GetPrivilegedLabel(as.ServiceID)

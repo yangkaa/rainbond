@@ -243,7 +243,7 @@ func (t *TenantStruct) VerticalService(w http.ResponseWriter, r *http.Request) {
 	}
 	tenant := r.Context().Value(ctxutil.ContextKey("tenant")).(*dbmodel.Tenants)
 	service := r.Context().Value(ctxutil.ContextKey("service")).(*dbmodel.TenantServices)
-	if memorySet != nil && cpuSet != nil{
+	if memorySet != nil && cpuSet != nil {
 		var noMemory, noCPU int
 		if *cpuSet == 0 {
 			noCPU = service.Replicas

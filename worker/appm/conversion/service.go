@@ -19,13 +19,21 @@
 package conversion
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	k8sutil "github.com/goodrain/rainbond/util/k8s"
+	"github.com/openkruise/kruise-api/client/clientset/versioned"
+	"github.com/openkruise/kruise-api/rollouts/v1alpha1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
+	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
+	"sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 	"strconv"
 	"strings"
+	"time"
 
 	apimodel "github.com/goodrain/rainbond/api/model"
 
@@ -36,7 +44,7 @@ import (
 	v1 "github.com/goodrain/rainbond/worker/appm/types/v1"
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -88,7 +96,7 @@ func int32Ptr(i int) *int32 {
 }
 
 //TenantServiceBase conv tenant service base info
-func TenantServiceBase(as *v1.AppService, dbmanager db.Manager) error {
+func TenantServiceBase(as *v1.AppService, dbmanager db.Manager, kruiseClient *versioned.Clientset, gatewayClient *v1beta1.GatewayV1beta1Client, inRolling bool) error {
 	tenantService, err := dbmanager.TenantServiceDao().GetServiceByID(as.ServiceID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -147,6 +155,23 @@ func TenantServiceBase(as *v1.AppService, dbmanager db.Manager) error {
 		return nil
 	}
 	if !tenantService.IsState() {
+		gray, err := dbmanager.AppGrayReleaseDao().GetGrayRelease(as.AppID)
+		if err != nil && !gorm.IsRecordNotFoundError(err) {
+			logrus.Errorf("get gray release failure: %v", err)
+			return err
+		}
+		if err == nil && gray.Status == true && !inRolling {
+			ports, err := dbmanager.TenantServicesPortDao().GetInnerPorts(tenantService.ServiceID)
+			if err != nil {
+				logrus.Errorf("get gray release inner ports failure: %v", err)
+				return err
+			}
+			err = CreateRollout(as.K8sApp, as.GetNamespace(), ports, tenantService, &gray, kruiseClient, gatewayClient)
+			if err != nil {
+				logrus.Errorf("create rollout failure: %v", err)
+				return err
+			}
+		}
 		initBaseDeployment(as, tenantService)
 		return nil
 	}
@@ -367,4 +392,201 @@ func getInjectLabels(as *v1.AppService) map[string]string {
 	}
 	injectLabels := mode.GetInjectLabels()
 	return injectLabels
+}
+
+func CreateHttproute(k8sApp, namespace, appID string, service []*dbmodel.TenantServicesPort, component *dbmodel.TenantServices, gatewayClient *v1beta1.GatewayV1beta1Client) (string, error) {
+	name := k8sApp + "-" + component.K8sComponentName
+	labels := make(map[string]string)
+	labels["app_id"] = appID
+	labels["component_id"] = component.ServiceID
+	labels["gray_route"] = "true"
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	kind := gatewayv1beta1.Kind(apimodel.Service)
+	var serviceName string
+	var port gatewayv1beta1.PortNumber
+	if service != nil && len(service) > 0 {
+		serviceName = service[0].K8sServiceName
+		port = gatewayv1beta1.PortNumber(int32(service[0].ContainerPort))
+	}
+	ns := gatewayv1beta1.Namespace(namespace)
+	parentReference := gatewayv1beta1.ParentReference{
+		Kind: &kind,
+		Name: gatewayv1beta1.ObjectName(serviceName),
+	}
+	weight := int32(1)
+	rule := gatewayv1beta1.HTTPRouteRule{
+		BackendRefs: []gatewayv1beta1.HTTPBackendRef{
+			{
+				BackendRef: gatewayv1beta1.BackendRef{
+					BackendObjectReference: gatewayv1beta1.BackendObjectReference{
+						Kind:      &kind,
+						Port:      &port,
+						Namespace: &ns,
+						Name:      gatewayv1beta1.ObjectName(serviceName),
+					},
+					Weight: &weight,
+				},
+			},
+		},
+	}
+	httpRoute := gatewayv1beta1.HTTPRoute{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       apimodel.HTTPRoute,
+			APIVersion: apimodel.APIVersionHTTPRoute,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		Spec: gatewayv1beta1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
+				ParentRefs: []gatewayv1beta1.ParentReference{
+					parentReference,
+				},
+			},
+			Rules: []gatewayv1beta1.HTTPRouteRule{
+				rule,
+			},
+		},
+	}
+	_, err := gatewayClient.HTTPRoutes(namespace).Create(ctx, &httpRoute, metav1.CreateOptions{})
+	if err != nil && !k8serror.IsAlreadyExists(err) {
+		return "", err
+	}
+	return name, nil
+}
+
+func CreateRollout(k8sApp, namespace string, service []*dbmodel.TenantServicesPort, component *dbmodel.TenantServices, gray *dbmodel.AppGrayRelease, kruiseClient *versioned.Clientset, gatewayClient *v1beta1.GatewayV1beta1Client) error {
+	annotations := make(map[string]string)
+	annotations["rollouts.kruise.io/rolling-style"] = "partition"
+	name := k8sApp + "-" + component.K8sComponentName
+	labels := make(map[string]string)
+	labels["app_id"] = gray.AppID
+	labels["component_id"] = component.ServiceID
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var hostname, httpRouteName string
+	if gray.EntryComponentID == component.ServiceID {
+		httpRouteName = gray.EntryHTTPRoute
+		httproute, err := gatewayClient.HTTPRoutes(namespace).Get(ctx, gray.EntryHTTPRoute, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if httproute.Spec.Hostnames != nil && len(httproute.Spec.Hostnames) > 0 {
+			hostname = string(httproute.Spec.Hostnames[0])
+		}
+	} else {
+		err := gatewayClient.HTTPRoutes(namespace).Delete(ctx, k8sApp+"-"+component.K8sComponentName, metav1.DeleteOptions{})
+		if err != nil && !k8serror.IsNotFound(err) {
+			return err
+		}
+
+		flowEntryRule := [][]apimodel.FlowEntryRule{
+			{
+				{
+					HeaderKey:   "Gray",
+					HeaderType:  "Exact",
+					HeaderValue: "true",
+				},
+			},
+		}
+		flowEntryRuleByte, err := json.Marshal(flowEntryRule)
+		if err != nil {
+			return err
+		}
+		gray.FlowEntryRule = string(flowEntryRuleByte)
+		name, err := CreateHttproute(k8sApp, namespace, gray.AppID, service, component, gatewayClient)
+		if err != nil {
+			return err
+		}
+		httpRouteName = name
+	}
+	labels["hostname"] = hostname
+	var serviceName string
+	if service != nil && len(service) > 0 {
+		serviceName = service[0].K8sServiceName
+	}
+	spec, err := HandleRolloutSpec(gray, serviceName, httpRouteName, name)
+	if err != nil {
+		return err
+	}
+
+	rollout := &v1alpha1.Rollout{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       apimodel.Rollout,
+			APIVersion: apimodel.APIVersionRollout,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: annotations,
+			Name:        name,
+			Namespace:   namespace,
+			Labels:      labels,
+		},
+		Spec: spec,
+	}
+	rollout, err = kruiseClient.RolloutsV1alpha1().Rollouts(namespace).Create(ctx, rollout, metav1.CreateOptions{})
+	if err != nil && !k8serror.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
+}
+
+func HandleRolloutSpec(gray *dbmodel.AppGrayRelease, serviceName, httpRouteName, deployName string) (v1alpha1.RolloutSpec, error) {
+	var matches []v1alpha1.HttpRouteMatch
+	var flowEntryRule [][]apimodel.FlowEntryRule
+	err := json.Unmarshal([]byte(gray.FlowEntryRule), &flowEntryRule)
+	if err != nil {
+		return v1alpha1.RolloutSpec{}, err
+	}
+	for _, rules := range flowEntryRule {
+		var headers []v1alpha2.HTTPHeaderMatch
+		for _, header := range rules {
+			headerType := v1alpha2.HeaderMatchType(header.HeaderType)
+			headers = append(headers, v1alpha2.HTTPHeaderMatch{
+				Name:  v1alpha2.HTTPHeaderName(header.HeaderKey),
+				Type:  &headerType,
+				Value: header.HeaderValue,
+			})
+		}
+		httpRouteMatch := v1alpha1.HttpRouteMatch{headers}
+		matches = append(matches, httpRouteMatch)
+	}
+	var grayStrategy []int32
+	err = json.Unmarshal([]byte(gray.GrayStrategy), &grayStrategy)
+	if err != nil {
+		return v1alpha1.RolloutSpec{}, err
+	}
+	var steps []v1alpha1.CanaryStep
+	for _, step := range grayStrategy {
+		weight := step
+		steps = append(steps, v1alpha1.CanaryStep{
+			Weight:  &weight,
+			Matches: matches,
+		})
+	}
+	var trafficRoutings []*v1alpha1.TrafficRouting
+	if serviceName != "" && httpRouteName != "" {
+		routeName := httpRouteName
+		trafficRoutings = append(trafficRoutings, &v1alpha1.TrafficRouting{
+			Service: serviceName,
+			Gateway: &v1alpha1.GatewayTrafficRouting{HTTPRouteName: &routeName},
+		})
+	}
+	return v1alpha1.RolloutSpec{
+		ObjectRef: v1alpha1.ObjectRef{
+			WorkloadRef: &v1alpha1.WorkloadRef{
+				APIVersion: apimodel.APIVersionDeployment,
+				Kind:       apimodel.Deployment,
+				Name:       deployName,
+			},
+		},
+		Strategy: v1alpha1.RolloutStrategy{
+			Canary: &v1alpha1.CanaryStrategy{
+				Steps:           steps,
+				TrafficRoutings: trafficRoutings,
+			},
+		},
+	}, nil
 }

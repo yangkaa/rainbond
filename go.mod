@@ -112,10 +112,11 @@ require (
 	github.com/coreos/etcd v3.3.13+incompatible
 	github.com/go-playground/assert/v2 v2.0.1
 	github.com/helm/helm v2.17.0+incompatible
+	github.com/openkruise/kruise-api v1.4.0
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/metrics v0.24.1
-	sigs.k8s.io/gateway-api v0.6.1
+	sigs.k8s.io/gateway-api v0.6.2
 )
 
 require (

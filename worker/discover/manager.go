@@ -21,7 +21,9 @@ package discover
 import (
 	"context"
 	"fmt"
+	"github.com/openkruise/kruise-api/client/clientset/versioned"
 	"os"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 	"time"
 
 	"github.com/goodrain/rainbond/cmd/worker/option"
@@ -52,16 +54,20 @@ type TaskManager struct {
 	config        option.Config
 	handleManager *handle.Manager
 	client        client.MQClient
+	kruiseClient  *versioned.Clientset
+	gatewayClient *v1beta1.GatewayV1beta1Client
 }
 
 //NewTaskManager return *TaskManager
 func NewTaskManager(cfg option.Config,
 	store store.Storer,
 	controllermanager *controller.Manager,
-	garbageCollector *gc.GarbageCollector) *TaskManager {
+	garbageCollector *gc.GarbageCollector,
+	kruiseClient *versioned.Clientset,
+	gatewayClient *v1beta1.GatewayV1beta1Client) *TaskManager {
 
 	ctx, cancel := context.WithCancel(context.Background())
-	handleManager := handle.NewManager(ctx, cfg, store, controllermanager, garbageCollector)
+	handleManager := handle.NewManager(ctx, cfg, store, controllermanager, garbageCollector, kruiseClient, gatewayClient)
 	healthStatus["status"] = "health"
 	healthStatus["info"] = "worker service health"
 	return &TaskManager{
