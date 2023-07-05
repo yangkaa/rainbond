@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/goodrain/rainbond/api/handler/app_governance_mode/adaptor"
+	"github.com/goodrain/rainbond/cmd/api/option"
 	kruise_versioned "github.com/openkruise/kruise-api/client/clientset/versioned"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -40,6 +41,7 @@ import (
 
 // ApplicationAction -
 type ApplicationAction struct {
+	conf           option.Config
 	statusCli      *client.AppRuntimeSyncClient
 	promClient     prometheus.Interface
 	rainbondClient versioned.Interface
@@ -93,8 +95,9 @@ type ApplicationHandler interface {
 }
 
 // NewApplicationHandler creates a new Tenant Application Handler.
-func NewApplicationHandler(statusCli *client.AppRuntimeSyncClient, promClient prometheus.Interface, rainbondClient versioned.Interface, kubeClient clientset.Interface, dynamicClient dynamic.Interface, kruiseClient *kruise_versioned.Clientset, gatewayClient *gateway.GatewayV1beta1Client) ApplicationHandler {
+func NewApplicationHandler(conf option.Config, statusCli *client.AppRuntimeSyncClient, promClient prometheus.Interface, rainbondClient versioned.Interface, kubeClient clientset.Interface, dynamicClient dynamic.Interface, kruiseClient *kruise_versioned.Clientset, gatewayClient *gateway.GatewayV1beta1Client) ApplicationHandler {
 	return &ApplicationAction{
+		conf:           conf,
 		statusCli:      statusCli,
 		promClient:     promClient,
 		rainbondClient: rainbondClient,
@@ -247,9 +250,8 @@ func (a *ApplicationAction) UpdateApp(ctx context.Context, app *dbmodel.Applicat
 	return app, err
 }
 
-var wasmImageURL = "oci://zhangsetsail/wasm:v000"
-
 func (a *ApplicationAction) generateWasmObj(appID, k8sApp, namespace, GrayHeader, TraceType string) *unstructured.Unstructured {
+	logrus.Infof("use wasm image is %v", a.conf.WasmURL)
 	desired := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "extensions.istio.io/v1alpha1",
@@ -270,7 +272,7 @@ func (a *ApplicationAction) generateWasmObj(appID, k8sApp, namespace, GrayHeader
 						"app_id": appID,
 					},
 				},
-				"url": wasmImageURL,
+				"url": a.conf.WasmURL,
 				"vmConfig": map[string]interface{}{
 					"env": []map[string]interface{}{
 						{

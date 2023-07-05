@@ -2230,6 +2230,7 @@ type RainbondPlugins struct {
 	Icon        string            `json:"icon"`
 	Description string            `json:"description"`
 	Version     string            `json:"version"`
+	Namespace   string            `json:"namespace"`
 	Author      string            `json:"author"`
 	Status      string            `json:"status"`
 	Alias       string            `json:"alias"`
@@ -2258,6 +2259,7 @@ type FileInfo struct {
 type GrayReleaseModeRet struct {
 	ComponentID         string `json:"component_id"`
 	Hostname            string `json:"hostname"`
+	IstioNamespace      string `json:"istio_namespace"`
 	CanaryReadyReplicas int32  `json:"canary_ready_replicas"`
 	CanaryReplicas      int32  `json:"canary_replicas"`
 	CurrentStepIndex    int    `json:"current_step_index"`

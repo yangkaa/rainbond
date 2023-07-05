@@ -426,7 +426,7 @@ func (t *ApplicationController) GetGrayRelease(w http.ResponseWriter, r *http.Re
 	namespace := r.FormValue("namespace")
 	grayRelease, err := handler.GetApplicationHandler().GetAppGrayscaleRelease(r.Context(), appID, componentID, namespace)
 	if err != nil {
-		logrus.Errorf("update gray release failure: %v", err.Error())
+		logrus.Errorf("get gray release failure: %v", err.Error())
 		httputil.ReturnError(r, w, 500, err.Error())
 		return
 	}

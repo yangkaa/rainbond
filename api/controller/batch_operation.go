@@ -63,8 +63,7 @@ func BatchOperation(w http.ResponseWriter, r *http.Request) {
 			httputil.ReturnResNotEnough(r, w, "", checkError.Error())
 			return
 		}
-		b := handler.GetBatchOperationHandler()
-		f = b.Build
+		f = handler.GetBatchOperationHandler().Build
 	case "start":
 		err := middleware.LicenseVerification(w, r, true)
 		if err != nil {

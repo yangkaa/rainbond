@@ -23,6 +23,14 @@ func (a *ApplicationAction) GetAppGrayscaleRelease(ctx context.Context, appID, c
 	} else {
 		rollouts, err = a.kruiseClient.RolloutsV1alpha1().Rollouts(namespace).List(ctx, metav1.ListOptions{LabelSelector: "app_id=" + appID})
 	}
+	istioNamespace := "istio-system"
+	istioServices, err := a.kubeClient.CoreV1().Services("").List(ctx, metav1.ListOptions{LabelSelector: "service-name=istio-istio"})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return nil, err
+	}
+	if istioServices != nil && len(istioServices.Items) > 0 {
+		istioNamespace = istioServices.Items[0].GetNamespace()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +62,7 @@ func (a *ApplicationAction) GetAppGrayscaleRelease(ctx context.Context, appID, c
 			grayData = append(grayData, apimodel.GrayReleaseModeRet{
 				ComponentID:         componentID,
 				Hostname:            rollout.Labels["hostname"],
+				IstioNamespace:      istioNamespace,
 				CanaryReadyReplicas: rollout.Status.CanaryStatus.CanaryReadyReplicas,
 				CanaryReplicas:      rollout.Status.CanaryStatus.CanaryReplicas,
 				CurrentStepIndex:    currentStepIndex,
@@ -144,7 +153,7 @@ func (a *ApplicationAction) UpdateAppGrayscaleRelease(ctx context.Context, gray 
 				"app_id": gray.AppID,
 			},
 		},
-		"url": wasmImageURL,
+		"url": a.conf.WasmURL,
 		"vmConfig": map[string]interface{}{
 			"env": []map[string]interface{}{
 				{
