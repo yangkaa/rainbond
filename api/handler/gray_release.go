@@ -40,13 +40,24 @@ func (a *ApplicationAction) GetAppGrayscaleRelease(ctx context.Context, appID, c
 			}
 			componentID = rollout.Labels["component_id"]
 			version := componentVersion[componentID]
+			stepState := ""
+			switch rollout.Status.CanaryStatus.CurrentStepState {
+			case v1alpha1.CanaryStepStateUpgrade:
+				stepState = "步骤升级"
+			case v1alpha1.CanaryStepStateReady:
+				stepState = "准备就绪"
+			case v1alpha1.CanaryStepStateCompleted:
+				stepState = "完成灰度"
+			default:
+				stepState = "步骤暂停"
+			}
 			grayData = append(grayData, apimodel.GrayReleaseModeRet{
 				ComponentID:         componentID,
 				Hostname:            rollout.Labels["hostname"],
 				CanaryReadyReplicas: rollout.Status.CanaryStatus.CanaryReadyReplicas,
 				CanaryReplicas:      rollout.Status.CanaryStatus.CanaryReplicas,
 				CurrentStepIndex:    currentStepIndex,
-				CurrentStepState:    string(rollout.Status.CanaryStatus.CurrentStepState),
+				CurrentStepState:    stepState,
 				Message:             rollout.Status.Message,
 				Step:                step,
 				NewVersion:          version["new_version"],

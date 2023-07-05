@@ -561,7 +561,7 @@ func (c *clusterAction) GetExceptionNodeInfo(ctx context.Context) ([]*model.Exce
 	return exceptionNodes, nil
 }
 
-//GetNamespace Get namespace of the current cluster
+//BatchGetGateway batch get gateway
 func (c *clusterAction) BatchGetGateway(ctx context.Context) ([]*model.GatewayResource, *util.APIHandleError) {
 	gateways, err := c.gatewayClient.Gateways(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
 	if err != nil {
