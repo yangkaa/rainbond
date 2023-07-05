@@ -43,7 +43,7 @@ var EventTypeReadinessProbeFailed EventType = "ReadinessProbeFailed"
 var EventTypeAbnormalRecovery EventType = "AbnormalRecovery"
 
 // GetEventTypes -
-func GetEventTypes()[]string{
+func GetEventTypes() []string {
 	return []string{
 		EventTypeOOMKilled.String(),
 		EventTypeAbnormalExited.String(),
@@ -112,7 +112,7 @@ func (p *PodEvent) Handle() {
 	}
 }
 
-//GetChan get pod update chan
+// GetChan get pod update chan
 func (p *PodEvent) GetChan() chan<- *corev1.Pod {
 	return p.podEventCh
 }
@@ -123,8 +123,13 @@ func recordUpdateEvent(clientset kubernetes.Interface, pod *corev1.Pod, f determ
 		return
 	}
 	podstatus := new(pb.PodStatus)
-	wutil.DescribePodStatus(clientset, pod, podstatus, k8sutil.DefListEventsByPod)
+	// Non-platform created components do not log events
 	tenantID, serviceID, _, _ := k8sutil.ExtractLabels(pod.GetLabels())
+	if tenantID == "" || serviceID == "" {
+		logrus.Debugf("pod: %s; tenantID or serviceID is empty", pod.GetName())
+		return
+	}
+	wutil.DescribePodStatus(clientset, pod, podstatus, k8sutil.DefListEventsByPod)
 	// the pod in the pending status has no start time and container statuses
 	if podstatus.Type == pb.PodStatus_ABNORMAL || podstatus.Type == pb.PodStatus_NOTREADY || podstatus.Type == pb.PodStatus_UNHEALTHY {
 		var eventID string
