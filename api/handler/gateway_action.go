@@ -21,7 +21,6 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/goodrain/rainbond/worker/appm/controller"
 	corev1 "k8s.io/api/core/v1"
 	k8serror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,10 +85,17 @@ func (g *GatewayAction) BatchGetGatewayHTTPRoute(namespace, appID string) ([]*ap
 	}
 	var HTTPRouteConcise []*apimodel.GatewayHTTPRouteConcise
 	for _, httpRoute := range httpRoutes {
+		if httpRoute.Labels["gray_route"] != "" {
+			continue
+		}
+		// 将时间格式化为可读格式
+		createTime := httpRoute.CreationTimestamp.Format("2006-01-02 15:04:05")
 		var gatewayName string
+		var gatewayKind string
 		gatewayNamespace := namespace
 		if httpRoute.Spec.ParentRefs != nil {
 			gatewayName = string(httpRoute.Spec.ParentRefs[0].Name)
+			gatewayKind = string(*httpRoute.Spec.ParentRefs[0].Kind)
 			if httpRoute.Spec.ParentRefs[0].Namespace != nil {
 				gatewayNamespace = string(*httpRoute.Spec.ParentRefs[0].Namespace)
 			}
@@ -108,6 +114,8 @@ func (g *GatewayAction) BatchGetGatewayHTTPRoute(namespace, appID string) ([]*ap
 			Name:             httpRoute.Name,
 			Hosts:            hosts,
 			GatewayName:      gatewayName,
+			GatewayKind:      gatewayKind,
+			CreateTime:       createTime,
 			GatewayNamespace: gatewayNamespace,
 			AppID:            id,
 		})
@@ -120,7 +128,7 @@ func (g *GatewayAction) AddGatewayCertificate(req *apimodel.GatewayCertificate) 
 	_, err := g.kubeClient.CoreV1().Secrets(req.Namespace).Create(context.Background(), &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       apimodel.Secret,
-			APIVersion: controller.APIVersionSecret,
+			APIVersion: apimodel.APIVersionSecret,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      req.Name,
@@ -147,7 +155,7 @@ func (g *GatewayAction) UpdateGatewayCertificate(req *apimodel.GatewayCertificat
 			secret, err = g.kubeClient.CoreV1().Secrets(req.Namespace).Create(context.Background(), &corev1.Secret{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       apimodel.Secret,
-					APIVersion: controller.APIVersionSecret,
+					APIVersion: apimodel.APIVersionSecret,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      req.Name,
@@ -315,6 +323,7 @@ func handleGatewayRules(req *apimodel.GatewayHTTPRouteStruct) []v1beta1.HTTPRout
 //AddGatewayHTTPRoute create gateway http route
 func (g *GatewayAction) AddGatewayHTTPRoute(req *apimodel.GatewayHTTPRouteStruct) (*model.K8sResource, error) {
 	gatewayNamespace := v1beta1.Namespace(req.GatewayNamespace)
+	gatewayKind := v1beta1.Kind(req.GatewayKind)
 	var hosts []v1beta1.Hostname
 	for _, host := range req.Hosts {
 		hosts = append(hosts, v1beta1.Hostname(host))
@@ -330,7 +339,7 @@ func (g *GatewayAction) AddGatewayHTTPRoute(req *apimodel.GatewayHTTPRouteStruct
 	httpRoute, err := g.gatewayClient.HTTPRoutes(req.Namespace).Create(context.Background(), &v1beta1.HTTPRoute{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       apimodel.HTTPRoute,
-			APIVersion: controller.APIVersionHTTPRoute,
+			APIVersion: apimodel.APIVersionHTTPRoute,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      req.Name,
@@ -340,6 +349,7 @@ func (g *GatewayAction) AddGatewayHTTPRoute(req *apimodel.GatewayHTTPRouteStruct
 		Spec: v1beta1.HTTPRouteSpec{
 			CommonRouteSpec: v1beta1.CommonRouteSpec{
 				ParentRefs: []v1beta1.ParentReference{{
+					Kind:        &gatewayKind,
 					Name:        v1beta1.ObjectName(req.GatewayName),
 					Namespace:   &gatewayNamespace,
 					SectionName: sectionName,
@@ -354,7 +364,7 @@ func (g *GatewayAction) AddGatewayHTTPRoute(req *apimodel.GatewayHTTPRouteStruct
 		return nil, err
 	}
 	httpRoute.Kind = apimodel.HTTPRoute
-	httpRoute.APIVersion = controller.APIVersionHTTPRoute
+	httpRoute.APIVersion = apimodel.APIVersionHTTPRoute
 	httpRouteYaml, err := ObjectToJSONORYaml("yaml", &httpRoute)
 	if err != nil {
 		logrus.Errorf("create gateway http route object to yaml failure: %v", err)
@@ -385,8 +395,12 @@ func (g *GatewayAction) GetGatewayHTTPRoute(name, namespace string) (*apimodel.G
 		return nil, err
 	}
 	var gatewayName, gatewayNamespace, sectionName string
+	gatewayKind := "Gateway"
 	if route.Spec.ParentRefs != nil {
 		gatewayName = string(route.Spec.ParentRefs[0].Name)
+		if &route.Spec.ParentRefs[0].Kind != nil {
+			gatewayKind = string(*route.Spec.ParentRefs[0].Kind)
+		}
 		if route.Spec.ParentRefs[0].Namespace != nil {
 			gatewayNamespace = string(*route.Spec.ParentRefs[0].Namespace)
 		}
@@ -541,6 +555,7 @@ func (g *GatewayAction) GetGatewayHTTPRoute(name, namespace string) (*apimodel.G
 	req.AppID = id
 	req.GatewayName = gatewayName
 	req.GatewayNamespace = gatewayNamespace
+	req.GatewayKind = gatewayKind
 	req.Name = name
 	req.SectionName = sectionName
 	req.Namespace = namespace
@@ -551,6 +566,7 @@ func (g *GatewayAction) GetGatewayHTTPRoute(name, namespace string) (*apimodel.G
 //UpdateGatewayHTTPRoute update gateway http route
 func (g *GatewayAction) UpdateGatewayHTTPRoute(req *apimodel.GatewayHTTPRouteStruct) (*model.K8sResource, error) {
 	rules := handleGatewayRules(req)
+	gatewayKind := v1beta1.Kind(req.GatewayKind)
 	gatewayNamespace := v1beta1.Namespace(req.GatewayNamespace)
 	var hosts []v1beta1.Hostname
 	for _, host := range req.Hosts {
@@ -568,6 +584,7 @@ func (g *GatewayAction) UpdateGatewayHTTPRoute(req *apimodel.GatewayHTTPRouteStr
 	}
 	httpRoute.Spec.Hostnames = hosts
 	httpRoute.Spec.ParentRefs = []v1beta1.ParentReference{{
+		Kind:        &gatewayKind,
 		Name:        v1beta1.ObjectName(req.GatewayName),
 		Namespace:   &gatewayNamespace,
 		SectionName: sectionName,
@@ -579,17 +596,28 @@ func (g *GatewayAction) UpdateGatewayHTTPRoute(req *apimodel.GatewayHTTPRouteStr
 		return nil, err
 	}
 	newHTTPRoute.Kind = apimodel.HTTPRoute
-	newHTTPRoute.APIVersion = controller.APIVersionHTTPRoute
+	newHTTPRoute.APIVersion = apimodel.APIVersionHTTPRoute
 	httpRouteYaml, err := ObjectToJSONORYaml("yaml", &newHTTPRoute)
 	if err != nil {
 		logrus.Errorf("update gateway http route object to yaml failure: %v", err)
 		return nil, err
 	}
 	res, err := db.GetManager().K8sResourceDao().GetK8sResourceByName(req.AppID, req.Name, apimodel.HTTPRoute)
+	if err != nil && !gorm.IsRecordNotFoundError(err) {
+		return nil, err
+	}
+
 	res.ErrorOverview = "更新成功"
 	res.Content = httpRouteYaml
 	res.State = apimodel.UpdateSuccess
-	err = db.GetManager().K8sResourceDao().UpdateModel(&res)
+	if gorm.IsRecordNotFoundError(err) {
+		res.AppID = req.AppID
+		res.Name = req.Name
+		res.Kind = apimodel.HTTPRoute
+		err = db.GetManager().K8sResourceDao().CreateK8sResource([]*model.K8sResource{&res})
+	} else {
+		err = db.GetManager().K8sResourceDao().UpdateModel(&res)
+	}
 	if err != nil {
 		logrus.Errorf("database operation gateway http route update k8s resource failure: %v", err)
 		return nil, err

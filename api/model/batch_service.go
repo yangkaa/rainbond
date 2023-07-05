@@ -46,6 +46,7 @@ type ComponentOpReq interface {
 	GetComponentID() string
 	GetEventID() string
 	TaskBody(component *dbmodel.TenantServices) interface{}
+	SetInRolling(bool)
 	BatchOpFailureItem() *ComponentOpResult
 	UpdateConfig(key, value string)
 	OpType() string
@@ -113,6 +114,12 @@ func (s *ComponentStartReq) GetEventID() string {
 // GetVersion -
 func (s *ComponentStartReq) GetVersion() string {
 	return ""
+}
+
+// SetInRolling -
+func (s *ComponentStartReq) SetInRolling(bool) {
+	// no need
+	return
 }
 
 // SetVersion -

@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jinzhu/gorm"
+	"github.com/openkruise/kruise-api/client/clientset/versioned"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 
 	"github.com/goodrain/rainbond/api/util/bcode"
 	"github.com/goodrain/rainbond/db"
@@ -65,7 +67,7 @@ func RegistConversion(name string, fun Conversion) {
 }
 
 //InitAppService init a app service
-func InitAppService(sharedStorageClass string, dryRun bool, dbmanager db.Manager, serviceID string, configs map[string]string, enableConversionList ...string) (*v1.AppService, error) {
+func InitAppService(sharedStorageClass string, kruiseClient *versioned.Clientset, gatewayClient *v1beta1.GatewayV1beta1Client, inRolling bool, dryRun bool, dbmanager db.Manager, serviceID string, configs map[string]string, enableConversionList ...string) (*v1.AppService, error) {
 	if configs == nil {
 		configs = make(map[string]string)
 	}
@@ -98,7 +100,7 @@ func InitAppService(sharedStorageClass string, dryRun bool, dbmanager db.Manager
 	if dryRun {
 		appService.AppServiceBase.GovernanceMode = model.GovernanceModeKubernetesNativeService
 	}
-	if err := TenantServiceBase(appService, dbmanager); err != nil {
+	if err := TenantServiceBase(appService, dbmanager, kruiseClient, gatewayClient, inRolling); err != nil {
 		logrus.Errorf("init component base config failure %s", err.Error())
 		return nil, err
 	}
@@ -134,7 +136,7 @@ func InitCacheOperatorManaged(appID string) *v1.OperatorManaged {
 
 //InitCacheAppService init cache app service.
 //if store manager receive a kube model belong with service and not find in store,will create
-func InitCacheAppService(dbm db.Manager, serviceID, creatorID string) (*v1.AppService, error) {
+func InitCacheAppService(dbm db.Manager, serviceID, creatorID string, kruiseClient *versioned.Clientset, gatewayClient *v1beta1.GatewayV1beta1Client) (*v1.AppService, error) {
 	appService := &v1.AppService{
 		AppServiceBase: v1.AppServiceBase{
 			ServiceID:      serviceID,
@@ -155,7 +157,7 @@ func InitCacheAppService(dbm db.Manager, serviceID, creatorID string) (*v1.AppSe
 		appService.AppServiceBase.K8sApp = app.K8sApp
 	}
 
-	if err := TenantServiceBase(appService, dbm); err != nil {
+	if err := TenantServiceBase(appService, dbm, kruiseClient, gatewayClient, false); err != nil {
 		return nil, err
 	}
 	svc, err := dbm.TenantServiceDao().GetServiceByID(serviceID)

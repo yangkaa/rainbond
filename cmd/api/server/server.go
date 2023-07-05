@@ -32,6 +32,7 @@ import (
 	etcdutil "github.com/goodrain/rainbond/util/etcd"
 	k8sutil "github.com/goodrain/rainbond/util/k8s"
 	"github.com/goodrain/rainbond/worker/client"
+	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -93,7 +94,7 @@ func Run(s *option.APIServer) error {
 	if err != nil {
 		return err
 	}
-
+	kruiseClient := kruiseclientset.NewForConfigOrDie(config)
 	rainbondClient := versioned.NewForConfigOrDie(config)
 
 	// k8s runtime client
@@ -142,7 +143,7 @@ func Run(s *option.APIServer) error {
 	//初始化 middleware
 	handler.InitProxy(s.Config)
 	//创建handle
-	if err := handler.InitHandle(s.Config, etcdClientArgs, cli, etcdcli, clientset, rainbondClient, k8sClient, metricClient, config, mapper, dynamicClient, gatewayClient); err != nil {
+	if err := handler.InitHandle(s.Config, etcdClientArgs, cli, etcdcli, clientset, rainbondClient, k8sClient, metricClient, config, mapper, dynamicClient, gatewayClient, kruiseClient); err != nil {
 		logrus.Errorf("init all handle error, %v", err)
 		return err
 	}

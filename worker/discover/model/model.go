@@ -300,6 +300,7 @@ type RollingUpgradeTaskBody struct {
 	AppVersion       string            `json:"app_version"`
 	EventIDs         []string          `json:"event_ids"`
 	End              bool              `json:"end"`
+	InRolling        bool              `json:"in_rolling"`
 }
 
 //RollBackTaskBody 回滚操作任务主体

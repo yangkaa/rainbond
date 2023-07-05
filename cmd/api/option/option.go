@@ -44,6 +44,7 @@ type Config struct {
 	APISSL                 bool
 	APICertFile            string
 	APIKeyFile             string
+	WasmURL                string
 	APICaFile              string
 	WebsocketSSL           bool
 	WebsocketCertFile      string
@@ -88,6 +89,7 @@ func (a *APIServer) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.APIAddrSSL, "api-addr-ssl", "0.0.0.0:8443", "the api server listen address")
 	fs.StringVar(&a.WebsocketAddr, "ws-addr", "0.0.0.0:6060", "the websocket server listen address")
 	fs.BoolVar(&a.APISSL, "api-ssl-enable", false, "whether to enable websocket  SSL")
+	fs.StringVar(&a.WasmURL, "wasm-url", "oci://registry.cn-hangzhou.aliyuncs.com/goodrain/wasm:v1.0", "wasm image oci url")
 	fs.StringVar(&a.APICaFile, "client-ca-file", "", "api ssl ca file")
 	fs.StringVar(&a.APICertFile, "api-ssl-certfile", "", "api ssl cert file")
 	fs.StringVar(&a.APIKeyFile, "api-ssl-keyfile", "", "api ssl cert file")

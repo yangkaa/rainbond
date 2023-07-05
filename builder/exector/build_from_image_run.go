@@ -50,6 +50,7 @@ type ImageBuildItem struct {
 	Action        string
 	Configs       map[string]gjson.Result `json:"configs"`
 	FailCause     string
+	InRolling     bool
 }
 
 //NewImageBuildItem 创建实体
@@ -67,6 +68,7 @@ func NewImageBuildItem(in []byte) *ImageBuildItem {
 		HubUser:       gjson.GetBytes(in, "user").String(),
 		HubPassword:   gjson.GetBytes(in, "password").String(),
 		Configs:       gjson.GetBytes(in, "configs").Map(),
+		InRolling:     gjson.GetBytes(in, "in_rolling").Bool(),
 		Logger:        logger,
 		EventID:       eventID,
 	}

@@ -1779,6 +1779,8 @@ type ComponentBuildReq struct {
 	SlugInfo BuildSlugInfo `json:"slug_info,omitempty"`
 	//tenantName
 	TenantName string `json:"-"`
+	//InRolling
+	InRolling bool `json:"in_rolling"`
 }
 
 // GetEventID -
@@ -1810,6 +1812,12 @@ func (b *ComponentBuildReq) SetVersion(string) {
 	return
 }
 
+// SetInRolling -
+func (b *ComponentBuildReq) SetInRolling(bool) {
+	// no need
+	return
+}
+
 // OpType -
 func (b *ComponentBuildReq) OpType() string {
 	return "build-service"
@@ -1836,6 +1844,7 @@ type ComponentUpgradeReq struct {
 	//UpgradeVersion The target version of the upgrade
 	//If empty, the same version is upgraded
 	UpgradeVersion string `json:"upgrade_version"`
+	InRolling      bool   `json:"in_rolling"`
 }
 
 // GetEventID -
@@ -1868,6 +1877,11 @@ func (u *ComponentUpgradeReq) SetVersion(version string) {
 	}
 }
 
+// SetInRolling -
+func (u *ComponentUpgradeReq) SetInRolling(inRolling bool) {
+	u.InRolling = inRolling
+}
+
 // GetComponentID -
 func (u *ComponentUpgradeReq) GetComponentID() string {
 	return u.ServiceID
@@ -1881,6 +1895,7 @@ func (u *ComponentUpgradeReq) TaskBody(cpt *dbmodel.TenantServices) interface{} 
 		NewDeployVersion: u.UpgradeVersion,
 		EventID:          u.GetEventID(),
 		Configs:          u.Configs,
+		InRolling:        u.InRolling,
 	}
 }
 
@@ -2215,6 +2230,7 @@ type RainbondPlugins struct {
 	Icon        string            `json:"icon"`
 	Description string            `json:"description"`
 	Version     string            `json:"version"`
+	Namespace   string            `json:"namespace"`
 	Author      string            `json:"author"`
 	Status      string            `json:"status"`
 	Alias       string            `json:"alias"`
@@ -2238,4 +2254,36 @@ type GovernanceMode struct {
 type FileInfo struct {
 	Title  string `json:"title"`
 	IsLeaf bool   `json:"is_leaf"`
+}
+
+type GrayReleaseModeRet struct {
+	ComponentID         string `json:"component_id"`
+	Hostname            string `json:"hostname"`
+	IstioNamespace      string `json:"istio_namespace"`
+	CanaryReadyReplicas int32  `json:"canary_ready_replicas"`
+	CanaryReplicas      int32  `json:"canary_replicas"`
+	CurrentStepIndex    int    `json:"current_step_index"`
+	CurrentStepState    string `json:"current_step_state"`
+	Message             string `json:"message"`
+	Step                int    `json:"step"`
+	NewVersion          string `json:"new_version"`
+	OldVersion          string `json:"old_version"`
+}
+
+type GrayReleaseModeReq struct {
+	AppID            string             `json:"app_id"`
+	Namespace        string             `json:"namespace"`
+	EntryComponentID string             `json:"entry_component_id"`
+	EntryHttpRoute   string             `json:"entry_http_route"`
+	FlowEntryRule    [][]*FlowEntryRule `json:"flow_entry_rule"`
+	GrayStrategyType string             `json:"gray_strategy_type"`
+	GrayStrategy     []int              `json:"gray_strategy"`
+	Status           bool               `json:"status"`
+	TraceType        string             `json:"trace_type"`
+}
+
+type FlowEntryRule struct {
+	HeaderKey   string `json:"header_key"`
+	HeaderType  string `json:"header_type"`
+	HeaderValue string `json:"header_value"`
 }

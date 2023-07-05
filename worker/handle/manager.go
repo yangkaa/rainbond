@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/openkruise/kruise-api/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +33,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"reflect"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 	"strings"
 	"time"
 
@@ -60,6 +62,8 @@ type Manager struct {
 	dbmanager         db.Manager
 	controllerManager *controller.Manager
 	garbageCollector  *gc.GarbageCollector
+	kruiseClient      *versioned.Clientset
+	gatewayClient     *v1beta1.GatewayV1beta1Client
 	restConfig        *rest.Config
 	mapper            meta.RESTMapper
 	clientset         *kubernetes.Clientset
@@ -71,6 +75,8 @@ func NewManager(ctx context.Context,
 	store store.Storer,
 	controllerManager *controller.Manager,
 	garbageCollector *gc.GarbageCollector,
+	kruiseClient *versioned.Clientset,
+	gatewayClient *v1beta1.GatewayV1beta1Client,
 	restConfig *rest.Config,
 	mapper meta.RESTMapper) *Manager {
 
@@ -83,6 +89,8 @@ func NewManager(ctx context.Context,
 		garbageCollector:  garbageCollector,
 		restConfig:        restConfig,
 		mapper:            mapper,
+		kruiseClient:      kruiseClient,
+		gatewayClient:     gatewayClient,
 	}
 }
 
@@ -165,7 +173,7 @@ func (m *Manager) startExec(task *model.Task) error {
 		event.GetManager().ReleaseLogger(logger)
 		return nil
 	}
-	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, false, m.dbmanager, body.ServiceID, body.Configs)
+	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, body.Configs)
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
 		logger.Error("component init create failure", event.GetCallbackLoggerOption())
@@ -328,7 +336,7 @@ func (m *Manager) verticalScalingExec(task *model.Task) error {
 	appService.ContainerMemory = service.ContainerMemory
 	appService.ContainerGPU = service.ContainerGPU
 	appService.Logger = logger
-	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, false, m.dbmanager, body.ServiceID, nil)
+	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil)
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
 		logger.Error("component init create failure", event.GetCallbackLoggerOption())
@@ -355,7 +363,7 @@ func (m *Manager) rollingUpgradeExec(task *model.Task) error {
 		return fmt.Errorf("rolling_upgrade body convert to taskbody error")
 	}
 	logger := event.GetManager().GetLogger(body.EventID)
-	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, body.DryRun, m.dbmanager, body.ServiceID, body.Configs)
+	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, body.InRolling, body.DryRun, m.dbmanager, body.ServiceID, body.Configs)
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
 		logger.Error("component init create failure", event.GetCallbackLoggerOption())
@@ -427,10 +435,10 @@ func (m *Manager) applyRuleExec(task *model.Task) error {
 	}
 	var newAppService *v1.AppService
 	if svc.Kind == dbmodel.ServiceKindThirdParty.String() {
-		newAppService, err = conversion.InitAppService(m.cfg.SharedStorageClass, false, m.dbmanager, body.ServiceID, nil,
+		newAppService, err = conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil,
 			"ServiceSource", "TenantServiceBase", "TenantServiceRegist")
 	} else {
-		newAppService, err = conversion.InitAppService(m.cfg.SharedStorageClass, false, m.dbmanager, body.ServiceID, nil)
+		newAppService, err = conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil)
 	}
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
@@ -463,7 +471,7 @@ func (m *Manager) applyPluginConfig(task *model.Task) error {
 		logrus.Debugf("service is closed,no need handle")
 		return nil
 	}
-	newApp, err := conversion.InitAppService(m.cfg.SharedStorageClass, false, m.dbmanager, body.ServiceID, nil, "ServiceSource", "TenantServiceBase", "TenantServicePlugin")
+	newApp, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil, "ServiceSource", "TenantServiceBase", "TenantServicePlugin")
 	if err != nil {
 		logrus.Errorf("component apply plugin config controller failure:%s", err.Error())
 		return err
@@ -556,7 +564,7 @@ func (m *Manager) ExecRefreshHPATask(task *model.Task) error {
 		return nil
 	}
 
-	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, false, m.dbmanager, body.ServiceID, nil)
+	newAppService, err := conversion.InitAppService(m.cfg.SharedStorageClass, m.kruiseClient, m.gatewayClient, true, false, m.dbmanager, body.ServiceID, nil)
 	if err != nil {
 		logrus.Errorf("component init create failure:%s", err.Error())
 		logger.Error("component init create failure", event.GetCallbackLoggerOption())

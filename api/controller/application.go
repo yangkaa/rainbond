@@ -388,3 +388,83 @@ func (a *ApplicationController) ChangeVolumes(w http.ResponseWriter, r *http.Req
 	}
 	httputil.ReturnSuccess(r, w, nil)
 }
+
+//AddGrayRelease -
+func (t *ApplicationController) AddGrayRelease(w http.ResponseWriter, r *http.Request) {
+	var gr model.GrayReleaseModeReq
+	if ok := httputil.ValidatorRequestStructAndErrorResponse(r, w, &gr, nil); !ok {
+		return
+	}
+	wasmYaml, err := handler.GetApplicationHandler().AddAppGrayscaleRelease(&gr)
+	if err != nil {
+		logrus.Errorf("create gray release failure: %v", err.Error())
+		httputil.ReturnError(r, w, 500, err.Error())
+		return
+	}
+	httputil.ReturnSuccess(r, w, wasmYaml)
+}
+
+//UpdateGrayRelease -
+func (t *ApplicationController) UpdateGrayRelease(w http.ResponseWriter, r *http.Request) {
+	var gr model.GrayReleaseModeReq
+	if ok := httputil.ValidatorRequestStructAndErrorResponse(r, w, &gr, nil); !ok {
+		return
+	}
+	wasmYaml, err := handler.GetApplicationHandler().UpdateAppGrayscaleRelease(r.Context(), &gr)
+	if err != nil {
+		logrus.Errorf("update gray release failure: %v", err.Error())
+		httputil.ReturnError(r, w, 500, err.Error())
+		return
+	}
+	httputil.ReturnSuccess(r, w, wasmYaml)
+}
+
+//GetGrayRelease -
+func (t *ApplicationController) GetGrayRelease(w http.ResponseWriter, r *http.Request) {
+	appID := r.FormValue("app_id")
+	componentID := r.FormValue("component_id")
+	namespace := r.FormValue("namespace")
+	grayRelease, err := handler.GetApplicationHandler().GetAppGrayscaleRelease(r.Context(), appID, componentID, namespace)
+	if err != nil {
+		logrus.Errorf("get gray release failure: %v", err.Error())
+		httputil.ReturnError(r, w, 500, err.Error())
+		return
+	}
+	httputil.ReturnSuccess(r, w, grayRelease)
+}
+
+//OperateGrayRelease -
+func (t *ApplicationController) OperateGrayRelease(w http.ResponseWriter, r *http.Request) {
+	appID := r.FormValue("app_id")
+	namespace := r.FormValue("namespace")
+	operationMethod := r.FormValue("operation_method")
+	var err error
+	switch operationMethod {
+	case "open":
+		wasmYaml, err := handler.GetApplicationHandler().OpenAppGrayscaleRelease(appID, namespace)
+		if err != nil {
+			logrus.Errorf("%v gray release failure: %v", operationMethod, err.Error())
+			httputil.ReturnError(r, w, 500, err.Error())
+			return
+		}
+		httputil.ReturnSuccess(r, w, wasmYaml)
+	case "close":
+		err = handler.GetApplicationHandler().CloseAppGrayscaleRelease(r.Context(), appID, namespace)
+	case "next_batch":
+		err = handler.GetApplicationHandler().NextBatchAppGrayscaleRelease(r.Context(), appID, namespace)
+	case "roll_back":
+		version, err := handler.GetApplicationHandler().RollBackAppGrayscaleRelease(r.Context(), appID, namespace)
+		if err != nil {
+			logrus.Errorf("%v gray release failure: %v", operationMethod, err.Error())
+			httputil.ReturnError(r, w, 500, err.Error())
+			return
+		}
+		httputil.ReturnSuccess(r, w, version)
+	}
+	if err != nil {
+		logrus.Errorf("%v gray release failure: %v", operationMethod, err.Error())
+		httputil.ReturnError(r, w, 500, err.Error())
+		return
+	}
+	httputil.ReturnSuccess(r, w, nil)
+}

@@ -19,9 +19,11 @@
 package server
 
 import (
+	kruiseclientset "github.com/openkruise/kruise-api/client/clientset/versioned"
 	"k8s.io/client-go/restmapper"
 	"os"
 	"os/signal"
+	gateway "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 	"syscall"
 
 	"github.com/eapache/channels"
@@ -93,6 +95,12 @@ func Run(s *option.Worker) error {
 		logrus.Errorf("create kube runtime client error: %s", err.Error())
 		return err
 	}
+	kruiseClient := kruiseclientset.NewForConfigOrDie(restConfig)
+	gatewayClient, err := gateway.NewForConfig(restConfig)
+	if err != nil {
+		logrus.Errorf("create kube gateway client error: %s", err.Error())
+		return err
+	}
 	// rest mapper
 	gr, err := restmapper.GetAPIGroupResources(clientset)
 	if err != nil {
@@ -105,14 +113,14 @@ func Run(s *option.Worker) error {
 
 	//step 4: create component resource store
 	updateCh := channels.NewRingChannel(1024)
-	cachestore := store.NewStore(restConfig, clientset, rainbondClient, db.GetManager(), s.Config)
+	cachestore := store.NewStore(restConfig, clientset, rainbondClient, db.GetManager(), s.Config, kruiseClient, gatewayClient)
 	if err := cachestore.Start(); err != nil {
 		logrus.Error("start kube cache store error", err)
 		return err
 	}
 
 	//step 5: create controller manager
-	controllerManager := controller.NewManager(s.Config, cachestore, clientset, runtimeClient)
+	controllerManager := controller.NewManager(s.Config, cachestore, clientset, runtimeClient, kruiseClient, gatewayClient)
 	defer controllerManager.Stop()
 
 	//step 6 : start runtime master
@@ -127,7 +135,7 @@ func Run(s *option.Worker) error {
 
 	//step 7 : create discover module
 	garbageCollector := gc.NewGarbageCollector(clientset)
-	taskManager := discover.NewTaskManager(s.Config, cachestore, controllerManager, garbageCollector, restConfig, mapper, clientset)
+	taskManager := discover.NewTaskManager(s.Config, cachestore, controllerManager, garbageCollector, kruiseClient, gatewayClient, restConfig, mapper, clientset)
 	if err := taskManager.Start(); err != nil {
 		return err
 	}

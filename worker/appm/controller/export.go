@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	apimodel "github.com/goodrain/rainbond/api/model"
 	"github.com/goodrain/rainbond/db"
 	v1 "github.com/goodrain/rainbond/worker/appm/types/v1"
 	"github.com/sirupsen/logrus"
@@ -123,7 +124,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 	if configs := app.GetConfigMaps(); configs != nil {
 		for _, config := range configs {
 			config.Kind = "ConfigMap"
-			config.APIVersion = APIVersionConfigMap
+			config.APIVersion = apimodel.APIVersionConfigMap
 			config.Namespace = ""
 			cmBytes, err := yaml.Marshal(config)
 			if err != nil {
@@ -142,7 +143,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 			claim.Spec.StorageClassName = &sc
 		}
 		claim.Kind = "PersistentVolumeClaim"
-		claim.APIVersion = APIVersionPersistentVolumeClaim
+		claim.APIVersion = apimodel.APIVersionPersistentVolumeClaim
 		claim.Namespace = ""
 		claim.Status = corev1.PersistentVolumeClaimStatus{}
 		pvcBytes, err := yaml.Marshal(claim)
@@ -159,7 +160,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 		statefulset.Name = app.K8sComponentName
 		statefulset.Spec.Template.Name = app.K8sComponentName + "-pod-spec"
 		statefulset.Kind = "StatefulSet"
-		statefulset.APIVersion = APIVersionStatefulSet
+		statefulset.APIVersion = apimodel.APIVersionStatefulSet
 		statefulset.Namespace = ""
 		image := statefulset.Spec.Template.Spec.Containers[0].Image
 		imageCut := strings.Split(image, "/")
@@ -186,7 +187,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 		deployment.Spec.Template.Name = app.K8sComponentName + "-pod-spec"
 		deployment.Kind = "Deployment"
 		deployment.Namespace = ""
-		deployment.APIVersion = APIVersionDeployment
+		deployment.APIVersion = apimodel.APIVersionDeployment
 		image := deployment.Spec.Template.Spec.Containers[0].Image
 		imageCut := strings.Split(image, "/")
 		Image := fmt.Sprintf("{{ default \"%v\" .Values.imageDomain }}/%v", strings.Join(imageCut[:len(imageCut)-1], "/"), imageCut[len(imageCut)-1])
@@ -206,7 +207,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 		job.Spec.Template.Name = app.K8sComponentName + "-pod-spec"
 		job.Kind = "Job"
 		job.Namespace = ""
-		job.APIVersion = APIVersionJob
+		job.APIVersion = apimodel.APIVersionCronJob
 		image := job.Spec.Template.Spec.Containers[0].Image
 		imageCut := strings.Split(image, "/")
 		Image := fmt.Sprintf("{{ default \"%v\" .Values.imageDomain }}/%v", strings.Join(imageCut[:len(imageCut)-1], "/"), imageCut[len(imageCut)-1])
@@ -227,7 +228,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 		cronjob.Spec.JobTemplate.Spec.Template.Name = app.K8sComponentName + "-pod-spec"
 		cronjob.Kind = "CronJob"
 		cronjob.Namespace = ""
-		cronjob.APIVersion = APIVersionCronJob
+		cronjob.APIVersion = apimodel.APIVersionCronJob
 		image := cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image
 		imageCut := strings.Split(image, "/")
 		Image := fmt.Sprintf("{{ default \"%v\" .Values.imageDomain }}/%v", strings.Join(imageCut[:len(imageCut)-1], "/"), imageCut[len(imageCut)-1])
@@ -247,7 +248,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 		cronjob.Spec.JobTemplate.Name = app.K8sComponentName
 		cronjob.Spec.JobTemplate.Spec.Template.Name = app.K8sComponentName + "-pod-spec"
 		cronjob.Kind = "CronJob"
-		cronjob.APIVersion = APIVersionBetaCronJob
+		cronjob.APIVersion = apimodel.APIVersionBetaCronJob
 		cronjob.Namespace = ""
 		image := cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image
 		imageCut := strings.Split(image, "/")
@@ -268,7 +269,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 		for _, svc := range services {
 			svc.Kind = "Service"
 			svc.Namespace = ""
-			svc.APIVersion = APIVersionService
+			svc.APIVersion = apimodel.APIVersionService
 			if svc.Labels["service_type"] == "outer" {
 				svc.Spec.Type = corev1.ServiceTypeNodePort
 			}
@@ -287,7 +288,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 		for _, secret := range secrets {
 			if len(secret.ResourceVersion) == 0 {
 				secret.Kind = "Secret"
-				secret.APIVersion = APIVersionSecret
+				secret.APIVersion = apimodel.APIVersionSecret
 				secret.Namespace = ""
 				secret.Type = ""
 				secretBytes, err := yaml.Marshal(secret)
@@ -314,7 +315,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 		if secrets := app.GetEnvVarSecrets(true); secrets != nil {
 			for _, secret := range secrets {
 				if len(secret.ResourceVersion) == 0 {
-					secret.APIVersion = APIVersionSecret
+					secret.APIVersion = apimodel.APIVersionSecret
 					secret.Namespace = ""
 					secret.Type = ""
 					secret.Kind = "Secret"
@@ -355,7 +356,7 @@ func (s *exportController) exportOne(app v1.AppService, r *RainbondExport) error
 		for _, hpa := range hpas {
 			hpa.Kind = "HorizontalPodAutoscaler"
 			hpa.Namespace = ""
-			hpa.APIVersion = APIVersionHorizontalPodAutoscaler
+			hpa.APIVersion = apimodel.APIVersionHorizontalPodAutoscaler
 			hpa.Status = v2beta2.HorizontalPodAutoscalerStatus{}
 			if len(hpa.ResourceVersion) == 0 {
 				hpaBytes, err := yaml.Marshal(hpa)
@@ -406,30 +407,3 @@ func (s *exportController) write(helmChartFilePath string, meta []byte, endStrin
 	}
 	return nil
 }
-
-var (
-	//APIVersionSecret -
-	APIVersionSecret = "v1"
-	//APIVersionConfigMap -
-	APIVersionConfigMap = "v1"
-	//APIVersionPersistentVolumeClaim -
-	APIVersionPersistentVolumeClaim = "v1"
-	//APIVersionStatefulSet -
-	APIVersionStatefulSet = "apps/v1"
-	//APIVersionDeployment -
-	APIVersionDeployment = "apps/v1"
-	//APIVersionJob -
-	APIVersionJob = "batch/v1"
-	//APIVersionCronJob -
-	APIVersionCronJob = "batch/v1"
-	//APIVersionBetaCronJob -
-	APIVersionBetaCronJob = "batch/v1beta1"
-	//APIVersionService -
-	APIVersionService = "v1"
-	//APIVersionHorizontalPodAutoscaler -q
-	APIVersionHorizontalPodAutoscaler = "autoscaling/v2"
-	//APIVersionGateway -
-	APIVersionGateway = "gateway.networking.k8s.io/v1beta1"
-	//APIVersionHTTPRoute -
-	APIVersionHTTPRoute = "gateway.networking.k8s.io/v1beta1"
-)

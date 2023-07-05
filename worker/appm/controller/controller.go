@@ -21,6 +21,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/openkruise/kruise-api/client/clientset/versioned"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 	"github.com/goodrain/rainbond/cmd/worker/option"
 	"sync"
 
@@ -75,11 +77,13 @@ type Manager struct {
 	controllers   map[string]Controller
 	store         store.Storer
 	lock          sync.Mutex
+	kruiseClient  *versioned.Clientset
+	gatewayClient *v1beta1.GatewayV1beta1Client
 	config        option.Config
 }
 
 //NewManager new manager
-func NewManager(config option.Config, store store.Storer, client kubernetes.Interface, runtimeClient client.Client) *Manager {
+func NewManager(config option.Config, store store.Storer, client kubernetes.Interface, runtimeClient client.Client, kruiseClient *versioned.Clientset, gatewayClient *v1beta1.GatewayV1beta1Client) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Manager{
 		ctx:           ctx,
@@ -89,6 +93,8 @@ func NewManager(config option.Config, store store.Storer, client kubernetes.Inte
 		runtimeClient: runtimeClient,
 		controllers:   make(map[string]Controller),
 		store:         store,
+		kruiseClient:  kruiseClient,
+		gatewayClient: gatewayClient,
 		config:        config,
 	}
 }

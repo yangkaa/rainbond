@@ -22,11 +22,13 @@ import (
 	"context"
 	"fmt"
 	model2 "github.com/goodrain/rainbond/api/model"
+	kruiseVersioned "github.com/openkruise/kruise-api/client/clientset/versioned"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	betav1 "k8s.io/api/networking/v1beta1"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"os"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned/typed/apis/v1beta1"
 	"strconv"
 	"strings"
 	"sync"
@@ -139,6 +141,8 @@ type Event struct {
 type appRuntimeStore struct {
 	kubeconfig             *rest.Config
 	clientset              kubernetes.Interface
+	kruiseClient           *kruiseVersioned.Clientset
+	gatewayClient          *v1beta1.GatewayV1beta1Client
 	crdClient              *internalclientset.Clientset
 	rainbondClient         rainbondversioned.Interface
 	crClients              map[string]interface{}
@@ -166,7 +170,9 @@ func NewStore(
 	clientset kubernetes.Interface,
 	rainbondClient rainbondversioned.Interface,
 	dbmanager db.Manager,
-	conf option.Config) Storer {
+	conf option.Config,
+	kruiseClient *kruiseVersioned.Clientset,
+	gatewayClient *v1beta1.GatewayV1beta1Client) Storer {
 	ctx, cancel := context.WithCancel(context.Background())
 	store := &appRuntimeStore{
 		kubeconfig:          kubeconfig,
@@ -183,6 +189,8 @@ func NewStore(
 		resourceCache:       NewResourceCache(),
 		podUpdateListeners:  make(map[string]chan<- *corev1.Pod, 1),
 		volumeTypeListeners: make(map[string]chan<- *model.TenantServiceVolumeType, 1),
+		kruiseClient:        kruiseClient,
+		gatewayClient:       gatewayClient,
 	}
 	crdClient, err := internalclientset.NewForConfig(kubeconfig)
 	if err != nil {
@@ -275,7 +283,7 @@ func NewStore(
 			version := ep.Labels["version"]
 			createrID := ep.Labels["creater_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, err := store.getAppService(serviceID, version, createrID, true)
+				appservice, err := store.getAppService(serviceID, version, createrID, true, kruiseClient, gatewayClient)
 				if err == conversion.ErrServiceNotFound {
 					logrus.Debugf("ServiceID: %s; Action: AddFunc; service not found", serviceID)
 				}
@@ -290,7 +298,7 @@ func NewStore(
 			version := ep.Labels["version"]
 			createrID := ep.Labels["creater_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, _ := store.getAppService(serviceID, version, createrID, false)
+				appservice, _ := store.getAppService(serviceID, version, createrID, false, kruiseClient, gatewayClient)
 				if appservice != nil {
 					appservice.DelEndpoints(ep)
 					if appservice.IsClosed() {
@@ -307,7 +315,7 @@ func NewStore(
 			version := cep.Labels["version"]
 			createrID := cep.Labels["creater_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, err := store.getAppService(serviceID, version, createrID, true)
+				appservice, err := store.getAppService(serviceID, version, createrID, true, kruiseClient, gatewayClient)
 				if err == conversion.ErrServiceNotFound {
 					logrus.Debugf("ServiceID: %s; Action: UpdateFunc; service not found", serviceID)
 				}
@@ -411,7 +419,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		serviceID := thirdComponent.Labels["service_id"]
 		createrID := thirdComponent.Labels["creater_id"]
 		if serviceID != "" && createrID != "" {
-			appservice, _ := a.getAppService(serviceID, "", createrID, true)
+			appservice, _ := a.getAppService(serviceID, "", createrID, true, a.kruiseClient, a.gatewayClient)
 			if appservice != nil {
 				appservice.SetWorkload(thirdComponent)
 				return
@@ -425,7 +433,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		migrator := deployment.Labels["migrator"]
 		appID := deployment.Labels["app_id"]
 		if serviceID != "" && version != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.AppsV1().Deployments(deployment.Namespace).Delete(context.Background(), deployment.Name, metav1.DeleteOptions{})
 			}
@@ -458,7 +466,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		createrID := job.Labels["creater_id"]
 		migrator := job.Labels["migrator"]
 		if serviceID != "" && version != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.BatchV1().Jobs(job.Namespace).Delete(context.Background(), job.Name, metav1.DeleteOptions{})
 			}
@@ -485,7 +493,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		createrID := cjob.Labels["creater_id"]
 		migrator := cjob.Labels["migrator"]
 		if serviceID != "" && version != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.BatchV1().CronJobs(cjob.Namespace).Delete(context.Background(), cjob.Name, metav1.DeleteOptions{})
 			}
@@ -516,7 +524,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		createrID := cjob.Labels["creater_id"]
 		migrator := cjob.Labels["migrator"]
 		if serviceID != "" && version != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.BatchV1beta1().CronJobs(cjob.Namespace).Delete(context.Background(), cjob.Name, metav1.DeleteOptions{})
 			}
@@ -547,7 +555,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		migrator := statefulset.Labels["migrator"]
 		appID := statefulset.Labels["app_id"]
 		if serviceID != "" && version != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.AppsV1().StatefulSets(statefulset.Namespace).Delete(context.Background(), statefulset.Name, metav1.DeleteOptions{})
 			}
@@ -578,7 +586,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		version := replicaset.Labels["version"]
 		createrID := replicaset.Labels["creater_id"]
 		if serviceID != "" && version != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.AppsV1().Deployments(replicaset.Namespace).Delete(context.Background(), replicaset.Name, metav1.DeleteOptions{})
 			}
@@ -594,7 +602,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		version := secret.Labels["version"]
 		createrID := secret.Labels["creater_id"]
 		if serviceID != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.CoreV1().Secrets(secret.Namespace).Delete(context.Background(), secret.Name, metav1.DeleteOptions{})
 			}
@@ -610,7 +618,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		createrID := service.Labels["creater_id"]
 		appID := service.Labels["app_id"]
 		if serviceID != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.CoreV1().Services(service.Namespace).Delete(context.Background(), service.Name, metav1.DeleteOptions{})
 			}
@@ -631,7 +639,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		version := ingress.Labels["version"]
 		createrID := ingress.Labels["creater_id"]
 		if serviceID != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.NetworkingV1().Ingresses(ingress.Namespace).Delete(context.Background(), ingress.Name, metav1.DeleteOptions{})
 			}
@@ -646,7 +654,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		version := ingress.Labels["version"]
 		createrID := ingress.Labels["creater_id"]
 		if serviceID != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.NetworkingV1beta1().Ingresses(ingress.Namespace).Delete(context.Background(), ingress.Name, metav1.DeleteOptions{})
 			}
@@ -661,7 +669,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		version := configmap.Labels["version"]
 		createrID := configmap.Labels["creater_id"]
 		if serviceID != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.CoreV1().ConfigMaps(configmap.Namespace).Delete(context.Background(), configmap.Name, metav1.DeleteOptions{})
 			}
@@ -677,7 +685,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		version := hpa.Labels["version"]
 		createrID := hpa.Labels["creater_id"]
 		if serviceID != "" && version != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.AutoscalingV2beta2().HorizontalPodAutoscalers(hpa.GetNamespace()).Delete(context.Background(), hpa.GetName(), metav1.DeleteOptions{})
 			}
@@ -702,7 +710,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		version := claim.Labels["version"]
 		createrID := claim.Labels["creater_id"]
 		if serviceID != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				a.conf.KubeClient.CoreV1().PersistentVolumeClaims(claim.Namespace).Delete(context.Background(), claim.Name, metav1.DeleteOptions{})
 			}
@@ -717,7 +725,7 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 		version := sm.Labels["version"]
 		createrID := sm.Labels["creater_id"]
 		if serviceID != "" && createrID != "" {
-			appservice, err := a.getAppService(serviceID, version, createrID, true)
+			appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if err == conversion.ErrServiceNotFound {
 				smClient, err := a.GetServiceMonitorClient()
 				if err != nil {
@@ -739,12 +747,12 @@ func (a *appRuntimeStore) OnAdd(obj interface{}) {
 }
 
 //getAppService if  creator is true, will create new app service where not found in store
-func (a *appRuntimeStore) getAppService(serviceID, version, createrID string, creator bool) (*v1.AppService, error) {
+func (a *appRuntimeStore) getAppService(serviceID, version, createrID string, creator bool, kruiseClient *kruiseVersioned.Clientset, gatewayClient *v1beta1.GatewayV1beta1Client) (*v1.AppService, error) {
 	var appservice *v1.AppService
 	appservice = a.GetAppService(serviceID)
 	if appservice == nil && creator {
 		var err error
-		appservice, err = conversion.InitCacheAppService(a.dbmanager, serviceID, createrID)
+		appservice, err = conversion.InitCacheAppService(a.dbmanager, serviceID, createrID, kruiseClient, gatewayClient)
 		if err != nil {
 			logrus.Debugf("init cache app service %s failure:%s ", serviceID, err.Error())
 			return nil, err
@@ -773,7 +781,7 @@ func (a *appRuntimeStore) OnUpdate(oldObj, newObj interface{}) {
 			serviceID := oldIngress.Labels["service_id"]
 			version := oldIngress.Labels["version"]
 			createrID := oldIngress.Labels["creater_id"]
-			oldComponent, _ := a.getAppService(serviceID, version, createrID, true)
+			oldComponent, _ := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if oldComponent != nil {
 				oldComponent.DeleteIngress(oldIngress)
 			}
@@ -786,7 +794,7 @@ func (a *appRuntimeStore) OnUpdate(oldObj, newObj interface{}) {
 			serviceID := oldIngress.Labels["service_id"]
 			version := oldIngress.Labels["version"]
 			createrID := oldIngress.Labels["creater_id"]
-			oldComponent, _ := a.getAppService(serviceID, version, createrID, true)
+			oldComponent, _ := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 			if oldComponent != nil {
 				oldComponent.DeleteBetaIngress(oldIngress)
 			}
@@ -804,7 +812,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			serviceID := thirdComponent.Labels["service_id"]
 			createrID := thirdComponent.Labels["creater_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, "", createrID, true)
+				appservice, _ := a.getAppService(serviceID, "", createrID, true, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteWorkload(thirdComponent)
 					if appservice.IsClosed() {
@@ -820,7 +828,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			createrID := deployment.Labels["creater_id"]
 			appID := deployment.Labels["app_id"]
 			if serviceID != "" && version != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteDeployment(deployment)
 					if appservice.IsClosed() {
@@ -842,7 +850,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			createrID := statefulset.Labels["creater_id"]
 			appID := statefulset.Labels["app_id"]
 			if serviceID != "" && version != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteStatefulSet(statefulset)
 					if appservice.IsClosed() {
@@ -863,7 +871,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			version := replicaset.Labels["version"]
 			createrID := replicaset.Labels["creater_id"]
 			if serviceID != "" && version != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteReplicaSet(replicaset)
 					if appservice.IsClosed() {
@@ -878,7 +886,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			version := secret.Labels["version"]
 			createrID := secret.Labels["creater_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteSecrets(secret)
 					if appservice.IsClosed() {
@@ -894,7 +902,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			createrID := service.Labels["creater_id"]
 			appID := service.Labels["app_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteServices(service)
 					if appservice.IsClosed() {
@@ -915,7 +923,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			version := ingress.Labels["version"]
 			createrID := ingress.Labels["creater_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteIngress(ingress)
 					if appservice.IsClosed() {
@@ -930,7 +938,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			version := configmap.Labels["version"]
 			createrID := configmap.Labels["creater_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteConfigMaps(configmap)
 					if appservice.IsClosed() {
@@ -945,7 +953,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			version := hpa.Labels["version"]
 			createrID := hpa.Labels["creater_id"]
 			if serviceID != "" && version != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DelHPA(hpa)
 					if appservice.IsClosed() {
@@ -966,7 +974,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			version := claim.Labels["version"]
 			createrID := claim.Labels["creater_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteClaim(claim)
 					if appservice.IsClosed() {
@@ -981,7 +989,7 @@ func (a *appRuntimeStore) OnDeletes(objs ...interface{}) {
 			version := sm.Labels["version"]
 			createrID := sm.Labels["creater_id"]
 			if serviceID != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, true)
+				appservice, _ := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeleteServiceMonitor(sm)
 					return
@@ -1587,7 +1595,7 @@ func (a *appRuntimeStore) podEventHandler() cache.ResourceEventHandlerFuncs {
 			a.resourceCache.SetPodResource(pod)
 			_, serviceID, version, createrID := k8sutil.ExtractLabels(pod.GetLabels())
 			if serviceID != "" && version != "" && createrID != "" {
-				appservice, err := a.getAppService(serviceID, version, createrID, true)
+				appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 				if err == conversion.ErrServiceNotFound {
 					a.conf.KubeClient.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, metav1.DeleteOptions{})
 				}
@@ -1601,7 +1609,7 @@ func (a *appRuntimeStore) podEventHandler() cache.ResourceEventHandlerFuncs {
 			a.resourceCache.RemovePod(pod)
 			_, serviceID, version, createrID := k8sutil.ExtractLabels(pod.GetLabels())
 			if serviceID != "" && version != "" && createrID != "" {
-				appservice, _ := a.getAppService(serviceID, version, createrID, false)
+				appservice, _ := a.getAppService(serviceID, version, createrID, false, a.kruiseClient, a.gatewayClient)
 				if appservice != nil {
 					appservice.DeletePods(pod)
 					if appservice.IsClosed() {
@@ -1615,7 +1623,7 @@ func (a *appRuntimeStore) podEventHandler() cache.ResourceEventHandlerFuncs {
 			a.resourceCache.SetPodResource(pod)
 			_, serviceID, version, createrID := k8sutil.ExtractLabels(pod.GetLabels())
 			if serviceID != "" && version != "" && createrID != "" {
-				appservice, err := a.getAppService(serviceID, version, createrID, true)
+				appservice, err := a.getAppService(serviceID, version, createrID, true, a.kruiseClient, a.gatewayClient)
 				if err == conversion.ErrServiceNotFound {
 					a.conf.KubeClient.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, metav1.DeleteOptions{})
 				}

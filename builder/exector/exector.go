@@ -330,7 +330,7 @@ func (e *exectorManager) buildFromImage(task *pb.TaskMessage) {
 				logrus.Errorf("Update app service deploy version failure %s, service %s do not auto upgrade", err.Error(), i.ServiceID)
 				break
 			}
-			err = e.sendAction(i.TenantID, i.ServiceID, i.EventID, i.DeployVersion, i.Action, configs, i.Logger)
+			err = e.sendAction(i.TenantID, i.ServiceID, i.EventID, i.DeployVersion, i.Action, configs, i.Logger, i.InRolling)
 			if err != nil {
 				i.Logger.Error("Send upgrade action failed", map[string]string{"step": "callback", "status": "failure"})
 			}
@@ -394,7 +394,7 @@ func (e *exectorManager) buildFromSourceCode(task *pb.TaskMessage) {
 			logrus.Errorf("Update app service deploy version failure %s, service %s do not auto upgrade", err.Error(), i.ServiceID)
 			return
 		}
-		err = e.sendAction(i.TenantID, i.ServiceID, i.EventID, i.DeployVersion, i.Action, configs, i.Logger)
+		err = e.sendAction(i.TenantID, i.ServiceID, i.EventID, i.DeployVersion, i.Action, configs, i.Logger, i.InRolling)
 		if err != nil {
 			i.Logger.Error("Send upgrade action failed", map[string]string{"step": "callback", "status": "failure"})
 		}
@@ -439,7 +439,7 @@ func (e *exectorManager) buildFromMarketSlug(task *pb.TaskMessage) {
 					logrus.Errorf("Update app service deploy version failure %s, service %s do not auto upgrade", err.Error(), i.ServiceID)
 					break
 				}
-				err = e.sendAction(i.TenantID, i.ServiceID, i.EventID, i.DeployVersion, i.Action, i.Configs, i.Logger)
+				err = e.sendAction(i.TenantID, i.ServiceID, i.EventID, i.DeployVersion, i.Action, i.Configs, i.Logger, i.InRolling)
 				if err != nil {
 					i.Logger.Error("Send upgrade action failed", map[string]string{"step": "callback", "status": "failure"})
 				}
@@ -458,7 +458,7 @@ type rollingUpgradeTaskBody struct {
 	Strategy  []string `json:"strategy"`
 }
 
-func (e *exectorManager) sendAction(tenantID, serviceID, eventID, newVersion, actionType string, configs map[string]string, logger event.Logger) error {
+func (e *exectorManager) sendAction(tenantID, serviceID, eventID, newVersion, actionType string, configs map[string]string, logger event.Logger, inRolling bool) error {
 	// update build event complete status
 	logger.Info("Build success", map[string]string{"step": "last", "status": "success"})
 	switch actionType {
@@ -485,6 +485,7 @@ func (e *exectorManager) sendAction(tenantID, serviceID, eventID, newVersion, ac
 			NewDeployVersion: newVersion,
 			EventID:          event.EventID,
 			Configs:          configs,
+			InRolling:        inRolling,
 		}
 		if err := e.mqClient.SendBuilderTopic(mqclient.TaskStruct{
 			Topic:    mqclient.WorkerTopic,

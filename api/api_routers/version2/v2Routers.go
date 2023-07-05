@@ -398,6 +398,10 @@ func (v2 *V2) applicationRouter() chi.Router {
 	// Init Application
 	r.Use(middleware.InitApplication)
 	// app governance mode
+	r.Post("/gray_release", controller.GetManager().AddGrayRelease)
+	r.Put("/gray_release", controller.GetManager().UpdateGrayRelease)
+	r.Get("/gray_release", controller.GetManager().GetGrayRelease)
+	r.Put("/operate_gray_release", controller.GetManager().OperateGrayRelease)
 	r.Get("/governance/check", controller.GetManager().CheckGovernanceMode)
 	r.Post("/governance-cr", controller.GetManager().CreateGovernanceModeCR)
 	r.Put("/governance-cr", controller.GetManager().UpdateGovernanceModeCR)

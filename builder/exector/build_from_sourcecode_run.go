@@ -77,6 +77,7 @@ type SourceCodeBuildItem struct {
 	commit        Commit
 	Configs       map[string]gjson.Result `json:"configs"`
 	Ctx           context.Context
+	InRolling     bool
 	FailCause     string
 }
 
@@ -122,6 +123,7 @@ func NewSouceCodeBuildItem(in []byte) *SourceCodeBuildItem {
 		Runtime:       gjson.GetBytes(in, "runtime").String(),
 		Configs:       gjson.GetBytes(in, "configs").Map(),
 		BuildEnvs:     be,
+		InRolling:     gjson.GetBytes(in, "in_rolling").Bool(),
 	}
 	scb.CacheDir = fmt.Sprintf("/cache/build/%s/cache/%s", scb.TenantID, scb.ServiceID)
 	//scb.SourceDir = scb.CodeSouceInfo.GetCodeSourceDir()

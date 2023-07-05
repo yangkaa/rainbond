@@ -98,7 +98,8 @@ func BatchOperation(w http.ResponseWriter, r *http.Request) {
 		for _, upgrade := range build.Body.Upgrades {
 			batchOpReqs = append(batchOpReqs, upgrade)
 		}
-		f = handler.GetBatchOperationHandler().Upgrade
+		b := handler.GetBatchOperationHandler()
+		f = b.Upgrade
 	case "export":
 		err := middleware.LicenseVerification(w, r, false)
 		if err != nil {
