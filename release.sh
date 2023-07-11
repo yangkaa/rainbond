@@ -124,7 +124,11 @@ build::image::arm() {
 	echo "---> build image:$1"
 	if [ "$GOARCH" = "arm64" ]; then
 		if [ "$1" = "gateway" ]; then
-			BASE_IMAGE_VERSION="1.19.3.2-alpine"
+		  if [ $ENABLE_WAF ]; then
+      	BASE_IMAGE_VERSION="1.21.4.1-waf-arm"
+      else
+      	BASE_IMAGE_VERSION="1.19.3.2-alpine"
+      fi
 		elif [ "$1" = "eventlog" ];then
 			DOCKERFILE_BASE="Dockerfile.arm"
 		elif [ "$1" = "mesh-data-panel" ];then
@@ -135,7 +139,11 @@ build::image::arm() {
 		fi
 	else
 		if [ "$1" = "gateway" ]; then
-			BASE_IMAGE_VERSION="1.19.3.2"
+      if [ $ENABLE_WAF ]; then
+        BASE_IMAGE_VERSION="1.21.4.1-waf"
+      else
+        BASE_IMAGE_VERSION="1.19.3.2"
+      fi
 		fi
 		if [ "$1" = "api" ]; then
 		    curl -o helm https://pkg.goodrain.com/pkg/helm
