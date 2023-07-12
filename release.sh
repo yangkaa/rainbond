@@ -210,25 +210,20 @@ build::image() {
     	chmod +x helm
     fi
 	fi
-	docker build --build-arg RELEASE_DESC="${release_desc}" --build-arg BASE_IMAGE_VERSION="${BASE_IMAGE_VERSION}" --build-arg GOARCH="${GOARCH}" -t "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}" -f "${DOCKERFILE_BASE}" .
-	docker run --rm "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}" version
+	image_name="${IMAGE_DOMAIN}/${IMAGE_NAMESPACE}/rbd-$1:${VERSION}"
+	docker build --build-arg RELEASE_DESC="${release_desc}" --build-arg BASE_IMAGE_VERSION="${BASE_IMAGE_VERSION}" --build-arg GOARCH="${GOARCH}" -t $image_name -f "${DOCKERFILE_BASE}" .
+	docker run --rm ${image_name} version
 	if [ $? -ne 0 ]; then
 		echo "image version is different ${release_desc}"
 		exit 1
 	fi
 	if [ -f "${source_dir}/test.sh" ]; then
-		"${source_dir}/test.sh" "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}"
+		"${source_dir}/test.sh" ${image_name}
 	fi
 	if [ "$2" = "push" ]; then
 		if [ $DOCKER_USERNAME ]; then
 			docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
-			docker push "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}"
-		fi
-
-		if [ "${DOMESTIC_BASE_NAME}" ]; then
-			docker tag "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}" "${DOMESTIC_BASE_NAME}/${DOMESTIC_NAMESPACE}/rbd-$1:${VERSION}"
-			docker login -u "$DOMESTIC_DOCKER_USERNAME" -p "$DOMESTIC_DOCKER_PASSWORD" "${DOMESTIC_BASE_NAME}"
-			docker push "${DOMESTIC_BASE_NAME}/${DOMESTIC_NAMESPACE}/rbd-$1:${VERSION}"
+			docker push ${image_name}
 		fi
 	fi
 	popd
