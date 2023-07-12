@@ -222,7 +222,7 @@ build::image() {
 	fi
 	if [ "$2" = "push" ]; then
 		if [ $DOCKER_USERNAME ]; then
-			docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+			echo "$DOCKER_PASSWORD" | docker login ${IMAGE_DOMAIN} -u "$DOCKER_USERNAME" --password-stdin
 			docker push ${image_name}
 		fi
 	fi
