@@ -67,6 +67,10 @@ func NewVolumeManager(as *v1.AppService,
 	switch volumeType {
 	case dbmodel.ShareFileVolumeType.String():
 		v = new(ShareFileVolume)
+		css := as.SharedStorageClass
+		if css != "" {
+			v = new(OtherVolume)
+		}
 	case dbmodel.ConfigFileVolumeType.String():
 		v = &ConfigFileVolume{envs: envs, envVarSecrets: envVarSecrets}
 	case dbmodel.MemoryFSVolumeType.String():
@@ -79,10 +83,6 @@ func NewVolumeManager(as *v1.AppService,
 		v = new(NFSVolume)
 	default:
 		logrus.Warnf("other volume type[%s]", volumeType)
-		v = new(OtherVolume)
-	}
-	css := as.SharedStorageClass
-	if css != "" {
 		v = new(OtherVolume)
 	}
 	v.setBaseInfo(as, serviceVolume, serviceMountR, version, dbmanager)
