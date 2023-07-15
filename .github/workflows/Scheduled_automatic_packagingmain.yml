@@ -29,9 +29,9 @@ jobs:
         rbdcomponent: [ rainbond-operator, rbd-api ]
     with:
       environment: ${{ vars.ENVIRONMENT }}
-      amd-image: docker.io/${{ env.IMAGE_NAMESPACE }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}-amd64
-      arm-image: docker.io/${{ env.IMAGE_NAMESPACE }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}-arm64
-      manifest-image: docker.io/${{ env.IMAGE_NAMESPACE }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}
+      amd-image: docker.io/${{ vars.IMAGE_NAMESPACE }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}-amd64
+      arm-image: docker.io/${{ vars.IMAGE_NAMESPACE }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}-arm64
+      manifest-image: docker.io/${{ vars.IMAGE_NAMESPACE }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}
       registry: ${{ vars.DOCKER_USERNAME }}
     secrets: inherit
 
