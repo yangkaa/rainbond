@@ -21,7 +21,7 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.rbdcomponent }}-${{ github.event.client_payload.version }}-${{ matrix.arch }}
+    name: ${{ matrix.rbdcomponent }}(${{ matrix.arch }})-${{ github.event.client_payload.version }}
     uses: ./.github/workflows/build_region.yml
     strategy:
       fail-fast: false
