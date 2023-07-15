@@ -35,6 +35,7 @@ jobs:
           echo "image namespace ${{ vars.IMAGE_NAMESPACE }}"
           echo "input environment ${{ inputs.environment }}"
           echo "var environment ${{ vars.ENVIRONMENT }}"
+          echo "input registry ${{ inputs.registry }}"
 
   push:
     name: ${{ inputs.manifest-image }}
