@@ -21,7 +21,7 @@ env:
 
 jobs:
   push-multi-manifest:
-    name: Push to DockerHub
+    name: Push Manifest
     uses: ./.github/workflows/push-multi-manifest.yml
     strategy:
       fail-fast: false

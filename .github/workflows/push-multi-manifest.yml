@@ -27,21 +27,20 @@ env:
   DOMESTIC_DOCKER_PASSWORD: ${{ secrets.DOMESTIC_DOCKER_PASSWORD }}
 
 jobs:
-  display-variables:
-    name: Display variables
-    runs-on: ubuntu-22.04
-    environment: ${{ inputs.environment }}
-    steps:
-      - name: Print Operation environment
-        run: |
-          env
-          echo "image namespace ${{ vars.IMAGE_NAMESPACE }}"
-          echo "input environment ${{ inputs.environment }}"
-          echo "var environment ${{ vars.ENVIRONMENT }}"
-          echo "input registry ${{ inputs.registry }}"
-
+#  display-variables:
+#    name: Display variables
+#    runs-on: ubuntu-22.04
+#    environment: ${{ inputs.environment }}
+#    steps:
+#      - name: Print Operation environment
+#        run: |
+#          env
+#          echo "image namespace ${{ vars.IMAGE_NAMESPACE }}"
+#          echo "input environment ${{ inputs.environment }}"
+#          echo "var environment ${{ vars.ENVIRONMENT }}"
+#          echo "input registry ${{ inputs.registry }}"
   push:
-    name: ${{ inputs.rbdcomponent }}
+    name: ${{ env.IMAGE_NAMESPACE }}-${{ inputs.rbdcomponent }}
     if: ${{ inputs.registry == 'docker.io' }}
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
@@ -69,6 +68,32 @@ jobs:
           amd_image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-amd64"
           arm_image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-arm64"
           manifest_image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}"
+          docker manifest create $manifest_image $amd_image $arm_image
+          docker manifest push $manifest_image
+
+  push-domestic:
+    name: ${{ env.DOMESTIC_BASE_NAME }}-${{ env.DOMESTIC_NAMESPACE }}-${{ inputs.rbdcomponent }}
+    if: ${{ inputs.registry != 'docker.io' }}
+    runs-on: ubuntu-22.04
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Print Operation environment
+        run: |
+          env
+          echo '${{ inputs.environment }}'
+      - name: Login to domestic ${{ inputs.registry }}
+        if: ${{ inputs.registry != 'docker.io' }}
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOMESTIC_DOCKER_USERNAME }}
+          password: ${{ secrets.DOMESTIC_DOCKER_PASSWORD }}
+          registry: ${{ inputs.registry }}
+
+      - name: Create and Push manifest
+        run: |
+          amd_image="${{ env.DOMESTIC_BASE_NAME }}/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-amd64"
+          arm_image="${{ env.DOMESTIC_BASE_NAME }}/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-arm64"
+          manifest_image="${{ env.DOMESTIC_BASE_NAME }}/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}"
           docker manifest create $manifest_image $amd_image $arm_image
           docker manifest push $manifest_image
 
