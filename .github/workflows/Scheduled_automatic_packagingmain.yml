@@ -29,7 +29,7 @@ jobs:
         rbdcomponent: [ rainbond-operator, rbd-api ]
     with:
       environment: ${{ vars.ENVIRONMENT }}
-      registry: ${{ vars.DOCKER_USERNAME }}
+      registry: docker.io
       tag: ${{ github.event.client_payload.version }}
       rbdcomponent: ${{ matrix.rbdcomponent }}
     secrets: inherit
