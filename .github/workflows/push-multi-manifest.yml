@@ -66,13 +66,12 @@ jobs:
 
       - name: Create and Push manifest
         run: |
-          bash
-          damd-image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-amd64"
-          darm-image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-arm64"
-          dmanifest-image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}"
-          docker pull $damd-image
-          docker pull $darm-image
-          docker manifest create $manifest-image $damd-image $darm-image
-          docker manifest push $dmanifest-image
+          amd_image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-amd64"
+          arm_image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-arm64"
+          manifest_image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}"
+          docker pull $amd_image
+          docker pull $arm_image
+          docker manifest create $manifest_image $amd_image $arm_image
+          docker manifest push $manifest_image
 
 
