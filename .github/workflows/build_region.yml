@@ -1,5 +1,5 @@
 name: Build Region
-run-name: ${{ inputs.repo }}-${{ inputs.rbdcomponent }}-${{ inputs.version }}
+run-name: ${{ inputs.rbdcomponent }}(${{ inputs.arch }})-${{ inputs.version }}
 
 on:
   workflow_call:
