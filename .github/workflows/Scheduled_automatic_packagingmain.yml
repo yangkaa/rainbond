@@ -36,8 +36,10 @@ jobs:
           - arch: arm64
             os: ubuntu-22.04
           - repo: rainbond-operator
+            arch: [ amd64, arm64 ]
             rbdcomponent: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe, mesh-data-panel, grctl, node, resource-proxy, shell ]
           - repo: rainbond
+            arch: [ amd64, arm64 ]
             rbdcomponent: [ rainbond-operator ]
     with:
       branch: ${{ github.event.client_payload.branch }}
