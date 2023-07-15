@@ -48,8 +48,17 @@ jobs:
     runs-on: ${{ inputs.os }}
     environment: ${{ inputs.environment }}
     steps:
-      - name: Print run architecture
-        run: arch
+      - name: Print Operation environment
+        run: |
+          arch
+          echo "input arch: ${{ inputs.arch }}"
+          env
+          echo "clone_url: git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git"
+          echo "repo: ${{ inputs.repo }}"
+          echo "rbdcomponent: ${{ inputs.rbdcomponent }}"
+          echo "version: ${{ inputs.version }}"
+          echo "arch: ${{ inputs.arch }}"
+          echo "os: ${{ inputs.os }}"
       - name: Setup Go environment
         uses: actions/setup-go@v2.1.3
         with:
@@ -60,18 +69,6 @@ jobs:
           DISABLE_GOPROXY: true
           BUILD_GOARCH: ${{ inputs.arch }}
         run: |
-          env
-          echo "clone_url: git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git"
-          echo "repo: ${{ inputs.repo }}"
-          echo "rbdcomponent: ${{ inputs.rbdcomponent }}"
-          echo "version: ${{ inputs.version }}"
-          echo "arch: ${{ inputs.arch }}"
-          echo "os: ${{ inputs.os }}"
-          
           git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git
           cd ${{ inputs.repo }} && chmod +x ./release.sh
-          if ${{ inputs.repo }} == "rainbond-operator"; then
-            ./release.sh
-          else
-            ./release.sh ${{ inputs.rbdcomponent }} push
-          fi
+          ./release.sh ${{ inputs.rbdcomponent }} push
