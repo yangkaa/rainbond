@@ -33,8 +33,7 @@ jobs:
       arm-image: docker.io/${{ vars.IMAGE_NAMESPACE }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}-arm64
       manifest-image: docker.io/${{ vars.IMAGE_NAMESPACE }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}
       registry: docker.io
-      username: ${{ secrets.DOCKER_USERNAME }}
-      password: ${{ secrets.DOCKER_PASSWORD }}
+
     secrets: inherit
 
 #  build:
