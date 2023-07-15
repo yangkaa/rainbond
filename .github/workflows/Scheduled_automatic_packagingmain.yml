@@ -32,6 +32,7 @@ jobs:
   push-multi-manifest:
     name: Push to DockerHub
     uses: ./.github/workflows/push-multi-manifest.yml
+    environment: ${{ vars.ENVIRONMENT }}
     strategy:
       fail-fast: false
       matrix:
