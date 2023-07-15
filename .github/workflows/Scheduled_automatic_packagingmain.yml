@@ -35,10 +35,10 @@ jobs:
             arch: arm64
           - os: self-hosted
             arch: amd64
-          - rbdcomponent: [ rainbond-operator ]
-            repo: [ rainbond ]
-          - rbdcomponent: [ api ]
-            repo: [ rainbond-operator ]
+          - rbdcomponent: rainbond-operator
+            repo: rainbond
+          - rbdcomponent: api
+            repo: rainbond-operator
 #        list all matrix
 #       rainbond-operator-amd64-ubuntu-22.04-rainbond-operator
 #       rainbond-operator-arm64-self-hosted-rainbond-operator
