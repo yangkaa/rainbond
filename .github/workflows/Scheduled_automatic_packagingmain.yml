@@ -20,67 +20,83 @@ env:
   BUILD_RBD_APP_UI: false
 
 jobs:
-  build-rainbond-operator:
+  build-rainbond-operator-amd64:
     uses: ./.github/workflows/build_region.yml
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [ amd64, arm64 ]
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        arch: [ amd64 ]
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
       repo: rainbond-operator
       environment: ${{ vars.ENVIRONMENT }}
       rbdcomponent: rainbond-operator
-      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
-      arch: ${{ matrix.arch }}
+      version: ${{ github.event.client_payload.version }}-amd64
+      arch: amd64
     secrets: inherit
 
-  build-rainbond-region:
+  build-rainbond-operator-arm64:
     uses: ./.github/workflows/build_region.yml
     strategy:
       fail-fast: false
       matrix:
-        target: [ api ]
-#        target: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy, shell ]
-        arch: [ amd64, arm64 ]
+        arch: [ arm64 ]
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
-      repo: rainbond
+      repo: rainbond-operator
       environment: ${{ vars.ENVIRONMENT }}
-      rbdcomponent: ${{ matrix.target }}
-      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
-      arch: ${{ matrix.arch }}
+      rbdcomponent: rainbond-operator
+      version: ${{ github.event.client_payload.version }}-arm64
+      arch: arm64
     secrets: inherit
 
-  push-multi-manifest:
-    needs: [ build-rainbond-operator, build-rainbond-region ]
-    runs-on: ubuntu-22.04
-    environment: ${{ vars.ENVIRONMENT }}
-    strategy:
-      fail-fast: false
-      matrix:
-        component: [ rainbond-operator, rbd-api ]
-    steps:
-      - name: push-multi-manifest
-        run: |
-          docker_manifest="$IMAGE_NAMESPACE/${{ matrix.component }}:${{ github.event.client_payload.version }}"
-          docker_amd_image="$docker_manifest-amd64"
-          docker_arm_image="$docker_manifest-arm64"
-          ali_manifest="$DOMESTIC_BASE_NAME/$DOMESTIC_NAMESPACE/${{ matrix.component }}:${{ github.event.client_payload.version }}"
-          ali_amd_image="$ali_manifest-amd64"
-          ali_arm_image="$ali_manifest-arm64"
-          docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-          docker login -u $DOMESTIC_DOCKER_USERNAME -p $DOMESTIC_DOCKER_PASSWORD ${DOMESTIC_BASE_NAME} 
-          docker pull $docker_amd_image
-          docker pull $docker_arm_image
-          docker tag $docker_amd_image $ali_amd_image
-          docker tag $docker_arm_image $ali_arm_image
-          docker manifest create $docker_manifest $docker_amd_image $docker_arm_image
-          docker manifest create $ali_manifest $ali_amd_image $ali_arm_image
-          docker manifest push $docker_manifest
-          docker manifest push $ali_manifest
+#  build-rainbond-region:
+#    uses: ./.github/workflows/build_region.yml
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        target: [ api ]
+##        target: [ api, chaos, gateway, monitor, mq, webcli, worker, eventlog, init-probe mesh-data-panel, grctl, node, resource-proxy, shell ]
+#        arch: [ amd64, arm64 ]
+#    with:
+#      branch: ${{ github.event.client_payload.branch }}
+#      clone_url: ${{ github.event.client_payload.clone_url }}
+#      repo: rainbond
+#      environment: ${{ vars.ENVIRONMENT }}
+#      rbdcomponent: ${{ matrix.target }}
+#      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
+#      arch: ${{ matrix.arch }}
+#    secrets: inherit
+#
+#  push-multi-manifest:
+#    needs: [ build-rainbond-operator, build-rainbond-region ]
+#    runs-on: ubuntu-22.04
+#    environment: ${{ vars.ENVIRONMENT }}
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        component: [ rainbond-operator, rbd-api ]
+#    steps:
+#      - name: push-multi-manifest
+#        run: |
+#          docker_manifest="$IMAGE_NAMESPACE/${{ matrix.component }}:${{ github.event.client_payload.version }}"
+#          docker_amd_image="$docker_manifest-amd64"
+#          docker_arm_image="$docker_manifest-arm64"
+#          ali_manifest="$DOMESTIC_BASE_NAME/$DOMESTIC_NAMESPACE/${{ matrix.component }}:${{ github.event.client_payload.version }}"
+#          ali_amd_image="$ali_manifest-amd64"
+#          ali_arm_image="$ali_manifest-arm64"
+#          docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+#          docker login -u $DOMESTIC_DOCKER_USERNAME -p $DOMESTIC_DOCKER_PASSWORD ${DOMESTIC_BASE_NAME}
+#          docker pull $docker_amd_image
+#          docker pull $docker_arm_image
+#          docker tag $docker_amd_image $ali_amd_image
+#          docker tag $docker_arm_image $ali_arm_image
+#          docker manifest create $docker_manifest $docker_amd_image $docker_arm_image
+#          docker manifest create $ali_manifest $ali_amd_image $ali_arm_image
+#          docker manifest push $docker_manifest
+#          docker manifest push $ali_manifest
 
 #  build-rainbond-operator:
 #    uses: yangkaa/rainbond/.github/workflows/build_region.yml@main
