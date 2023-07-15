@@ -19,14 +19,16 @@ on:
         required: true
         type: string
 
+env:
+  IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
+  DOMESTIC_NAMESPACE: ${{ vars.DOMESTIC_NAMESPACE }}
+
 jobs:
   push:
     name: ${{ inputs.manifest-image }}
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
     steps:
-#     if registry is not docker.io, use env DOMESTIC_DOCKER_USERNAME and DOMESTIC_DOCKER_PASSWORD
-#     else use env DOCKER_USERNAME and DOCKER_PASSWORD
       - name: Print Operation environment
         run: |
           env
