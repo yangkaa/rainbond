@@ -44,7 +44,7 @@ env:
 
 jobs:
   build:
-    name: ${{ inputs.rbdcomponent }}(${{ inputs.arch }})-${{ inputs.version }}
+    name: ${{ inputs.rbdcomponent }}:${{ inputs.version }}
     runs-on: ${{ inputs.os }}
     environment: ${{ inputs.environment }}
     steps:
