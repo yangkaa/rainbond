@@ -27,14 +27,14 @@ jobs:
     steps:
 #     if registry is not docker.io, use env DOMESTIC_DOCKER_USERNAME and DOMESTIC_DOCKER_PASSWORD
 #     else use env DOCKER_USERNAME and DOCKER_PASSWORD
-      - name: Login to domestic Registry
+      - name: Login to domestic ${{ inputs.registry }}
         if: ${{ inputs.registry != 'docker.io' }}
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOMESTIC_DOCKER_USERNAME }}
           password: ${{ secrets.DOMESTIC_DOCKER_PASSWORD }}
           registry: ${{ inputs.registry }}
-      - name: Login to DockerHub
+      - name: Login to ${{ inputs.registry }}
         if: ${{ inputs.registry == 'docker.io' }}
         uses: docker/login-action@v2
         with:
