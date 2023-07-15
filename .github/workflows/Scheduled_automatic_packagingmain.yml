@@ -20,7 +20,8 @@ env:
   BUILD_RBD_APP_UI: false
 
 jobs:
-  build-rainbond-operator:
+  build:
+    name: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
     uses: ./.github/workflows/build_region.yml
     strategy:
       fail-fast: false
