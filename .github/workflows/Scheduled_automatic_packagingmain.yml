@@ -30,6 +30,15 @@ jobs:
         arch: [ amd64, arm64 ]
         os: [ ubuntu-22.04, self-hosted ]
         repo: [ rainbond-operator, rainbond ]
+        exclude:
+          - os: ubuntu-22.04
+            arch: arm64
+          - os: self-hosted
+            arch: amd64
+          - rbdcomponent: rainbond-operator
+            repo: rainbond
+          - rbdcomponent: api
+            repo: rainbond-operator
 #        list all matrix
 #       rainbond-operator-amd64-ubuntu-22.04-rainbond-operator
 #       rainbond-operator-arm64-self-hosted-rainbond-operator
@@ -57,15 +66,7 @@ jobs:
 #       api-arm64-self-hosted-raibond
 #       Define exclusion rules and retain only the required matrices
 #        exclude matrix
-        exclude:
-          - os: ubuntu-22.04
-            arch: arm64
-          - os: self-hosted
-            arch: amd64
-          - rbdcomponent: rainbond-operator
-            repo: rainbond
-          - rbdcomponent: [ api ]
-            repo: rainbond-operator
+
 
     with:
       branch: ${{ github.event.client_payload.branch }}
