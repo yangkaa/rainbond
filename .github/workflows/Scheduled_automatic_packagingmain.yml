@@ -20,15 +20,6 @@ env:
   BUILD_RBD_APP_UI: false
 
 jobs:
-  display-variables:
-    name: Display variables
-    runs-on: ubuntu-22.04
-    environment: ${{ vars.ENVIRONMENT }}
-    steps:
-      - name: Print Operation environment
-        run: |
-          env
-          echo "image namespace ${{ vars.IMAGE_NAMESPACE }}"
   push-multi-manifest:
     name: Push to DockerHub
     uses: ./.github/workflows/push-multi-manifest.yml

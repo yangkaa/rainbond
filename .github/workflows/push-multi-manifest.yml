@@ -24,6 +24,18 @@ env:
   DOMESTIC_NAMESPACE: ${{ vars.DOMESTIC_NAMESPACE }}
 
 jobs:
+  display-variables:
+    name: Display variables
+    runs-on: ubuntu-22.04
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Print Operation environment
+        run: |
+          env
+          echo "image namespace ${{ vars.IMAGE_NAMESPACE }}"
+          echo "input environment ${{ inputs.environment }}"
+          echo "var environment ${{ vars.ENVIRONMENT }}"
+
   push:
     name: ${{ inputs.manifest-image }}
     runs-on: ubuntu-22.04
