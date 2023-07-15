@@ -23,19 +23,15 @@ jobs:
   push-multi-manifest:
     name: Push to DockerHub
     uses: ./.github/workflows/push-multi-manifest.yml
-    env:
-      IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
     strategy:
       fail-fast: false
       matrix:
         rbdcomponent: [ rainbond-operator, rbd-api ]
-        namespace: ${{ env.IMAGE_NAMESPACE }}
     with:
       environment: ${{ vars.ENVIRONMENT }}
-      amd-image: docker.io/${{ matrix.namespace }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}-amd64
-      arm-image: docker.io/${{ matrix.namespace }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}-arm64
-      manifest-image: docker.io/${{ matrix.namespace }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}
       registry: ${{ vars.DOCKER_USERNAME }}
+      tag: ${{ github.event.client_payload.version }}
+      rbdcomponent: ${{ matrix.rbdcomponent }}
     secrets: inherit
 
 
