@@ -69,8 +69,6 @@ jobs:
           amd_image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-amd64"
           arm_image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-arm64"
           manifest_image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}"
-          docker pull $amd_image
-          docker pull $arm_image
           docker manifest create $manifest_image $amd_image $arm_image
           docker manifest push $manifest_image
 
