@@ -36,7 +36,7 @@ jobs:
           - os: self-hosted
             arch: amd64
           - rbdcomponent: rainbond-operator
-            repo: rainbond
+            repo: [ rainbond ]
           - rbdcomponent: api
             repo: rainbond-operator
 #        list all matrix
