@@ -73,7 +73,7 @@ jobs:
       clone_url: ${{ github.event.client_payload.clone_url }}
       repo: ${{ matrix.repo }}
       environment: ${{ vars.ENVIRONMENT }}
-      rbdcomponent: rainbond-operator
+      rbdcomponent: ${{ matrix.rbdcomponent }}
       version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
       arch: ${{ matrix.arch }}
       os: ${{ matrix.os }}
