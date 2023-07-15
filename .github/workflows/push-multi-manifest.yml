@@ -40,7 +40,7 @@ jobs:
 #          echo "var environment ${{ vars.ENVIRONMENT }}"
 #          echo "input registry ${{ inputs.registry }}"
   push:
-    name: ${{ env.IMAGE_NAMESPACE }}-${{ inputs.rbdcomponent }}
+    name: ${{ vars.IMAGE_NAMESPACE }}-${{ inputs.rbdcomponent }}
     if: ${{ inputs.registry == 'docker.io' }}
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
@@ -72,7 +72,7 @@ jobs:
           docker manifest push $manifest_image
 
   push-domestic:
-    name: ${{ env.DOMESTIC_BASE_NAME }}-${{ env.DOMESTIC_NAMESPACE }}-${{ inputs.rbdcomponent }}
+    name: ${{ vars.DOMESTIC_BASE_NAME }}-${{ vars.DOMESTIC_NAMESPACE }}-${{ inputs.rbdcomponent }}
     if: ${{ inputs.registry != 'docker.io' }}
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
@@ -91,9 +91,9 @@ jobs:
 
       - name: Create and Push manifest
         run: |
-          amd_image="${{ env.DOMESTIC_BASE_NAME }}/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-amd64"
-          arm_image="${{ env.DOMESTIC_BASE_NAME }}/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-arm64"
-          manifest_image="${{ env.DOMESTIC_BASE_NAME }}/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}"
+          amd_image="${{ vars.DOMESTIC_BASE_NAME }}/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-amd64"
+          arm_image="${{ vars.DOMESTIC_BASE_NAME }}/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-arm64"
+          manifest_image="${{ vars.DOMESTIC_BASE_NAME }}/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}"
           docker manifest create $manifest_image $amd_image $arm_image
           docker manifest push $manifest_image
 
