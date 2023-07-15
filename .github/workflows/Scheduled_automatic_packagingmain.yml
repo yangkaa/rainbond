@@ -21,11 +21,12 @@ env:
 
 jobs:
   build:
-    name: ${{ inputs.rbdcomponent }}-${{ github.event.client_payload.version }}-${{ matrix.arch }}
+    name: ${{ matrix.rbdcomponent }}-${{ github.event.client_payload.version }}-${{ matrix.arch }}
     uses: ./.github/workflows/build_region.yml
     strategy:
       fail-fast: false
       matrix:
+        rbdcomponent: [ rainbond-operator ]
         include:
           - arch: amd64
             os: ubuntu-22.04
