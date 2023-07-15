@@ -20,7 +20,7 @@ env:
   BUILD_RBD_APP_UI: false
 
 jobs:
-  build-rainbond-operator-amd64:
+  build-rainbond-operator:
     uses: ./.github/workflows/build_region.yml
     strategy:
       fail-fast: false

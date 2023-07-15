@@ -42,7 +42,7 @@ env:
   ARCH: ${{ inputs.arch }}
 
 jobs:
-  build-amd:
+  build-${{ matrix.arch }}:
     runs-on: ${{ inputs.os }}
     environment: ${{ inputs.environment }}
     steps:
