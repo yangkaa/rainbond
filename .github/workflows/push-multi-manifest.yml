@@ -1,0 +1,45 @@
+name: Push multi manifest
+
+on:
+  workflow_call:
+    inputs:
+      amd-image:
+        required: true
+        type: string
+      arm-image:
+        required: true
+        type: string
+      manifest-image:
+        required: true
+        type: string
+      registry:
+        required: false
+        type: string
+      username:
+        required: true
+        type: string
+      password:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+
+jobs:
+  push:
+    name: handle-${{ inputs.manifest-image }}
+    runs-on: ubuntu-22.04
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Login to Registry
+        uses: docker/login-action@v2
+        with:
+          username: ${{ inputs.username }}
+          password: ${{ inputs.password }}
+          registry: ${{ inputs.registry }}
+      - name: Create manifest
+        run: |
+          docker manifest create ${{ inputs.manifest-image }} ${{ inputs.amd-image }} ${{ inputs.arm-image }}
+      - name: Push manifest
+        run: |
+          docker manifest push ${{ inputs.manifest-image }}
