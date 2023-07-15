@@ -23,6 +23,7 @@ jobs:
   display-variables:
     name: Display variables
     runs-on: ubuntu-22.04
+    environment: ${{ vars.ENVIRONMENT }}
     steps:
       - name: Print Operation environment
         run: |
