@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         rbdcomponent: [ rainbond-operator, rbd-api ]
-        namespace: ${{ vars.IMAGE_NAMESPACE }}
+        namespace: ${{ env.IMAGE_NAMESPACE }}
     with:
       environment: ${{ vars.ENVIRONMENT }}
       amd-image: docker.io/${{ matrix.namespace }}/${{ matrix.rbdcomponent }}:${{ github.event.client_payload.version }}-amd64
