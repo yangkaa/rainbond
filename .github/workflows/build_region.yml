@@ -60,10 +60,17 @@ jobs:
           BUILD_GOARCH: ${{ inputs.arch }}
         run: |
           env
-          git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git
-          cd ${{ inputs.repo }} && chmod +x ./release.sh
-          if ${{ inputs.repo }} == "rainbond-operator"; then
-            ./release.sh
-          else
-            ./release.sh ${{ inputs.rbdcomponent }} push
-          fi
+          echo "clone_url: git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git"
+          echo "repo: ${{ inputs.repo }}"
+          echo "rbdcomponent: ${{ inputs.rbdcomponent }}"
+          echo "version: ${{ inputs.version }}"
+          echo "arch: ${{ inputs.arch }}"
+          echo "os: ${{ inputs.os }}"
+          
+#          git clone -b ${{ inputs.branch }} ${{ inputs.clone_url }}/${{ inputs.repo }}.git
+#          cd ${{ inputs.repo }} && chmod +x ./release.sh
+#          if ${{ inputs.repo }} == "rainbond-operator"; then
+#            ./release.sh
+#          else
+#            ./release.sh ${{ inputs.rbdcomponent }} push
+#          fi
