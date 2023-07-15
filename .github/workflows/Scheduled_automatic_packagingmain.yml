@@ -27,11 +27,13 @@ jobs:
       fail-fast: false
       matrix:
         rbdcomponent: [ rainbond-operator ]
-        include:
+        arch: [ amd64, arm64 ]
+        os: [ ubuntu-22.04, self-hosted ]
+        exclude:
           - arch: amd64
-            os: ubuntu-22.04
-          - arch: arm64
             os: self-hosted
+          - arch: arm64
+            os: ubuntu-22.04
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
