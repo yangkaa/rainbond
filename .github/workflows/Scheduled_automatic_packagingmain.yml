@@ -39,35 +39,6 @@ jobs:
             repo: rainbond
           - rbdcomponent: api
             repo: rainbond-operator
-#        list all matrix
-#       rainbond-operator-amd64-ubuntu-22.04-rainbond-operator
-#       rainbond-operator-arm64-self-hosted-rainbond-operator
-#       api-amd64-ubuntu-22.04-raibond
-#       api-arm64-self-hosted-raibond
-
-#       rainbond-operator-amd64-ubuntu-22.04-raibond
-#       rainbond-operator-amd64-self-hosted-rainbond-operator
-#       rainbond-operator-amd64-self-hosted-raibond
-#       rainbond-operator-arm64-ubuntu-22.04-rainbond-operator
-#       rainbond-operator-arm64-ubuntu-22.04-raibond
-#
-#       rainbond-operator-arm64-self-hosted-raibond
-#       api-amd64-ubuntu-22.04-rainbond-operator
-#       api-amd64-self-hosted-rainbond-operator
-#       api-amd64-self-hosted-raibond
-#       api-arm64-ubuntu-22.04-rainbond-operator
-#       api-arm64-ubuntu-22.04-raibond
-#       api-arm64-self-hosted-rainbond-operator
-
-#        need matrix
-#       rainbond-operator-amd64-ubuntu-22.04-rainbond-operator
-#       rainbond-operator-arm64-self-hosted-rainbond-operator
-#       api-amd64-ubuntu-22.04-raibond
-#       api-arm64-self-hosted-raibond
-#       Define exclusion rules and retain only the required matrices
-#        exclude matrix
-
-
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
