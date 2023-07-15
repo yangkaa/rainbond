@@ -22,35 +22,40 @@ env:
 jobs:
   build-rainbond-operator-amd64:
     uses: ./.github/workflows/build_region.yml
-#    strategy:
-#      fail-fast: false
-#      matrix:
-#        arch: [ amd64 ]
-    with:
-      branch: ${{ github.event.client_payload.branch }}
-      clone_url: ${{ github.event.client_payload.clone_url }}
-      repo: rainbond-operator
-      environment: ${{ vars.ENVIRONMENT }}
-      rbdcomponent: rainbond-operator
-      version: ${{ github.event.client_payload.version }}-amd64
-      arch: amd64
-    secrets: inherit
-
-  build-rainbond-operator-arm64:
-    uses: ./.github/workflows/build_region.yml
     strategy:
       fail-fast: false
       matrix:
-        arch: [ arm64 ]
+        include:
+          - arch: amd64
+            os: ubuntu-22.04
+          - arch: arm64
+            os: self-hosted
     with:
       branch: ${{ github.event.client_payload.branch }}
       clone_url: ${{ github.event.client_payload.clone_url }}
       repo: rainbond-operator
       environment: ${{ vars.ENVIRONMENT }}
       rbdcomponent: rainbond-operator
-      version: ${{ github.event.client_payload.version }}-arm64
-      arch: arm64
+      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
+      arch: ${{ matrix.arch }}
+      os: ${{ matrix.os }}
     secrets: inherit
+
+#  build-rainbond-operator-arm64:
+#    uses: ./.github/workflows/build_region.yml
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        arch: [ arm64 ]
+#    with:
+#      branch: ${{ github.event.client_payload.branch }}
+#      clone_url: ${{ github.event.client_payload.clone_url }}
+#      repo: rainbond-operator
+#      environment: ${{ vars.ENVIRONMENT }}
+#      rbdcomponent: rainbond-operator
+#      version: ${{ github.event.client_payload.version }}-arm64
+#      arch: arm64
+#    secrets: inherit
 
 #  build-rainbond-region:
 #    uses: ./.github/workflows/build_region.yml
