@@ -66,6 +66,7 @@ jobs:
 
       - name: Create and Push manifest
         run: |
+          bash
           damd-image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-amd64"
           darm-image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}-arm64"
           dmanifest-image="docker.io/$IMAGE_NAMESPACE/${{ inputs.rbdcomponent }}:${{ inputs.tag }}"
