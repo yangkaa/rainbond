@@ -42,8 +42,9 @@ env:
   ARCH: ${{ inputs.arch }}
 
 jobs:
-  build-${{ matrix.arch }}:
+  build:
     runs-on: ${{ inputs.os }}
+    run-name: ${{ inputs.rbdcomponent }}-${{ inputs.version }}
     environment: ${{ inputs.environment }}
     steps:
       - name: test arch
