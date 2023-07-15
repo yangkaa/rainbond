@@ -23,6 +23,8 @@ jobs:
   push-multi-manifest:
     name: Push to DockerHub
     uses: ./.github/workflows/push-multi-manifest.yml
+    env:
+      IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
     strategy:
       fail-fast: false
       matrix:
