@@ -40,7 +40,7 @@ jobs:
 #          echo "var environment ${{ vars.ENVIRONMENT }}"
 #          echo "input registry ${{ inputs.registry }}"
   push:
-    name: ${{ vars.IMAGE_NAMESPACE }}-${{ inputs.rbdcomponent }}
+    name: ${{ inputs.registry }}-${{ inputs.rbdcomponent }}
     if: ${{ inputs.registry == 'docker.io' }}
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
@@ -72,7 +72,7 @@ jobs:
           docker manifest push $manifest_image
 
   push-domestic:
-    name: ${{ vars.DOMESTIC_BASE_NAME }}-${{ vars.DOMESTIC_NAMESPACE }}-${{ inputs.rbdcomponent }}
+    name: ${{ inputs.registry }}-${{ inputs.rbdcomponent }}
     if: ${{ inputs.registry != 'docker.io' }}
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
