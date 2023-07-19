@@ -73,6 +73,8 @@ type Config struct {
 
 	NodeName          string
 	HostIP            string
+	UpstreamTimeout   string
+	UpstreamTries     int
 	IgnoreInterface   []string
 	ShareMemory       uint64
 	SyncRateLimit     float32
@@ -126,6 +128,8 @@ func (g *GWServer) AddFlags(fs *pflag.FlagSet) {
 	fs.Uint64Var(&g.ShareMemory, "max-config-share-memory", 128, "Nginx maximum Shared memory size, which should be increased for larger clusters.")
 	fs.Float32Var(&g.SyncRateLimit, "sync-rate-limit", 0.3, "Define the sync frequency upper limit")
 	fs.StringArrayVar(&g.IgnoreInterface, "ignore-interface", []string{"docker0", "tunl0", "cni0", "kube-ipvs0", "flannel"}, "The network interface name that ignore by gateway")
+	fs.StringVar(&g.UpstreamTimeout, "upstream-timeout", "600s", "Limits the time during which a request can be passed to the next server.")
+	fs.IntVar(&g.UpstreamTries, "upstream-tries", 3, "Limits the number of possible tries for passing a request to the next server.")
 }
 
 // SetLog sets log
