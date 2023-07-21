@@ -78,7 +78,8 @@ func NewManager(ctx context.Context,
 	kruiseClient *versioned.Clientset,
 	gatewayClient *v1beta1.GatewayV1beta1Client,
 	restConfig *rest.Config,
-	mapper meta.RESTMapper) *Manager {
+	mapper meta.RESTMapper,
+	clientset *kubernetes.Clientset) *Manager {
 
 	return &Manager{
 		ctx:               ctx,
@@ -91,6 +92,7 @@ func NewManager(ctx context.Context,
 		mapper:            mapper,
 		kruiseClient:      kruiseClient,
 		gatewayClient:     gatewayClient,
+		clientset:         clientset,
 	}
 }
 

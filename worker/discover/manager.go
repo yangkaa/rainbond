@@ -76,7 +76,7 @@ func NewTaskManager(cfg option.Config,
 	clientset *kubernetes.Clientset) *TaskManager {
 
 	ctx, cancel := context.WithCancel(context.Background())
-	handleManager := handle.NewManager(ctx, cfg, store, controllermanager, garbageCollector, kruiseClient, gatewayClient, restConfig, mapper)
+	handleManager := handle.NewManager(ctx, cfg, store, controllermanager, garbageCollector,kruiseClient,gatewayClient, restConfig, mapper, clientset)
 	healthStatus["status"] = "health"
 	healthStatus["info"] = "worker service health"
 	return &TaskManager{
