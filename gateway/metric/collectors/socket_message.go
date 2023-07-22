@@ -22,15 +22,15 @@
 package collectors
 
 import (
-	"io"
-	"io/ioutil"
-	"net"
-	"os"
-
+	"github.com/goodrain/rainbond/cmd/gateway/option"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+	"io"
+	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"net"
+	"os"
 )
 
 type upstream struct {
@@ -57,17 +57,21 @@ type socketData struct {
 // SocketCollector stores prometheus metrics and ingress meta-data
 type SocketCollector struct {
 	prometheus.Collector
-	requestTime     *prometheus.HistogramVec
-	requestLength   *prometheus.HistogramVec
-	responseTime    *prometheus.HistogramVec
-	responseLength  *prometheus.HistogramVec
-	upstreamLatency *prometheus.SummaryVec
-	bytesSent       *prometheus.HistogramVec
-	requests        *prometheus.CounterVec
-	listener        net.Listener
-	metricMapping   map[string]interface{}
-	hosts           sets.String
-	metricsPerHost  bool
+	requestTime      *prometheus.HistogramVec
+	requestLength    *prometheus.HistogramVec
+	responseTime     *prometheus.HistogramVec
+	responseLength   *prometheus.HistogramVec
+	upstreamLatency  *prometheus.SummaryVec
+	bytesSent        *prometheus.HistogramVec
+	requests         *prometheus.CounterVec
+	connections      *prometheus.GaugeVec
+	connectionsTotal *prometheus.GaugeVec
+	requestsTotal    *prometheus.GaugeVec
+	listener         net.Listener
+	metricMapping    map[string]interface{}
+	hosts            sets.String
+	metricsPerHost   bool
+	listenPorts      option.ListenPorts
 }
 
 var (
@@ -84,7 +88,7 @@ var (
 
 // NewSocketCollector creates a new SocketCollector instance using
 // the ingress watch namespace and class used by the controller
-func NewSocketCollector(gatewayHost string, metricsPerHost bool) (*SocketCollector, error) {
+func NewSocketCollector(gatewayHost string, metricsPerHost bool, listenPorts option.ListenPorts) (*SocketCollector, error) {
 	socket := "/tmp/prometheus-nginx.socket"
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
@@ -106,6 +110,7 @@ func NewSocketCollector(gatewayHost string, metricsPerHost bool) (*SocketCollect
 	}
 
 	sc := &SocketCollector{
+		listenPorts:    listenPorts,
 		listener:       listener,
 		metricsPerHost: metricsPerHost,
 		responseTime: prometheus.NewHistogramVec(
@@ -156,7 +161,33 @@ func NewSocketCollector(gatewayHost string, metricsPerHost bool) (*SocketCollect
 			},
 			[]string{"host", "namespace", "service", "status", "service_id", "app_id"},
 		),
-
+		requestsTotal: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "requests_total",
+				Help:        "total number of client requests",
+				Namespace:   PrometheusNamespace,
+				ConstLabels: constLabels,
+			},
+			[]string{"host", "namespace", "service", "status", "service_id", "app_id"},
+		),
+		connectionsTotal: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "connections_total",
+				Namespace:   PrometheusNamespace,
+				Help:        "total number of connections with state {accepted, handled}",
+				ConstLabels: constLabels,
+			},
+			[]string{"state"},
+		),
+		connections: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "connections",
+				Namespace:   PrometheusNamespace,
+				Help:        "current number of client connections with state {active, reading, writing, waiting}",
+				ConstLabels: constLabels,
+			},
+			[]string{"state"},
+		),
 		bytesSent: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:        "bytes_sent",
@@ -240,6 +271,7 @@ func (sc *SocketCollector) handleMessage(msg []byte) {
 			"service_id": stats.ServiceID,
 			"app_id":     stats.AppID,
 		}
+
 		requestsMetric, err := sc.requests.GetMetricWith(collectorLabels)
 		if err != nil {
 			logrus.Errorf("Error fetching requests metric: %v", err)
@@ -292,6 +324,25 @@ func (sc *SocketCollector) handleMessage(msg []byte) {
 				responseSizeMetric.Observe(stats.ResponseLength)
 			}
 		}
+
+		status, data, err := NewGetStatusRequest(StatusPath, sc.listenPorts)
+		if err != nil {
+			logrus.Errorf("unexpected error obtaining nginx status info: %v", err)
+			return
+		}
+		if status < 200 || status >= 400 {
+			logrus.Errorf("unexpected error obtaining nginx status info (status %v)", status)
+			return
+		}
+		s := parse(string(data))
+		logrus.Debugf("data Accepted:%v,Handled:%v,Requests:%v,Active:%v,Reading:%v,Writing:%v,Waiting:%v", s.Accepted, s.Handled, s.Requests, s.Active, s.Reading, s.Writing, s.Waiting)
+		sc.connectionsTotal.WithLabelValues("accepted").Set(float64(s.Accepted))
+		sc.connectionsTotal.WithLabelValues("handled").Set(float64(s.Handled))
+		sc.requestsTotal.With(collectorLabels).Set(float64(s.Requests))
+		sc.connections.WithLabelValues("active").Set(float64(s.Active))
+		sc.connections.WithLabelValues("reading").Set(float64(s.Reading))
+		sc.connections.WithLabelValues("writing").Set(float64(s.Writing))
+		sc.connections.WithLabelValues("waiting").Set(float64(s.Waiting))
 	}
 }
 
@@ -368,6 +419,9 @@ func (sc SocketCollector) Describe(ch chan<- *prometheus.Desc) {
 	sc.responseTime.Describe(ch)
 	sc.responseLength.Describe(ch)
 	sc.bytesSent.Describe(ch)
+	sc.connections.Describe(ch)
+	sc.connectionsTotal.Describe(ch)
+	sc.requestsTotal.Describe(ch)
 }
 
 // Collect implements the prometheus.Collector interface.
@@ -379,6 +433,9 @@ func (sc SocketCollector) Collect(ch chan<- prometheus.Metric) {
 	sc.responseTime.Collect(ch)
 	sc.responseLength.Collect(ch)
 	sc.bytesSent.Collect(ch)
+	sc.connections.Collect(ch)
+	sc.connectionsTotal.Collect(ch)
+	sc.requestsTotal.Collect(ch)
 }
 
 // handleMessages process the content received in a network connection

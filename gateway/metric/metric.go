@@ -20,6 +20,7 @@ package metric
 
 import (
 	"fmt"
+	"github.com/goodrain/rainbond/cmd/gateway/option"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -44,9 +45,9 @@ type collector struct {
 }
 
 // NewCollector creates a new metric collector the for ingress controller
-func NewCollector(gatewayHost string, registry *prometheus.Registry) (Collector, error) {
+func NewCollector(gatewayHost string, registry *prometheus.Registry, listenPorts option.ListenPorts) (Collector, error) {
 	ic := collectors.NewController()
-	socketCollector, err := collectors.NewSocketCollector(gatewayHost, true)
+	socketCollector, err := collectors.NewSocketCollector(gatewayHost, true, listenPorts)
 	if err != nil {
 		return nil, fmt.Errorf("create socket collector failure %s", err.Error())
 	}

@@ -90,7 +90,7 @@ func Run(s *option.GWServer) error {
 	reg.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	mc := metric.NewDummyCollector()
 	if s.Config.EnableMetrics {
-		mc, err = metric.NewCollector(s.NodeName, reg)
+		mc, err = metric.NewCollector(s.NodeName, reg, s.Config.ListenPorts)
 		if err != nil {
 			logrus.Fatalf("Error creating prometheus collector:  %v", err)
 		}

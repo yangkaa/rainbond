@@ -123,6 +123,10 @@ http {
             defaultPage.call()
           }
         }
+        location /nginx_status {
+          stub_status on;
+          access_log   off;
+        }
     }
     server {
         listen {{$h.HTTPSListen}} ssl default_server;
