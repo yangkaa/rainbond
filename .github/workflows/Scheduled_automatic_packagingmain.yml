@@ -20,50 +20,50 @@ env:
   BUILD_RBD_APP_UI: false
 
 jobs:
-  push-multi-manifest:
-    name: Push Manifest
-    uses: ./.github/workflows/push-multi-manifest.yml
-    strategy:
-      fail-fast: false
-      matrix:
-        rbdcomponent: [ rainbond-operator, rbd-api ]
-    with:
-      environment: ${{ vars.ENVIRONMENT }}
-      registry: docker.io
-      tag: ${{ github.event.client_payload.version }}
-      rbdcomponent: ${{ matrix.rbdcomponent }}
-    secrets: inherit
-
-
-#  build:
-#    name: ${{ matrix.rbdcomponent }}(${{ matrix.arch }})
-#    uses: ./.github/workflows/build_region.yml
+#  push-multi-manifest:
+#    name: Push Manifest
+#    uses: ./.github/workflows/push-multi-manifest.yml
 #    strategy:
 #      fail-fast: false
 #      matrix:
-#        rbdcomponent: [ rainbond-operator, api ]
-#        arch: [ amd64, arm64 ]
-#        os: [ ubuntu-22.04, self-hosted ]
-#        repo: [ rainbond-operator, rainbond ]
-#        exclude:
-#          - os: ubuntu-22.04
-#            arch: arm64
-#          - os: self-hosted
-#            arch: amd64
-#          - rbdcomponent: rainbond-operator
-#            repo: rainbond
-#          - rbdcomponent: api
-#            repo: rainbond-operator
+#        rbdcomponent: [ rainbond-operator, rbd-api ]
 #    with:
-#      branch: ${{ github.event.client_payload.branch }}
-#      clone_url: ${{ github.event.client_payload.clone_url }}
-#      repo: ${{ matrix.repo }}
 #      environment: ${{ vars.ENVIRONMENT }}
+#      registry: docker.io
+#      tag: ${{ github.event.client_payload.version }}
 #      rbdcomponent: ${{ matrix.rbdcomponent }}
-#      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
-#      arch: ${{ matrix.arch }}
-#      os: ${{ matrix.os }}
 #    secrets: inherit
+
+
+  build:
+    name: ${{ matrix.rbdcomponent }}(${{ matrix.arch }})
+    uses: ./.github/workflows/build_region.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        rbdcomponent: [ rainbond-operator, api ]
+        arch: [ amd64, arm64 ]
+        os: [ ubuntu-22.04, self-hosted ]
+        repo: [ rainbond-operator, rainbond ]
+        exclude:
+          - os: ubuntu-22.04
+            arch: arm64
+          - os: self-hosted
+            arch: amd64
+          - rbdcomponent: rainbond-operator
+            repo: rainbond
+          - rbdcomponent: api
+            repo: rainbond-operator
+    with:
+      branch: ${{ github.event.client_payload.branch }}
+      clone_url: ${{ github.event.client_payload.clone_url }}
+      repo: ${{ matrix.repo }}
+      environment: ${{ vars.ENVIRONMENT }}
+      rbdcomponent: ${{ matrix.rbdcomponent }}
+      version: ${{ github.event.client_payload.version }}-${{ matrix.arch }}
+      arch: ${{ matrix.arch }}
+      os: ${{ matrix.os }}
+    secrets: inherit
 
 #  build-rainbond-operator-arm64:
 #    uses: ./.github/workflows/build_region.yml
