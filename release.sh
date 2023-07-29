@@ -5,11 +5,7 @@ set -o errexit
 WORK_DIR=/go/src/github.com/goodrain/rainbond
 BASE_NAME=rainbond
 IMAGE_BASE_NAME=${IMAGE_NAMESPACE:-'rainbond'}
-# Enterprise Edition does not need to be pushed to dockerhub
-# DOCKER_USERNAME=${DOCKER_USERNAME:-'rainbond'}
 DOMESTIC_NAMESPACE=${DOMESTIC_NAMESPACE:-'goodrain'}
-IMAGE_DOMAIN=${IMAGE_DOMAIN:-image.goodrain.com}
-DISABLE_GOPROXY="true"
 ENABLE_WAF=${ENABLE_WAF:-'true'}
 
 if [ "$BUILD_GOARCH" ]; then
@@ -50,7 +46,7 @@ buildTime=$(date +%F-%H)
 git_commit=$(git log -n 1 --pretty --format=%h)
 
 release_desc=${VERSION}-${git_commit}-${buildTime}
-build_items=(api chaos gateway monitor mq webcli worker eventlog init-probe mesh-data-panel grctl node resource-proxy)
+build_items=(api chaos gateway monitor mq webcli worker eventlog init-probe mesh-data-panel grctl node resource-proxy shell)
 
 build::binary() {
 	echo "---> build binary:$1"
@@ -107,68 +103,6 @@ build::binary() {
 	fi
 }
 
-build::image::arm() {
-	local OUTPATH="./_output/binary/$GOOS/${BASE_NAME}-$1"
-	local build_image_dir="./_output/image/$1/"
-	local source_dir="./hack/contrib/docker/$1"
-	local BASE_IMAGE_VERSION=${BUILD_BASE_IMAGE_VERSION:-'3.4'}
-	local DOCKERFILE_BASE=${BUILD_DOCKERFILE_BASE:-'Dockerfile'}
-	mkdir -p "${build_image_dir}"
-	chmod 777 "${build_image_dir}"
-	if [ ! -f "${source_dir}/ignorebuild" ]; then
-		if [ !${CACHE} ] || [ ! -f "${OUTPATH}" ]; then
-			build::binary "$1"
-		fi
-		cp "${OUTPATH}" "${build_image_dir}"
-	fi
-	cp -r ${source_dir}/* "${build_image_dir}"
-	pushd "${build_image_dir}"
-	echo "---> build image:$1"
-	if [ "$GOARCH" = "arm64" ]; then
-		if [ "$1" = "gateway" ]; then
-		  if [ $ENABLE_WAF ]; then
-      	BASE_IMAGE_VERSION="1.21.4.1-waf-arm"
-      else
-      	BASE_IMAGE_VERSION="1.19.3.2-alpine"
-      fi
-		elif [ "$1" = "eventlog" ];then
-			DOCKERFILE_BASE="Dockerfile.arm"
-		elif [ "$1" = "mesh-data-panel" ];then
-			DOCKERFILE_BASE="Dockerfile.arm"
-		elif [ "$1" = "api" ]; then
-		    curl -o helm https://pkg.goodrain.com/pkg/helm-arm64
-		    chmod +x helm
-		fi
-	else
-		if [ "$1" = "gateway" ]; then
-      if [ $ENABLE_WAF ]; then
-        BASE_IMAGE_VERSION="1.21.4.1-waf"
-      else
-        BASE_IMAGE_VERSION="1.19.3.2"
-      fi
-		fi
-		if [ "$1" = "api" ]; then
-		    curl -o helm https://pkg.goodrain.com/pkg/helm
-		    chmod +x helm
-		fi
-	fi
-	docker build --build-arg RELEASE_DESC="${release_desc}" --build-arg BASE_IMAGE_VERSION="${BASE_IMAGE_VERSION}" --build-arg GOARCH="${GOARCH}" -t "${IMAGE_DOMAIN}/${DOCKER_NAMESPACE}/rbd-$1:${VERSION}" -f "${DOCKERFILE_BASE}" .
-	docker run --rm "${IMAGE_DOMAIN}/${DOCKER_NAMESPACE}/rbd-$1:${VERSION}" version
-	if [ $? -ne 0 ]; then
-		echo "image version is different ${release_desc}"
-		exit 1
-	fi
-	if [ -f "${source_dir}/test.sh" ]; then
-		"${source_dir}/test.sh" "${DOCKER_USERNAME}/rbd-$1:${VERSION}"
-	fi
-	if [ "$2" = "push" ]; then
-	    docker login ${IMAGE_DOMAIN} -u "$DOCKER_USERNAME" -p $DOCKER_PASSWORD
-	    docker push "${IMAGE_DOMAIN}/${DOCKER_NAMESPACE}/rbd-$1:${VERSION}"
-	fi
-	popd
-	rm -rf "${build_image_dir}"
-}
-
 build::image() {
 	local OUTPATH="./_output/binary/$GOOS/${BASE_NAME}-$1"
 	local build_image_dir="./_output/image/$1/"
@@ -189,6 +123,9 @@ build::image() {
 	if [ "$GOARCH" = "arm64" ]; then
 		if [ "$1" = "gateway" ]; then
 			BASE_IMAGE_VERSION="1.19.3.2-alpine"
+			if [ "$ENABLE_WAF" == "true" ]; then
+        BASE_IMAGE_VERSION="1.21.4.1-waf-arm"
+      fi
 		elif [ "$1" = "eventlog" ]; then
 			DOCKERFILE_BASE="Dockerfile.arm"
 		elif [ "$1" = "mesh-data-panel" ]; then
@@ -199,31 +136,37 @@ build::image() {
 		fi
 	else
 		if [ "$1" = "gateway" ]; then
-			if [ $ENABLE_WAF ]; then
-				BASE_IMAGE_VERSION="1.21.4.1-waf"
-			else
-				BASE_IMAGE_VERSION="1.19.3.2"
-			fi
+			BASE_IMAGE_VERSION="1.19.3.2"
+			if [ "$ENABLE_WAF" == "true" ]; then
+        BASE_IMAGE_VERSION="1.21.4.1-waf"
+      fi
+		elif [ "$1" = "api" ]; then
+			curl -o helm https://pkg.goodrain.com/pkg/helm
+			chmod +x helm
 		fi
-		if [ "$1" = "api" ]; then
-    	curl -o helm https://pkg.goodrain.com/pkg/helm
-    	chmod +x helm
-    fi
 	fi
-	image_name="${IMAGE_DOMAIN}/${IMAGE_NAMESPACE}/rbd-$1:${VERSION}"
-	docker build --build-arg RELEASE_DESC="${release_desc}" --build-arg BASE_IMAGE_VERSION="${BASE_IMAGE_VERSION}" --build-arg GOARCH="${GOARCH}" -t $image_name -f "${DOCKERFILE_BASE}" .
-	docker run --rm ${image_name} version
+	if [ "$1" = "shell" ]; then
+		cp ../../binary/$GOOS/rainbond-grctl grctl
+	fi
+	docker build --build-arg RELEASE_DESC="${release_desc}" --build-arg BASE_IMAGE_VERSION="${BASE_IMAGE_VERSION}" --build-arg GOARCH="${GOARCH}" -t "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}" -f "${DOCKERFILE_BASE}" .
+	docker run --rm "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}" version
 	if [ $? -ne 0 ]; then
 		echo "image version is different ${release_desc}"
 		exit 1
 	fi
 	if [ -f "${source_dir}/test.sh" ]; then
-		"${source_dir}/test.sh" ${image_name}
+		"${source_dir}/test.sh" "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}"
 	fi
 	if [ "$2" = "push" ]; then
 		if [ $DOCKER_USERNAME ]; then
-			echo "$DOCKER_PASSWORD" | docker login ${IMAGE_DOMAIN} -u "$DOCKER_USERNAME" --password-stdin
-			docker push ${image_name}
+			docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+			docker push "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}"
+		fi
+
+		if [ "${DOMESTIC_DOCKER_USERNAME}" ]; then
+			docker tag "${IMAGE_BASE_NAME}/rbd-$1:${VERSION}" "${DOMESTIC_BASE_NAME}/${DOMESTIC_NAMESPACE}/rbd-$1:${VERSION}"
+			docker login -u "$DOMESTIC_DOCKER_USERNAME" -p "$DOMESTIC_DOCKER_PASSWORD" "${DOMESTIC_BASE_NAME}"
+			docker push "${DOMESTIC_BASE_NAME}/${DOMESTIC_NAMESPACE}/rbd-$1:${VERSION}"
 		fi
 	fi
 	popd
@@ -231,15 +174,9 @@ build::image() {
 }
 
 build::image::all() {
-  if [ "$GOARCH" = "arm64" ]; then
-    for item in "${build_items[@]}"; do
-          build::image::arm "$item" "$1"
-        done
-  else
-    for item in "${build_items[@]}"; do
-      build::image "$item" "$1"
-    done
-  fi
+	for item in "${build_items[@]}"; do
+		build::image "$item" "$1"
+	done
 }
 
 build::binary::all() {
