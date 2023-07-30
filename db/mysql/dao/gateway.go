@@ -178,6 +178,56 @@ func (c *RuleExtensionDaoImpl) CreateOrUpdateRuleExtensionsInBatch(exts []*model
 	return nil
 }
 
+//LimitingPolicyDaoImpl http rule
+type LimitingPolicyDaoImpl struct {
+	DB *gorm.DB
+}
+
+//AddModel -
+func (h *LimitingPolicyDaoImpl) AddModel(mo model.Interface) error {
+	limitingPolicy, ok := mo.(*model.LimitingPolicy)
+	if !ok {
+		return fmt.Errorf("can't not convert %s to *model.LimitingPolicy", reflect.TypeOf(mo).String())
+	}
+	var oldLimitingPolicy model.LimitingPolicy
+	if ok := h.DB.Where("limiting_name=?", limitingPolicy.LimitingName).Find(&oldLimitingPolicy).RecordNotFound(); ok {
+		if err := h.DB.Create(limitingPolicy).Error; err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("LimitingPolicy already exists based on limiting_name(%s)", limitingPolicy.LimitingName)
+	}
+	return nil
+}
+
+//UpdateModel -
+func (h *LimitingPolicyDaoImpl) UpdateModel(mo model.Interface) error {
+	lp, ok := mo.(*model.LimitingPolicy)
+	if !ok {
+		return fmt.Errorf("failed to convert %s to *model.LimitingPolicy", reflect.TypeOf(mo).String())
+	}
+	return h.DB.Save(lp).Error
+}
+
+func (h *LimitingPolicyDaoImpl) GetLimitingPolicyByLimitingName(limitingName string) (*model.LimitingPolicy, error) {
+	limitingPolicy := &model.LimitingPolicy{}
+	if err := h.DB.Where("limiting_name = ?", limitingName).Find(limitingPolicy).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return limitingPolicy, nil
+		}
+		return nil, err
+	}
+	return limitingPolicy, nil
+}
+
+func (h *LimitingPolicyDaoImpl) DeleteLimitingPolicyByLimitingName(limitingName string) error {
+	limitingPolicy := &model.LimitingPolicy{}
+	if err := h.DB.Where("limiting_name = ? ", limitingName).Delete(limitingPolicy).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 //HTTPRuleDaoImpl http rule
 type HTTPRuleDaoImpl struct {
 	DB *gorm.DB
@@ -219,6 +269,17 @@ func (h *HTTPRuleDaoImpl) GetHTTPRuleByID(id string) (*model.HTTPRule, error) {
 		return nil, err
 	}
 	return httpRule, nil
+}
+
+func (h *HTTPRuleDaoImpl) GetHTTPRuleByLimitingPolicyName(limitingPolicyName string) ([]*model.HTTPRule, error) {
+	var httpRules []*model.HTTPRule
+	if err := h.DB.Where("limiting_policy_name = ?", limitingPolicyName).Find(&httpRules).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return httpRules, nil
+		}
+		return nil, err
+	}
+	return httpRules, nil
 }
 
 // GetHTTPRuleByServiceIDAndContainerPort gets a HTTPRule based on serviceID and containerPort

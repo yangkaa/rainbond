@@ -251,6 +251,7 @@ type Gatewayer interface {
 	GatewayHTTPRoute(w http.ResponseWriter, r *http.Request)
 	BatchGatewayHTTPRoute(w http.ResponseWriter, r *http.Request)
 	GatewayCertificate(w http.ResponseWriter, r *http.Request)
+	HTTPLimitingPolicy(w http.ResponseWriter, r *http.Request)
 }
 
 // ThirdPartyServicer is an interface for defining methods for third-party service.

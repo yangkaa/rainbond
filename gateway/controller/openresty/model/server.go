@@ -46,12 +46,17 @@ type Server struct {
 	ProxyStreamNextUpstreamTimeout string `json:"proxyStreamNextUpstreamTimeout"`
 	ProxyStreamNextUpstreamTries   int    `json:"proxyStreamNextUpstreamTries"`
 	//proxy protocol for tcp real ip
-	ProxyProtocol     ProxyProtocol
-	EnableModSecurity bool     `json:"enable_mod_security"`
-	WhiteIP           []string `json:"white_ip"`
-	BlackORWhite      string   `json:"black_or_white"`
-	BlackIP           []string `json:"black_ip"`
-	WAFRules          []string `json:"waf_rules"`
+	ProxyProtocol      ProxyProtocol
+	EnableModSecurity  bool     `json:"enable_mod_security"`
+	WhiteIP            []string `json:"white_ip"`
+	BlackORWhite       string   `json:"black_or_white"`
+	BlackIP            []string `json:"black_ip"`
+	WAFRules           []string `json:"waf_rules"`
+	IsLimiting         bool     `json:"is_limiting"`
+	LimitingName       string   `json:"limiting_name"`
+	AccessMemorySize   string   `json:"access_memory_size"`
+	MaxAccessRate      string   `json:"max_access_rate"`
+	BurstTrafficNumber string   `json:"burst_traffic_number"`
 }
 
 // ProxyProtocol describes the proxy protocol configuration

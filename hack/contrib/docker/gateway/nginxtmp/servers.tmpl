@@ -23,7 +23,9 @@ server {
     modsecurity on;
     modsecurity_rules_file /usr/local/openresty/nginx/conf/modsecurity/modsecurity.conf;
     {{ end }}
-
+    {{ if .IsLimiting }}
+    limit_req zone={{.LimitingName}} burst={{.BurstTrafficNumber}} nodelay;
+    {{ end }}
     {{ if .ServerTokens }}server_tokens on;{{ end }}
 
     {{ if .SSLCertificate }}

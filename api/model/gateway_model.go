@@ -27,26 +27,35 @@ import (
 
 //AddHTTPRuleStruct is used to add http rule, certificate and rule extensions
 type AddHTTPRuleStruct struct {
-	HTTPRuleID        string                 `json:"http_rule_id" validate:"http_rule_id|required"`
-	ServiceID         string                 `json:"service_id" validate:"service_id|required"`
-	ContainerPort     int                    `json:"container_port" validate:"container_port|required"`
-	Domain            string                 `json:"domain" validate:"domain|required"`
-	Path              string                 `json:"path"`
-	Header            string                 `json:"header"`
-	Cookie            string                 `json:"cookie"`
-	Weight            int                    `json:"weight"`
-	IP                string                 `json:"ip"`
-	CertificateID     string                 `json:"certificate_id"`
-	Certificate       string                 `json:"certificate"`
-	PrivateKey        string                 `json:"private_key"`
-	RuleExtensions    []*RuleExtensionStruct `json:"rule_extensions"`
-	PathRewrite       bool                   `json:"path_rewrite"`
-	Rewrites          []*Rewrite             `json:"rewrites"`
-	EnableModSecurity bool                   `json:"enable_mod_security"`
-	WhiteIP           string                 `json:"white_ip"`
-	BlackIP           string                 `json:"black_ip"`
-	BlackORWhite      string                 `json:"black_or_white"`
-	WAFRules          string                 `json:"waf_rules"`
+	HTTPRuleID         string                 `json:"http_rule_id" validate:"http_rule_id|required"`
+	ServiceID          string                 `json:"service_id" validate:"service_id|required"`
+	ContainerPort      int                    `json:"container_port" validate:"container_port|required"`
+	Domain             string                 `json:"domain" validate:"domain|required"`
+	Path               string                 `json:"path"`
+	Header             string                 `json:"header"`
+	Cookie             string                 `json:"cookie"`
+	Weight             int                    `json:"weight"`
+	IP                 string                 `json:"ip"`
+	CertificateID      string                 `json:"certificate_id"`
+	Certificate        string                 `json:"certificate"`
+	PrivateKey         string                 `json:"private_key"`
+	RuleExtensions     []*RuleExtensionStruct `json:"rule_extensions"`
+	PathRewrite        bool                   `json:"path_rewrite"`
+	Rewrites           []*Rewrite             `json:"rewrites"`
+	EnableModSecurity  bool                   `json:"enable_mod_security"`
+	WhiteIP            string                 `json:"white_ip"`
+	BlackIP            string                 `json:"black_ip"`
+	BlackORWhite       string                 `json:"black_or_white"`
+	WAFRules           string                 `json:"waf_rules"`
+	IsLimiting         bool                   `json:"is_limiting"`
+	BurstTrafficNumber int                    `json:"burst_traffic_number"`
+	LimitingPolicyName string                 `json:"limiting_policy_name"`
+}
+
+type LimitingPolicy struct {
+	LimitingName     string `json:"limiting_name"`
+	AccessMemorySize int    `json:"access_memory_size"`
+	MaxAccessRate    int    `json:"max_access_rate"`
 }
 
 //GatewayCertificate -
@@ -169,26 +178,29 @@ func (h *AddHTTPRuleStruct) DbModel(serviceID string) *dbmodel.HTTPRule {
 
 //UpdateHTTPRuleStruct is used to update http rule, certificate and rule extensions
 type UpdateHTTPRuleStruct struct {
-	HTTPRuleID        string                 `json:"http_rule_id" validate:"http_rule_id|required"`
-	ServiceID         string                 `json:"service_id"`
-	ContainerPort     int                    `json:"container_port"`
-	Domain            string                 `json:"domain"`
-	Path              string                 `json:"path"`
-	Header            string                 `json:"header"`
-	Cookie            string                 `json:"cookie"`
-	Weight            int                    `json:"weight"`
-	IP                string                 `json:"ip"`
-	CertificateID     string                 `json:"certificate_id"`
-	Certificate       string                 `json:"certificate"`
-	PrivateKey        string                 `json:"private_key"`
-	RuleExtensions    []*RuleExtensionStruct `json:"rule_extensions"`
-	PathRewrite       bool                   `json:"path_rewrite"`
-	Rewrites          []*Rewrite             `json:"rewrites"`
-	EnableModSecurity bool                   `json:"enable_mod_security"`
-	WhiteIP           string                 `json:"white_ip"`
-	BlackIP           string                 `json:"black_ip"`
-	BlackORWhite      string                 `json:"black_or_white"`
-	WAFRules          string                 `json:"waf_rules"`
+	HTTPRuleID         string                 `json:"http_rule_id" validate:"http_rule_id|required"`
+	ServiceID          string                 `json:"service_id"`
+	ContainerPort      int                    `json:"container_port"`
+	Domain             string                 `json:"domain"`
+	Path               string                 `json:"path"`
+	Header             string                 `json:"header"`
+	Cookie             string                 `json:"cookie"`
+	Weight             int                    `json:"weight"`
+	IP                 string                 `json:"ip"`
+	CertificateID      string                 `json:"certificate_id"`
+	Certificate        string                 `json:"certificate"`
+	PrivateKey         string                 `json:"private_key"`
+	RuleExtensions     []*RuleExtensionStruct `json:"rule_extensions"`
+	PathRewrite        bool                   `json:"path_rewrite"`
+	Rewrites           []*Rewrite             `json:"rewrites"`
+	EnableModSecurity  bool                   `json:"enable_mod_security"`
+	WhiteIP            string                 `json:"white_ip"`
+	BlackIP            string                 `json:"black_ip"`
+	BlackORWhite       string                 `json:"black_or_white"`
+	WAFRules           string                 `json:"waf_rules"`
+	IsLimiting         bool                   `json:"is_limiting"`
+	BurstTrafficNumber int                    `json:"burst_traffic_number"`
+	LimitingPolicyName string                 `json:"limiting_policy_name"`
 }
 
 //DeleteHTTPRuleStruct contains the id of http rule that will be deleted

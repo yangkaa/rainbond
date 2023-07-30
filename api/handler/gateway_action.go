@@ -674,17 +674,20 @@ func (g *GatewayAction) CreateHTTPRule(tx *gorm.DB, req *apimodel.AddHTTPRuleStr
 			}
 			return req.Path
 		}(),
-		Header:            req.Header,
-		Cookie:            req.Cookie,
-		Weight:            req.Weight,
-		IP:                req.IP,
-		CertificateID:     req.CertificateID,
-		PathRewrite:       req.PathRewrite,
-		EnableModSecurity: req.EnableModSecurity,
-		WhiteIP:           req.WhiteIP,
-		BlackIP:           req.BlackIP,
-		BlackORWhite:      req.BlackORWhite,
-		WAFRules:          req.WAFRules,
+		Header:             req.Header,
+		Cookie:             req.Cookie,
+		Weight:             req.Weight,
+		IP:                 req.IP,
+		CertificateID:      req.CertificateID,
+		PathRewrite:        req.PathRewrite,
+		EnableModSecurity:  req.EnableModSecurity,
+		WhiteIP:            req.WhiteIP,
+		BlackIP:            req.BlackIP,
+		BlackORWhite:       req.BlackORWhite,
+		WAFRules:           req.WAFRules,
+		IsLimiting:         req.IsLimiting,
+		BurstTrafficNumber: req.BurstTrafficNumber,
+		LimitingPolicyName: req.LimitingPolicyName,
 	}
 	if err := db.GetManager().HTTPRuleDaoTransactions(tx).AddModel(httpRule); err != nil {
 		return fmt.Errorf("create http rule: %v", err)
@@ -833,6 +836,10 @@ func (g *GatewayAction) UpdateHTTPRule(req *apimodel.UpdateHTTPRuleStruct) error
 	rule.BlackIP = req.BlackIP
 	rule.BlackORWhite = req.BlackORWhite
 	rule.EnableModSecurity = req.EnableModSecurity
+	rule.IsLimiting = req.IsLimiting
+	rule.LimitingPolicyName = req.LimitingPolicyName
+	rule.BurstTrafficNumber = req.BurstTrafficNumber
+
 	if req.IP != "" {
 		rule.IP = req.IP
 	}
@@ -1651,4 +1658,44 @@ func (g *GatewayAction) SyncRuleConfigs(tx *gorm.DB, components []*apimodel.Comp
 		return err
 	}
 	return db.GetManager().GwRuleConfigDaoTransactions(tx).CreateOrUpdateGwRuleConfigsInBatch(configs)
+}
+
+func (g *GatewayAction) DeleteHTTPLimitingPolicy(limitingPolicyName string) error {
+	httprules, err := g.dbmanager.HTTPRuleDao().GetHTTPRuleByLimitingPolicyName(limitingPolicyName)
+	if err != nil {
+		return fmt.Errorf("http limiting policy get httprule failure: %v", err)
+	}
+	if httprules != nil && len(httprules) > 0 {
+		return fmt.Errorf("http limiting policy %v has use, not allowed to delete", limitingPolicyName)
+	}
+	if err := g.dbmanager.LimitingPolicyDao().DeleteLimitingPolicyByLimitingName(limitingPolicyName); err != nil {
+		return fmt.Errorf("delete http limiting policy failure: %v", err)
+	}
+	return nil
+}
+
+func (g *GatewayAction) CreateHTTPLimitingPolicy(req *apimodel.LimitingPolicy) error {
+	limitingPolicy := &model.LimitingPolicy{
+		LimitingName:     req.LimitingName,
+		AccessMemorySize: req.AccessMemorySize,
+		MaxAccessRate:    req.MaxAccessRate,
+	}
+	if err := db.GetManager().LimitingPolicyDao().AddModel(limitingPolicy); err != nil {
+		return fmt.Errorf("create http limiting policy failure: %v", err)
+	}
+	return nil
+}
+
+func (g *GatewayAction) UpdateHTTPLimitingPolicy(req *apimodel.LimitingPolicy) error {
+	limitingPolicy, err := db.GetManager().LimitingPolicyDao().GetLimitingPolicyByLimitingName(req.LimitingName)
+	if err != nil {
+		return fmt.Errorf("update http limiting policy get failure: %v", err)
+	}
+	limitingPolicy.AccessMemorySize = req.AccessMemorySize
+	limitingPolicy.MaxAccessRate = req.MaxAccessRate
+	err = db.GetManager().LimitingPolicyDao().UpdateModel(limitingPolicy)
+	if err != nil {
+		return fmt.Errorf("update http limiting policy failure: %v", err)
+	}
+	return nil
 }

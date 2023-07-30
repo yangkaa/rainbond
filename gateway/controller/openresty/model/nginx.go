@@ -18,6 +18,13 @@ type Nginx struct {
 	Events             Events
 	HTTP               *HTTP
 	Stream             *Stream
+	Limiting           []*Limiting
+}
+
+type Limiting struct {
+	LimitingName     string
+	AccessMemorySize string
+	MaxAccessRate    string
 }
 
 // EventLog -

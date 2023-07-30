@@ -51,6 +51,10 @@ type GatewayHandler interface {
 	DeleteHTTPRule(req *apimodel.DeleteHTTPRuleStruct) error
 	DeleteHTTPRuleByServiceIDWithTransaction(sid string, tx *gorm.DB) error
 
+	CreateHTTPLimitingPolicy(req *apimodel.LimitingPolicy) error
+	UpdateHTTPLimitingPolicy(req *apimodel.LimitingPolicy) error
+	DeleteHTTPLimitingPolicy(limitingPolicyName string) error
+
 	AddCertificate(req *apimodel.AddHTTPRuleStruct, tx *gorm.DB) error
 	UpdateCertificate(req apimodel.AddHTTPRuleStruct, httpRule *dbmodel.HTTPRule, tx *gorm.DB) error
 
