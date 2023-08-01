@@ -212,9 +212,6 @@ func (h *LimitingPolicyDaoImpl) UpdateModel(mo model.Interface) error {
 func (h *LimitingPolicyDaoImpl) GetLimitingPolicyByLimitingName(limitingName string) (*model.LimitingPolicy, error) {
 	limitingPolicy := &model.LimitingPolicy{}
 	if err := h.DB.Where("limiting_name = ?", limitingName).Find(limitingPolicy).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return limitingPolicy, nil
-		}
 		return nil, err
 	}
 	return limitingPolicy, nil

@@ -291,6 +291,7 @@ func (v2 *V2) serviceRouter() chi.Router {
 	r.Delete("/security_context", controller.GetManager().SecurityContextService)
 	//构建版本列表
 	r.Get("/build-list", controller.GetManager().BuildList)
+	r.Get("/file-manage", controller.GetManager().FileManageService)
 	//构建版本操作
 	r.Get("/build-version/{build_version}", controller.GetManager().BuildVersionInfo)
 	r.Put("/build-version/{build_version}", controller.GetManager().BuildVersionInfo)

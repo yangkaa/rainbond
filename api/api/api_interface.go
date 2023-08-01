@@ -143,6 +143,7 @@ type TenantInterfaceWithV1 interface {
 	VerticalService(w http.ResponseWriter, r *http.Request)
 	HorizontalService(w http.ResponseWriter, r *http.Request)
 	BuildService(w http.ResponseWriter, r *http.Request)
+	FileManageService(w http.ResponseWriter, r *http.Request)
 	DeployService(w http.ResponseWriter, r *http.Request)
 	UpgradeService(w http.ResponseWriter, r *http.Request)
 	StatusService(w http.ResponseWriter, r *http.Request)
