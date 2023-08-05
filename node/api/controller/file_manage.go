@@ -45,12 +45,14 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	if _, err := io.Copy(file, reader); err != nil {
 		logrus.Errorf("upload file write %v failure: %v", srcPath, err.Error())
 		httputil.ReturnError(r, w, 503, "Failed to write file: "+err.Error())
+		return
 	}
 
 	err = appService.AppFileUpload(containerName, podName, srcPath, destPath, namespace)
 	if err != nil {
 		logrus.Errorf("upload file %v to %v %v failure: %v", header.Filename, podName, destPath, err.Error())
 		httputil.ReturnError(r, w, 503, "Failed to write file: "+err.Error())
+		return
 	}
 	w.Header().Set("status", "success")
 }

@@ -221,7 +221,7 @@ func (v2 *V2) tenantNameRouter() chi.Router {
 	r.Post("/http-rule", controller.GetManager().HTTPRule)
 	r.Delete("/http-rule", controller.GetManager().HTTPRule)
 	r.Put("/http-rule", controller.GetManager().HTTPRule)
-	//
+	// 限流策略
 	r.Post("/http-limiting-policy", controller.GetManager().HTTPLimitingPolicy)
 	r.Delete("/http-limiting-policy", controller.GetManager().HTTPLimitingPolicy)
 	r.Put("/http-limiting-policy", controller.GetManager().HTTPLimitingPolicy)

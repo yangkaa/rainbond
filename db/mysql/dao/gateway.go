@@ -219,10 +219,7 @@ func (h *LimitingPolicyDaoImpl) GetLimitingPolicyByLimitingName(limitingName str
 
 func (h *LimitingPolicyDaoImpl) DeleteLimitingPolicyByLimitingName(limitingName string) error {
 	limitingPolicy := &model.LimitingPolicy{}
-	if err := h.DB.Where("limiting_name = ? ", limitingName).Delete(limitingPolicy).Error; err != nil {
-		return err
-	}
-	return nil
+	return h.DB.Where("limiting_name = ? ", limitingName).Delete(limitingPolicy).Error
 }
 
 //HTTPRuleDaoImpl http rule
@@ -271,9 +268,6 @@ func (h *HTTPRuleDaoImpl) GetHTTPRuleByID(id string) (*model.HTTPRule, error) {
 func (h *HTTPRuleDaoImpl) GetHTTPRuleByLimitingPolicyName(limitingPolicyName string) ([]*model.HTTPRule, error) {
 	var httpRules []*model.HTTPRule
 	if err := h.DB.Where("limiting_policy_name = ?", limitingPolicyName).Find(&httpRules).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return httpRules, nil
-		}
 		return nil, err
 	}
 	return httpRules, nil

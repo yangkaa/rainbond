@@ -93,16 +93,12 @@ func (a *AppService) AppFileUpload(containerName, podName, srcPath, destPath, na
 	if err != nil {
 		return err
 	}
-	err = exec.Stream(remotecommand.StreamOptions{
+	return exec.Stream(remotecommand.StreamOptions{
 		Stdin:  reader,
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 		Tty:    false,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (a *AppService) AppFileDownload(containerName, podName, filePath, namespace string) error {
@@ -137,7 +133,6 @@ func (a *AppService) AppFileDownload(containerName, podName, filePath, namespace
 	}()
 	prefix := getPrefix(filePath)
 	prefix = path.Clean(prefix)
-	prefix = stripPathShortcuts(prefix)
 	destPath := path.Join("./", path.Base(prefix))
 	err = unTarAll(reader, destPath, prefix)
 	if err != nil {
@@ -270,28 +265,6 @@ func unTarAll(reader io.Reader, destDir, prefix string) error {
 
 func getPrefix(file string) string {
 	return strings.TrimLeft(file, "/")
-}
-
-func stripPathShortcuts(p string) string {
-
-	newPath := path.Clean(p)
-	trimmed := strings.TrimPrefix(newPath, "../")
-
-	for trimmed != newPath {
-		newPath = trimmed
-		trimmed = strings.TrimPrefix(newPath, "../")
-	}
-
-	// trim leftover {".", ".."}
-	if newPath == "." || newPath == ".." {
-		newPath = ""
-	}
-
-	if len(newPath) > 0 && string(newPath[0]) == "/" {
-		return newPath[1:]
-	}
-
-	return newPath
 }
 
 //FindAppEndpoints 获取app endpoint
