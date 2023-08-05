@@ -21,6 +21,8 @@ package api
 import (
 	"context"
 	"fmt"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"net/http"
 	"strconv"
 	"strings"
@@ -59,10 +61,10 @@ type Manager struct {
 }
 
 //NewManager api manager
-func NewManager(c option.Conf, node *nodeclient.HostNode, ms *masterserver.MasterServer, kubecli kubecache.KubeClient) *Manager {
+func NewManager(c option.Conf, node *nodeclient.HostNode, ms *masterserver.MasterServer, kubecli kubecache.KubeClient, clientset *kubernetes.Clientset, config *rest.Config) *Manager {
 	r := router.Routers(c.RunMode)
 	ctx, cancel := context.WithCancel(context.Background())
-	controller.Init(&c, ms, kubecli)
+	controller.Init(&c, ms, kubecli, clientset, config)
 	etcdClientArgs := &etcdutil.ClientArgs{
 		Endpoints:   c.EtcdEndpoints,
 		CaFile:      c.EtcdCaFile,

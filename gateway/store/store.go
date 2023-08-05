@@ -672,6 +672,13 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 						vs.WhiteIP = writeList
 						vs.BlackIP = blackList
 						vs.WAFRules = wafRulesList
+
+						vs.IsLimiting, _ = strconv.ParseBool(ing.Annotations["IsLimiting"])
+						vs.LimitingName = ing.Annotations["LimitingName"]
+						vs.AccessMemorySize = ing.Annotations["AccessMemorySize"]
+						vs.MaxAccessRate = ing.Annotations["MaxAccessRate"]
+						vs.BurstTrafficNumber = ing.Annotations["BurstTrafficNumber"]
+
 						l7vsMap[virSrvName] = vs
 						l7vs = append(l7vs, vs)
 					}
@@ -808,6 +815,13 @@ func (s *k8sStore) ListVirtualService() (l7vs []*v1.VirtualService, l4vs []*v1.V
 						vs.WhiteIP = writeList
 						vs.BlackIP = blackList
 						vs.WAFRules = wafRulesList
+
+						vs.IsLimiting, _ = strconv.ParseBool(ing.Annotations["IsLimiting"])
+						vs.LimitingName = ing.Annotations["LimitingName"]
+						vs.AccessMemorySize = ing.Annotations["AccessMemorySize"]
+						vs.MaxAccessRate = ing.Annotations["MaxAccessRate"]
+						vs.BurstTrafficNumber = ing.Annotations["BurstTrafficNumber"]
+
 						l7vsMap[virSrvName] = vs
 						l7vs = append(l7vs, vs)
 					}

@@ -18,7 +18,9 @@
 
 package v1
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	corev1 "k8s.io/api/core/v1"
+)
 
 // Protocol defines network protocols supported for things like container ports.
 type Protocol string
@@ -52,19 +54,24 @@ type VirtualService struct {
 	//ConnectTimeout The time, in seconds, to wait for data from a new connection. If no data is received within this time, the connection will be closed. A value of 0 (zero) will disable the timeout.
 	ConnectTimeout int `json:"connect_timeout"`
 	//Timeout A connection should be closed if no additional data has been received for this period of time. A value of 0 (zero) will disable this timeout. Note that the default value may vary depending on the protocol selected.
-	Timeout           int                    `json:"timeout"`
-	ServerName        string                 `json:"server_name"`
-	PoolName          string                 `json:"pool_name"`
-	SSlProtocols      string                 `json:"ssl_protocols"`
-	SSLCert           *SSLCert               `json:"ssl_cert"`
-	Locations         []*Location            `json:"locations"`
-	ForceSSLRedirect  bool                   `json:"force_ssl_redirect"`
-	ExtensionConfig   map[string]interface{} `json:"extension_config"`
-	EnableModSecurity bool                   `json:"enable_mod_security"`
-	WhiteIP           []string               `json:"white_ip"`
-	BlackIP           []string               `json:"black_ip"`
-	BlackORWhite      string                 `json:"black_or_white"`
-	WAFRules          []string               `json:"waf_rules"`
+	Timeout            int                    `json:"timeout"`
+	ServerName         string                 `json:"server_name"`
+	PoolName           string                 `json:"pool_name"`
+	SSlProtocols       string                 `json:"ssl_protocols"`
+	SSLCert            *SSLCert               `json:"ssl_cert"`
+	Locations          []*Location            `json:"locations"`
+	ForceSSLRedirect   bool                   `json:"force_ssl_redirect"`
+	ExtensionConfig    map[string]interface{} `json:"extension_config"`
+	EnableModSecurity  bool                   `json:"enable_mod_security"`
+	WhiteIP            []string               `json:"white_ip"`
+	BlackIP            []string               `json:"black_ip"`
+	BlackORWhite       string                 `json:"black_or_white"`
+	WAFRules           []string               `json:"waf_rules"`
+	IsLimiting         bool                   `json:"is_limiting"`
+	LimitingName       string                 `json:"limiting_name"`
+	AccessMemorySize   string                 `json:"access_memory_size"`
+	MaxAccessRate      string                 `json:"max_access_rate"`
+	BurstTrafficNumber string                 `json:"burst_traffic_number"`
 }
 
 //Equals equals vs
@@ -108,6 +115,17 @@ func (v *VirtualService) Equals(c *VirtualService) bool {
 			}
 		}
 		if !flag {
+			return false
+		}
+	}
+	if v.IsLimiting != c.IsLimiting {
+		return false
+	}
+	if v.IsLimiting {
+		if v.LimitingName != c.LimitingName {
+			return false
+		}
+		if v.BurstTrafficNumber != c.BurstTrafficNumber {
 			return false
 		}
 	}

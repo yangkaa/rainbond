@@ -529,6 +529,13 @@ func (m *Manager) HTTPRuleDao() dao.HTTPRuleDao {
 	}
 }
 
+//LimitingPolicyDao HTTPRuleDao
+func (m *Manager) LimitingPolicyDao() dao.LimitingPolicyDao {
+	return &mysqldao.LimitingPolicyDaoImpl{
+		DB: m.db,
+	}
+}
+
 //HTTPRuleDaoTransactions -
 func (m *Manager) HTTPRuleDaoTransactions(db *gorm.DB) dao.HTTPRuleDao {
 	return &mysqldao.HTTPRuleDaoImpl{

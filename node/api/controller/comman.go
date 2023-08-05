@@ -22,17 +22,19 @@ import (
 	"github.com/go-chi/chi"
 	httputil "github.com/goodrain/rainbond/util/http"
 	"github.com/shirou/gopsutil/disk"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"net/http"
 	"runtime"
 
 	"github.com/goodrain/rainbond/cmd/node/option"
-	"github.com/goodrain/rainbond/node/core/config"
+	nodeconfig "github.com/goodrain/rainbond/node/core/config"
 	"github.com/goodrain/rainbond/node/core/service"
 	"github.com/goodrain/rainbond/node/kubecache"
 	"github.com/goodrain/rainbond/node/masterserver"
 )
 
-var datacenterConfig *config.DataCenterConfig
+var datacenterConfig *nodeconfig.DataCenterConfig
 var prometheusService *service.PrometheusService
 var appService *service.AppService
 var nodeService *service.NodeService
@@ -40,13 +42,13 @@ var discoverService *service.DiscoverAction
 var kubecli kubecache.KubeClient
 
 //Init 初始化
-func Init(c *option.Conf, ms *masterserver.MasterServer, kube kubecache.KubeClient) {
+func Init(c *option.Conf, ms *masterserver.MasterServer, kube kubecache.KubeClient, clientset *kubernetes.Clientset, config *rest.Config) {
 	if ms != nil {
 		prometheusService = service.CreatePrometheusService(c)
-		datacenterConfig = config.GetDataCenterConfig()
+		datacenterConfig = nodeconfig.GetDataCenterConfig()
 		nodeService = service.CreateNodeService(c, ms.Cluster, kube)
 	}
-	appService = service.CreateAppService(c)
+	appService = service.CreateAppService(c, clientset, config)
 	discoverService = service.CreateDiscoverActionManager(c, kube)
 	kubecli = kube
 }

@@ -145,7 +145,7 @@ func Run(cfg *option.Conf) error {
 			logrus.Debug("create and start master server moudle success")
 		}
 		//create api manager
-		apiManager := api.NewManager(*cfg, nodemanager.GetCurrentNode(), ms, kubecli)
+		apiManager := api.NewManager(*cfg, nodemanager.GetCurrentNode(), ms, kubecli, clientset, config)
 		if err := apiManager.Start(errChan); err != nil {
 			return err
 		}

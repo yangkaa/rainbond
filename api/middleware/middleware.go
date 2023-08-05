@@ -208,10 +208,6 @@ func Proxy(next http.Handler) http.Handler {
 			handler.GetNodeProxy().Proxy(w, r)
 			return
 		}
-		if strings.HasPrefix(r.RequestURI, "/v2/file-manage") {
-			handler.GetNodeProxy().Proxy(w, r)
-			return
-		}
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)

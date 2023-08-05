@@ -531,10 +531,18 @@ type RuleExtensionDao interface {
 	CreateOrUpdateRuleExtensionsInBatch(exts []*model.RuleExtension) error
 }
 
+//LimitingPolicyDao -
+type LimitingPolicyDao interface {
+	Dao
+	GetLimitingPolicyByLimitingName(limitingName string) (*model.LimitingPolicy, error)
+	DeleteLimitingPolicyByLimitingName(limitingName string) error
+}
+
 // HTTPRuleDao -
 type HTTPRuleDao interface {
 	Dao
 	GetHTTPRuleByID(id string) (*model.HTTPRule, error)
+	GetHTTPRuleByLimitingPolicyName(limitingPolicyName string) ([]*model.HTTPRule, error)
 	GetHTTPRuleByServiceIDAndContainerPort(serviceID string, containerPort int) ([]*model.HTTPRule, error)
 	GetHTTPRulesByCertificateID(certificateID string) ([]*model.HTTPRule, error)
 	DeleteHTTPRuleByID(id string) error

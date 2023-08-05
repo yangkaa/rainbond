@@ -120,6 +120,7 @@ type Manager interface {
 	RuleExtensionDao() dao.RuleExtensionDao
 	RuleExtensionDaoTransactions(db *gorm.DB) dao.RuleExtensionDao
 	HTTPRuleDao() dao.HTTPRuleDao
+	LimitingPolicyDao() dao.LimitingPolicyDao
 	HTTPRuleDaoTransactions(db *gorm.DB) dao.HTTPRuleDao
 	HTTPRuleRewriteDao() dao.HTTPRuleRewriteDao
 	HTTPRuleRewriteDaoTransactions(db *gorm.DB) dao.HTTPRuleRewriteDao

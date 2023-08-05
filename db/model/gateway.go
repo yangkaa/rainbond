@@ -72,22 +72,36 @@ func (HTTPRule) TableName() string {
 // HTTPRule contains http rule
 type HTTPRule struct {
 	Model
-	UUID              string `gorm:"column:uuid"`
-	ServiceID         string `gorm:"column:service_id"`
-	ContainerPort     int    `gorm:"column:container_port"`
-	Domain            string `gorm:"column:domain"`
-	Path              string `gorm:"column:path;type:longtext"`
-	Header            string `gorm:"column:header;type:longtext"`
-	Cookie            string `gorm:"column:cookie;type:longtext"`
-	Weight            int    `gorm:"column:weight"`
-	IP                string `gorm:"column:ip"`
-	CertificateID     string `gorm:"column:certificate_id"`
-	PathRewrite       bool   `gorm:"column:path_rewrite"`
-	EnableModSecurity bool   `json:"enable_mod_security"`
-	WhiteIP           string `json:"white_ip"`
-	BlackIP           string `json:"black_ip"`
-	BlackORWhite      string `json:"black_or_white"`
-	WAFRules          string `json:"waf_rules"`
+	UUID               string `gorm:"column:uuid"`
+	ServiceID          string `gorm:"column:service_id"`
+	ContainerPort      int    `gorm:"column:container_port"`
+	Domain             string `gorm:"column:domain"`
+	Path               string `gorm:"column:path;type:longtext"`
+	Header             string `gorm:"column:header;type:longtext"`
+	Cookie             string `gorm:"column:cookie;type:longtext"`
+	Weight             int    `gorm:"column:weight"`
+	IP                 string `gorm:"column:ip"`
+	CertificateID      string `gorm:"column:certificate_id"`
+	PathRewrite        bool   `gorm:"column:path_rewrite"`
+	EnableModSecurity  bool   `json:"enable_mod_security"`
+	WhiteIP            string `json:"white_ip"`
+	BlackIP            string `json:"black_ip"`
+	BlackORWhite       string `json:"black_or_white"`
+	WAFRules           string `json:"waf_rules"`
+	IsLimiting         bool   `json:"is_limiting"`
+	BurstTrafficNumber int    `json:"burst_traffic_number"`
+	LimitingPolicyName string `json:"limiting_policy_name"`
+}
+
+func (LimitingPolicy) TableName() string {
+	return "limiting_policy"
+}
+
+type LimitingPolicy struct {
+	Model
+	LimitingName     string `gorm:"column:limiting_name"`
+	AccessMemorySize int    `gorm:"column:access_memory_size"`
+	MaxAccessRate    int    `gorm:"column:max_access_rate"`
 }
 
 // TableName returns table name of TCPRule

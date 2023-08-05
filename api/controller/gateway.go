@@ -55,6 +55,17 @@ func (g *GatewayStruct) HTTPRule(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (g *GatewayStruct) HTTPLimitingPolicy(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+		g.addHTTPLimitingPolicy(w, r)
+	case "PUT":
+		g.updateHTTPLimitingPolicy(w, r)
+	case "DELETE":
+		g.deleteHTTPLimitingPolicy(w, r)
+	}
+}
+
 //GatewayCertificate k8s gateway certificate related operations
 func (g *GatewayStruct) GatewayCertificate(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -497,4 +508,49 @@ func (g *GatewayStruct) updCertificate(w http.ResponseWriter, r *http.Request) {
 func GetGatewayIPs(w http.ResponseWriter, r *http.Request) {
 	ips := handler.GetGatewayHandler().GetGatewayIPs()
 	httputil.ReturnSuccess(r, w, ips)
+}
+
+func (g *GatewayStruct) addHTTPLimitingPolicy(w http.ResponseWriter, r *http.Request) {
+	var req api_model.LimitingPolicy
+	ok := httputil.ValidatorRequestStructAndErrorResponse(r, w, &req, nil)
+	if !ok {
+		return
+	}
+	h := handler.GetGatewayHandler()
+	err := h.CreateHTTPLimitingPolicy(&req)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("Unexpected error occorred while adding http limiting policy: %v", err))
+		return
+	}
+
+	httputil.ReturnSuccess(r, w, req)
+}
+
+func (g *GatewayStruct) updateHTTPLimitingPolicy(w http.ResponseWriter, r *http.Request) {
+	var req api_model.LimitingPolicy
+	ok := httputil.ValidatorRequestStructAndErrorResponse(r, w, &req, nil)
+	if !ok {
+		return
+	}
+	h := handler.GetGatewayHandler()
+	err := h.UpdateHTTPLimitingPolicy(&req)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("Unexpected error occorred while "+
+			"updating http limiting policy: %v", err))
+		return
+	}
+
+	httputil.ReturnSuccess(r, w, "success")
+}
+
+func (g *GatewayStruct) deleteHTTPLimitingPolicy(w http.ResponseWriter, r *http.Request) {
+	limitingPolicyName := r.FormValue("limiting_policy_name")
+	h := handler.GetGatewayHandler()
+	err := h.DeleteHTTPLimitingPolicy(limitingPolicyName)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("Unexpected error occorred while delete http limiting policy: %v", err))
+		return
+	}
+
+	httputil.ReturnSuccess(r, w, "success")
 }

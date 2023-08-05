@@ -146,6 +146,32 @@ func (o *OrService) Stop() error {
 // PersistConfig persists ocfg
 func (o *OrService) PersistConfig(conf *v1.Config) error {
 	l7srv, l4srv := o.getNgxServer(conf)
+
+	limitings := make(map[string]*model.Limiting)
+	for _, l7 := range l7srv {
+		if l7.AccessMemorySize != "0" || l7.LimitingName != "" {
+			continue
+		}
+		limitings[l7.LimitingName] = &model.Limiting{
+			LimitingName:     l7.LimitingName,
+			AccessMemorySize: l7.AccessMemorySize,
+			MaxAccessRate:    l7.MaxAccessRate,
+		}
+	}
+	var limitingList []*model.Limiting
+	for _, limit := range limitings {
+		limitingList = append(limitingList, limit)
+	}
+	nginx := model.NewNginx(*o.ocfg)
+	nginx.HTTP = model.NewHTTP(o.ocfg)
+	nginx.Stream = model.NewStream(o.ocfg)
+	nginx.Limiting = limitingList
+	err := o.configManage.NewNginxTemplate(nginx)
+	if err != nil {
+		logrus.Errorf("new nginx template filure: %v", err)
+		return err
+	}
+
 	// http server
 	o.configManage.WriteServer(*o.ocfg, "http", "", l7srv...)
 	// tcp and udp server
@@ -203,14 +229,19 @@ func (o *OrService) persistUpstreams(pools []*v1.Pool) error {
 func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv []*model.Server) {
 	for _, vs := range conf.L7VS {
 		server := &model.Server{
-			Listen:            strings.Join(vs.Listening, " "),
-			Protocol:          "HTTP",
-			ServerName:        strings.Replace(vs.ServerName, "tls", "", 1),
-			EnableModSecurity: vs.EnableModSecurity,
-			WhiteIP:           vs.WhiteIP,
-			BlackORWhite:      vs.BlackORWhite,
-			BlackIP:           vs.BlackIP,
-			WAFRules:          vs.WAFRules,
+			Listen:             strings.Join(vs.Listening, " "),
+			Protocol:           "HTTP",
+			ServerName:         strings.Replace(vs.ServerName, "tls", "", 1),
+			EnableModSecurity:  vs.EnableModSecurity,
+			WhiteIP:            vs.WhiteIP,
+			BlackORWhite:       vs.BlackORWhite,
+			BlackIP:            vs.BlackIP,
+			WAFRules:           vs.WAFRules,
+			IsLimiting:         vs.IsLimiting,
+			LimitingName:       vs.LimitingName,
+			AccessMemorySize:   vs.AccessMemorySize,
+			MaxAccessRate:      vs.MaxAccessRate,
+			BurstTrafficNumber: vs.BurstTrafficNumber,
 			// ForceSSLRedirect: vs.ForceSSLRedirect,
 			OptionValue: map[string]string{
 				"tenant_id":  vs.Namespace,

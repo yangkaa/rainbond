@@ -3,8 +3,6 @@ package controller
 import (
 	"fmt"
 	"github.com/go-chi/chi"
-	"github.com/goodrain/rainbond/api/model"
-	"github.com/goodrain/rainbond/util"
 	httputil "github.com/goodrain/rainbond/util/http"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -13,26 +11,6 @@ import (
 	"strings"
 )
 
-// GetFileDir volume file manage get file and dir
-func GetFileDir(w http.ResponseWriter, r *http.Request) {
-	var fileInfos []model.FileInfo
-	tarPath := r.FormValue("path")
-	if ok := util.DirIsEmpty(tarPath); ok {
-		httputil.ReturnSuccess(r, w, fileInfos)
-	}
-	files, err := os.ReadDir(tarPath)
-	if err != nil {
-		httputil.ReturnError(r, w, 400, "read dir error")
-	}
-	for _, file := range files {
-		fileInfos = append(fileInfos, model.FileInfo{
-			Title:  file.Name(),
-			IsLeaf: file.IsDir(),
-		})
-	}
-	httputil.ReturnSuccess(r, w, fileInfos)
-}
-
 // UploadFile -
 func UploadFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("volume_name", r.FormValue("volume_name"))
@@ -40,8 +18,11 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("tenant_id", r.FormValue("tenant_id"))
 	w.Header().Add("service_id", r.FormValue("service_id"))
 	w.Header().Add("status", "failed")
-	path := r.FormValue("path")
-	if path == "" {
+	destPath := r.FormValue("path")
+	podName := r.FormValue("pod_name")
+	namespace := r.FormValue("namespace")
+	containerName := r.FormValue("container_name")
+	if destPath == "" {
 		httputil.ReturnError(r, w, 400, "Path cannot be empty")
 		return
 	}
@@ -53,38 +34,45 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer reader.Close()
 	w.Header().Add("file_name", header.Filename)
-
-	fileName := fmt.Sprintf("%s/%s", path, header.Filename)
-	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0644)
+	srcPath := fmt.Sprintf("./%s", header.Filename)
+	file, err := os.OpenFile(srcPath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		logrus.Errorf("Failed to open file: %s", err.Error())
+		logrus.Errorf("upload file open %v failure: %v", header.Filename, err.Error())
 		httputil.ReturnError(r, w, 502, "Failed to open file: "+err.Error())
 	}
+	defer os.Remove(srcPath)
 	defer file.Close()
-
-	logrus.Debug("Start write file to: ", fileName)
 	if _, err := io.Copy(file, reader); err != nil {
-		logrus.Errorf("Failed to write file：%s", err.Error())
+		logrus.Errorf("upload file write %v failure: %v", srcPath, err.Error())
 		httputil.ReturnError(r, w, 503, "Failed to write file: "+err.Error())
+		return
 	}
-	logrus.Debug("successful write file to: ", fileName)
+
+	err = appService.AppFileUpload(containerName, podName, srcPath, destPath, namespace)
+	if err != nil {
+		logrus.Errorf("upload file %v to %v %v failure: %v", header.Filename, podName, destPath, err.Error())
+		httputil.ReturnError(r, w, 503, "Failed to write file: "+err.Error())
+		return
+	}
 	w.Header().Set("status", "success")
 }
 
 //DownloadFile -
 func DownloadFile(w http.ResponseWriter, r *http.Request) {
-	Path := r.FormValue("path")
+	podName := r.FormValue("pod_name")
+	path := r.FormValue("path")
+	namespace := r.FormValue("namespace")
 	fileName := strings.TrimSpace(chi.URLParam(r, "fileName"))
+	filePath := fmt.Sprintf("%s/%s", path, fileName)
+	containerName := r.FormValue("container_name")
 
-	if Path == "" {
-		httputil.ReturnError(r, w, 400, "Path cannot be empty")
+	err := appService.AppFileDownload(containerName, podName, filePath, namespace)
+	if err != nil {
+		logrus.Errorf("downloading file from Pod failure: %v", err)
+		http.Error(w, "Error downloading file from Pod", http.StatusInternalServerError)
 		return
 	}
-	filePath := fmt.Sprintf("%s/%s", Path, fileName)
-	// return status code 404 if the file not exists.
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		httputil.ReturnError(r, w, 404, fmt.Sprintf("Not found export app tar file: %s", filePath))
-		return
-	}
-	http.ServeFile(w, r, filePath)
+	defer os.Remove(fmt.Sprintf("./%s", fileName))
+	w.Header().Set("Content-Disposition", "attachment;filename="+fileName)
+	http.ServeFile(w, r, fmt.Sprintf("./%s", fileName))
 }

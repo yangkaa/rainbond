@@ -50,9 +50,6 @@ func Routers(mode string) *chi.Mux {
 		r.Route("/container_disk", func(r chi.Router) {
 			r.Get("/{container_type}", controller.ContainerDisk)
 		})
-		r.Route("/file-manage", func(r chi.Router) {
-			r.Get("/", controller.GetFileDir)
-		})
 		r.Route("/file-operate", func(r chi.Router) {
 			r.Get("/download/{fileName}", controller.DownloadFile)
 			r.Post("/upload", controller.UploadFile)

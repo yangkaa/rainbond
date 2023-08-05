@@ -221,6 +221,10 @@ func (v2 *V2) tenantNameRouter() chi.Router {
 	r.Post("/http-rule", controller.GetManager().HTTPRule)
 	r.Delete("/http-rule", controller.GetManager().HTTPRule)
 	r.Put("/http-rule", controller.GetManager().HTTPRule)
+	// 限流策略
+	r.Post("/http-limiting-policy", controller.GetManager().HTTPLimitingPolicy)
+	r.Delete("/http-limiting-policy", controller.GetManager().HTTPLimitingPolicy)
+	r.Put("/http-limiting-policy", controller.GetManager().HTTPLimitingPolicy)
 
 	r.Get("/gateway-http-route", controller.GetManager().GatewayHTTPRoute)
 	r.Post("/gateway-http-route", controller.GetManager().GatewayHTTPRoute)
@@ -287,6 +291,7 @@ func (v2 *V2) serviceRouter() chi.Router {
 	r.Delete("/security_context", controller.GetManager().SecurityContextService)
 	//构建版本列表
 	r.Get("/build-list", controller.GetManager().BuildList)
+	r.Get("/file-manage", controller.GetManager().FileManageService)
 	//构建版本操作
 	r.Get("/build-version/{build_version}", controller.GetManager().BuildVersionInfo)
 	r.Put("/build-version/{build_version}", controller.GetManager().BuildVersionInfo)
