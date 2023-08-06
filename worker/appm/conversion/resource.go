@@ -40,7 +40,7 @@ func createResourcesBySetting(memory int, setCPURequest, setCPULimit, setGPULimi
 		if err != nil {
 			logrus.Errorf("gpu request is invalid")
 		} else {
-			limits[getGPULableKey()] = gpuLimit
+			limits[GetGPUMemKey()] = gpuLimit
 		}
 	}
 
