@@ -17,18 +17,25 @@ type ClusterResource struct {
 	Tenant                           int           `json:"tenant"`
 	CapCPU                           int           `json:"cap_cpu"`
 	CapMem                           int           `json:"cap_mem"`
+	CapGPU                           int           `json:"cap_gpu"`
 	HealthCapCPU                     int           `json:"health_cap_cpu"`
 	HealthCapMem                     int           `json:"health_cap_mem"`
+	HealthCapGPU                     int           `json:"health_cap_gpu"`
 	UnhealthCapCPU                   int           `json:"unhealth_cap_cpu"`
 	UnhealthCapMem                   int           `json:"unhealth_cap_mem"`
+	UnhealthCapGPU                   int           `json:"unhealth_cap_gpu"`
 	ReqCPU                           float32       `json:"req_cpu"`
 	ReqMem                           int           `json:"req_mem"`
+	ReqGPU                           float32       `json:"req_gpu"`
 	RainbondReqMem                   int           `json:"rbd_req_mem"` // Resources to embody rainbond scheduling
 	RainbondReqCPU                   float32       `json:"rbd_req_cpu"`
+	RainbondReqGPU                   float32       `json:"rbd_req_gpu"`
 	HealthReqCPU                     float32       `json:"health_req_cpu"`
 	HealthReqMem                     int           `json:"health_req_mem"`
+	HealthReqGPU                     float32       `json:"health_req_gpu"`
 	UnhealthReqCPU                   float32       `json:"unhealth_req_cpu"`
 	UnhealthReqMem                   int           `json:"unhealth_req_mem"`
+	UnhealthReqGPU                   float32       `json:"unhealth_req_gpu"`
 	CapDisk                          uint64        `json:"cap_disk"`
 	ReqDisk                          uint64        `json:"req_disk"`
 	MaxAllocatableMemoryNodeResource *NodeResource `json:"max_allocatable_memory_node_resource"`

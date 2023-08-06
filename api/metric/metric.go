@@ -21,6 +21,7 @@ package metric
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/goodrain/rainbond/api/handler"
@@ -62,6 +63,12 @@ func NewExporter() *Exporter {
 			Name:      "cluster_cpu_total",
 			Help:      "rainbond cluster cpu total",
 		}),
+		clusterGPUTotal: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "cluster_gpu_total",
+			Help:      "rainbond cluster gpu total",
+		}),
 		clusterSharedStorageUsage: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: exporter,
@@ -74,6 +81,18 @@ func NewExporter() *Exporter {
 			Name:      "cluster_shared_storage_total",
 			Help:      "rainbond cluster shared_storage total, path is /grdata",
 		}),
+		nodeGPUCount: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "node_gpu_count",
+			Help:      "rainbond node GPU count",
+		}, []string{"node_name"}),
+		nodeGPUMem: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "node_gpu_memory",
+			Help:      "rainbond node GPU memory",
+		}, []string{"node_name"}),
 		clusterPodsNumber: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: exporter,
@@ -92,6 +111,12 @@ func NewExporter() *Exporter {
 			Name:      "cluster_pod_cpu",
 			Help:      "rainbond cluster pod CPU",
 		}, []string{"node_name", "app_id", "service_id", "resource_version"}),
+		clusterPodGPU: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: exporter,
+			Name:      "cluster_pod_gpu",
+			Help:      "rainbond cluster pod GPU",
+		}, []string{"node_name", "app_id", "service_id", "resource_version", "gpu_idx"}),
 		clusterPodStorageEphemeral: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: exporter,
@@ -107,9 +132,13 @@ type Exporter struct {
 	tenantLimit                *prometheus.GaugeVec
 	clusterPodMemory           *prometheus.GaugeVec
 	clusterPodCPU              *prometheus.GaugeVec
+	clusterPodGPU              *prometheus.GaugeVec
+	nodeGPUMem                 *prometheus.GaugeVec
+	nodeGPUCount               *prometheus.GaugeVec
 	clusterPodStorageEphemeral *prometheus.GaugeVec
 	clusterPodsNumber          prometheus.Gauge
 	clusterCPUTotal            prometheus.Gauge
+	clusterGPUTotal            prometheus.Gauge
 	clusterMemoryTotal         prometheus.Gauge
 	clusterSharedStorageTotal  prometheus.Gauge
 	clusterSharedStorageUsage  prometheus.Gauge
@@ -152,13 +181,23 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	if resource != nil {
 		e.clusterMemoryTotal.Set(float64(resource.AllMemory))
 		e.clusterCPUTotal.Set(float64(resource.AllCPU))
+		e.clusterGPUTotal.Set(float64(resource.AllGPU))
 		e.clusterPodsNumber.Set(float64(resource.AllPods))
 		e.clusterPodMemory.Reset()
 		e.clusterPodCPU.Reset()
+		e.clusterPodGPU.Reset()
+		e.nodeGPUMem.Reset()
+		e.nodeGPUCount.Reset()
 		e.clusterPodStorageEphemeral.Reset()
+		for _, nodeGPU := range resource.NodeGPU {
+			e.nodeGPUCount.WithLabelValues(nodeGPU.NodeName).Set(float64(nodeGPU.GPUCount))
+			e.nodeGPUMem.WithLabelValues(nodeGPU.NodeName).Set(float64(nodeGPU.GPUMem))
+		}
 		for _, pod := range resource.NodePods {
 			e.clusterPodMemory.WithLabelValues(pod.NodeName, pod.AppID, pod.ServiceID, pod.ResourceVersion).Set(float64(pod.Memory))
 			e.clusterPodCPU.WithLabelValues(pod.NodeName, pod.AppID, pod.ServiceID, pod.ResourceVersion).Set(float64(pod.CPU))
+			floatGPU, _ := strconv.ParseFloat(pod.GPU, 64)
+			e.clusterPodGPU.WithLabelValues(pod.NodeName, pod.AppID, pod.ServiceID, pod.ResourceVersion, pod.GPUIDX).Set(floatGPU)
 			e.clusterPodStorageEphemeral.WithLabelValues(pod.NodeName, pod.AppID, pod.ServiceID, pod.ResourceVersion).Set(float64(pod.StorageEphemeral))
 		}
 		e.clusterSharedStorageTotal.Set(float64(resource.TotalDisk))
@@ -167,10 +206,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.tenantLimit.Collect(ch)
 	e.clusterMemoryTotal.Collect(ch)
 	e.clusterCPUTotal.Collect(ch)
+	e.clusterPodGPU.Collect(ch)
 	e.clusterSharedStorageTotal.Collect(ch)
 	e.clusterSharedStorageUsage.Collect(ch)
 	e.clusterPodsNumber.Collect(ch)
 	e.clusterPodStorageEphemeral.Collect(ch)
+	e.nodeGPUMem.Collect(ch)
+	e.nodeGPUCount.Collect(ch)
+	e.clusterGPUTotal.Collect(ch)
 	e.clusterPodCPU.Collect(ch)
 	e.clusterPodMemory.Collect(ch)
 }

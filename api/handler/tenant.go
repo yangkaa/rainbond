@@ -21,6 +21,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/goodrain/rainbond/worker/appm/conversion"
 	"github.com/shirou/gopsutil/disk"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/fields"
@@ -416,13 +417,23 @@ type PodResourceInformation struct {
 	Memory           int64
 	ResourceVersion  string
 	CPU              int64
+	GPU              string
+	GPUIDX           string
 	StorageEphemeral int64
+}
+
+type NodeGPU struct {
+	NodeName string
+	GPUCount int64
+	GPUMem   int64
 }
 
 //ClusterResourceStats cluster resource stats
 type ClusterResourceStats struct {
 	AllCPU        int64
 	AllMemory     int64
+	AllGPU        int64
+	NodeGPU       []NodeGPU
 	RequestCPU    int64
 	RequestMemory int64
 	UsageDisk     uint64
@@ -440,6 +451,7 @@ func (t *TenantAction) initClusterResource(ctx context.Context) error {
 			return err
 		}
 		usedNodeList := make([]v1.Node, len(nodes.Items))
+		var nodeGPU []NodeGPU
 		for i, node := range nodes.Items {
 			// check if node contains taints
 			if containsTaints(&node) {
@@ -452,9 +464,20 @@ func (t *TenantAction) initClusterResource(ctx context.Context) error {
 					continue
 				}
 			}
+			gpuMemVal, memOK := node.Status.Allocatable[conversion.GetGPUMemKey()]
+			gpuCountVal, countOK := node.Status.Allocatable[conversion.GetGPUCountKey()]
+			if memOK && countOK {
+				crs.AllGPU += gpuMemVal.Value()
+				nodeGPU = append(nodeGPU, NodeGPU{
+					NodeName: node.Name,
+					GPUCount: gpuCountVal.Value(),
+					GPUMem:   gpuMemVal.Value(),
+				})
+			}
 			crs.AllMemory += node.Status.Allocatable.Memory().Value() / (1024 * 1024)
 			crs.AllCPU += node.Status.Allocatable.Cpu().MilliValue()
 		}
+		crs.NodeGPU = nodeGPU
 		var nodePodsList []PodResourceInformation
 		for i := range usedNodeList {
 			node := usedNodeList[i]
@@ -474,6 +497,14 @@ func (t *TenantAction) initClusterResource(ctx context.Context) error {
 				}
 				if appID, ok := pod.Labels["app_id"]; ok {
 					nodePod.AppID = appID
+				}
+				gpuMem, ok := pod.Annotations["RAINBOND_COM_GPU_MEM_POD"]
+				if ok {
+					nodePod.GPU = gpuMem
+				}
+				gpuIDX, ok := pod.Annotations["RAINBOND_COM_GPU_MEM_IDX"]
+				if ok {
+					nodePod.GPUIDX = gpuIDX
 				}
 				nodePod.ResourceVersion = pod.ResourceVersion
 				for _, c := range pod.Spec.Containers {

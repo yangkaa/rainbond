@@ -705,11 +705,20 @@ func createResources(as *v1.AppService) corev1.ResourceRequirements {
 	return rr
 }
 
-func getGPULableKey() corev1.ResourceName {
-	if os.Getenv("GPU_LABLE_KEY") != "" {
-		return corev1.ResourceName(os.Getenv("GPU_LABLE_KEY"))
+//GetGPUMemKey -
+func GetGPUMemKey() corev1.ResourceName {
+	if os.Getenv("GPU_MEM_KEY") != "" {
+		return corev1.ResourceName(os.Getenv("GPU_MEM_KEY"))
 	}
 	return "rainbond.com/gpu-mem"
+}
+
+//GetGPUCountKey -
+func GetGPUCountKey() corev1.ResourceName {
+	if os.Getenv("GPU_COUNT_KEY") != "" {
+		return corev1.ResourceName(os.Getenv("GPU_COUNT_KEY"))
+	}
+	return "rainbond.com/gpu-count"
 }
 
 func checkUpstreamPluginRelation(serviceID string, dbmanager db.Manager) (bool, error) {

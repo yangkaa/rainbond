@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/goodrain/rainbond-operator/util/rbdutil"
+	"github.com/goodrain/rainbond/worker/appm/conversion"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"os"
 	"runtime"
 	"strconv"
@@ -120,6 +122,7 @@ type clusterAction struct {
 type nodePod struct {
 	Memory           prometheus.MetricValue
 	CPU              prometheus.MetricValue
+	GPU              prometheus.MetricValue
 	EphemeralStorage prometheus.MetricValue
 }
 
@@ -143,13 +146,13 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	}
 
 	var computeNode, manageNode, etcdNode, notReadyComputeNode, notReadyManageNode, notReadyEtcdNode int
-	var healthCapCPU, healthCapMem, unhealthCapCPU, unhealthCapMem int64
+	var healthCapCPU, healthCapMem, healthCapGPU, unhealthCapCPU, unhealthCapMem, unhealthCapGPU int64
 	usedNodeList := make([]*corev1.Node, len(nodes))
 	var nodeReady int32
 
 	existComponents := make(map[string]struct{})
 	existApplications := make(map[string]struct{})
-	var healthcpuR, healthmemR, unhealthCPUR, unhealthMemR, rbdMemR, rbdCPUR, all_pods int64
+	var healthcpuR, healthmemR, healthgpuR, unhealthCPUR, unhealthMemR, unhealthGPUR, rbdMemR, rbdCPUR, rbdGPUR, all_pods int64
 	nodeAllocatableResourceList := make(map[string]*model.NodeResource, len(usedNodeList))
 	var maxAllocatableMemory *model.NodeResource
 	query := fmt.Sprint(`rbd_api_exporter_cluster_pod_number`)
@@ -163,6 +166,9 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	query = fmt.Sprintf(`rbd_api_exporter_cluster_pod_memory{instance="%v"}`, instance)
 	podMemoryMetric := c.prometheusCli.GetMetric(query, time.Now())
 
+	query = fmt.Sprintf(`rbd_api_exporter_cluster_pod_gpu{instance="%v"}`, instance)
+	podGPUMetric := c.prometheusCli.GetMetric(query, time.Now())
+
 	query = fmt.Sprintf(`rbd_api_exporter_cluster_pod_cpu{instance="%v"}`, instance)
 	podCPUMetric := c.prometheusCli.GetMetric(query, time.Now())
 
@@ -175,6 +181,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 			nodePodList = append(nodePodList, nodePod{
 				Memory:           memory,
 				CPU:              podCPUMetric.MetricData.MetricValues[i],
+				GPU:              podGPUMetric.MetricData.MetricValues[i],
 				EphemeralStorage: podEphemeralStorageMetric.MetricData.MetricValues[i],
 			})
 			nodeMap[memory.Metadata["node_name"]] = nodePodList
@@ -184,6 +191,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 			{
 				Memory:           memory,
 				CPU:              podCPUMetric.MetricData.MetricValues[i],
+				GPU:              podGPUMetric.MetricData.MetricValues[i],
 				EphemeralStorage: podEphemeralStorageMetric.MetricData.MetricValues[i],
 			},
 		}
@@ -194,6 +202,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 			logrus.Debugf("[GetClusterInfo] node(%s) not ready", node.GetName())
 			unhealthCapCPU += node.Status.Allocatable.Cpu().Value()
 			unhealthCapMem += node.Status.Allocatable.Memory().Value()
+			unhealthCapGPU += node.Status.Allocatable.Name(conversion.GetGPUMemKey(), resource.BinarySI).Value()
 			if isComputeNode(node) {
 				computeNode++
 				notReadyComputeNode++
@@ -220,6 +229,7 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		}
 		healthCapCPU += node.Status.Allocatable.Cpu().Value()
 		healthCapMem += node.Status.Allocatable.Memory().Value()
+		healthCapGPU += node.Status.Allocatable.Name(conversion.GetGPUMemKey(), resource.BinarySI).Value()
 		if node.Spec.Unschedulable == false {
 			usedNodeList[i] = node
 		}
@@ -235,19 +245,23 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 				nodeAllocatableResource.AllowedPodNumber--
 				memory := int64(pod.Memory.Sample.Value())
 				cpu := int64(pod.CPU.Sample.Value())
+				gpu := int64(pod.GPU.Sample.Value())
 				ephemeralStorage := int64(pod.EphemeralStorage.Sample.Value())
 				nodeAllocatableResource.Memory -= memory
 				nodeAllocatableResource.MilliCPU -= cpu
 				nodeAllocatableResource.EphemeralStorage -= ephemeralStorage
 				if isNodeReady(node) {
 					healthcpuR += cpu
+					healthgpuR += gpu
 					healthmemR += memory
 				} else {
 					unhealthCPUR += cpu
+					unhealthGPUR += gpu
 					unhealthMemR += memory
 				}
 				if _, ok := pod.Memory.Metadata["service_id"]; ok {
 					rbdMemR += memory
+					rbdGPUR += gpu
 					rbdCPUR += cpu
 				}
 			}
@@ -278,17 +292,24 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	result := &model.ClusterResource{
 		CapCPU:                           int(healthCapCPU + unhealthCapCPU),
 		CapMem:                           int(healthCapMem+unhealthCapMem) / 1024 / 1024,
+		CapGPU:                           int(healthCapGPU + unhealthCapGPU),
 		HealthCapCPU:                     int(healthCapCPU),
+		HealthCapGPU:                     int(healthCapGPU),
 		HealthCapMem:                     int(healthCapMem) / 1024 / 1024,
 		UnhealthCapCPU:                   int(unhealthCapCPU),
+		UnhealthCapGPU:                   int(unhealthCapGPU),
 		UnhealthCapMem:                   int(unhealthCapMem) / 1024 / 1024,
 		ReqCPU:                           float32(healthcpuR+unhealthCPUR) / 1000,
+		ReqGPU:                           float32(healthgpuR + unhealthGPUR),
 		ReqMem:                           int(healthmemR+unhealthMemR) / 1024 / 1024,
 		RainbondReqCPU:                   float32(rbdCPUR) / 1000,
+		RainbondReqGPU:                   float32(rbdGPUR),
 		RainbondReqMem:                   int(rbdMemR) / 1024 / 1024,
 		HealthReqCPU:                     float32(healthcpuR) / 1000,
+		HealthReqGPU:                     float32(healthgpuR),
 		HealthReqMem:                     int(healthmemR) / 1024 / 1024,
 		UnhealthReqCPU:                   float32(unhealthCPUR) / 1000,
+		UnhealthReqGPU:                   float32(unhealthGPUR),
 		UnhealthReqMem:                   int(unhealthMemR) / 1024 / 1024,
 		ComputeNode:                      computeNode,
 		NotReadyComputeNode:              notReadyComputeNode,
