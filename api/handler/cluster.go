@@ -146,15 +146,12 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	}
 
 	var computeNode, manageNode, etcdNode, notReadyComputeNode, notReadyManageNode, notReadyEtcdNode int
-	var healthCapCPU, healthCapMem, healthCapGPU, unhealthCapCPU, unhealthCapMem, unhealthCapGPU int64
+	var capCPU, capMem, capGPU int64
 	usedNodeList := make([]*corev1.Node, len(nodes))
 	var nodeReady int32
-
 	existComponents := make(map[string]struct{})
 	existApplications := make(map[string]struct{})
-	var healthcpuR, healthmemR, healthgpuR, unhealthCPUR, unhealthMemR, unhealthGPUR, rbdMemR, rbdCPUR, rbdGPUR, all_pods int64
-	nodeAllocatableResourceList := make(map[string]*model.NodeResource, len(usedNodeList))
-	var maxAllocatableMemory *model.NodeResource
+	var reqCPU, reqMem, reqGPU, rbdMemR, rbdCPUR, rbdGPUR, all_pods int64
 	query := fmt.Sprint(`rbd_api_exporter_cluster_pod_number`)
 	podNumber := c.prometheusCli.GetMetric(query, time.Now())
 	var instance string
@@ -198,11 +195,11 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	}
 	for i := range nodes {
 		node := nodes[i]
+		capCPU += node.Status.Allocatable.Cpu().Value()
+		capMem += node.Status.Allocatable.Memory().Value()
+		capGPU += node.Status.Allocatable.Name(conversion.GetGPUMemKey(), resource.BinarySI).Value()
 		if !isNodeReady(node) {
 			logrus.Debugf("[GetClusterInfo] node(%s) not ready", node.GetName())
-			unhealthCapCPU += node.Status.Allocatable.Cpu().Value()
-			unhealthCapMem += node.Status.Allocatable.Memory().Value()
-			unhealthCapGPU += node.Status.Allocatable.Name(conversion.GetGPUMemKey(), resource.BinarySI).Value()
 			if isComputeNode(node) {
 				computeNode++
 				notReadyComputeNode++
@@ -227,9 +224,6 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 		if isEtcdNode(node) {
 			etcdNode++
 		}
-		healthCapCPU += node.Status.Allocatable.Cpu().Value()
-		healthCapMem += node.Status.Allocatable.Memory().Value()
-		healthCapGPU += node.Status.Allocatable.Name(conversion.GetGPUMemKey(), resource.BinarySI).Value()
 		if node.Spec.Unschedulable == false {
 			usedNodeList[i] = node
 		}
@@ -250,29 +244,13 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 				nodeAllocatableResource.Memory -= memory
 				nodeAllocatableResource.MilliCPU -= cpu
 				nodeAllocatableResource.EphemeralStorage -= ephemeralStorage
-				if isNodeReady(node) {
-					healthcpuR += cpu
-					healthgpuR += gpu
-					healthmemR += memory
-				} else {
-					unhealthCPUR += cpu
-					unhealthGPUR += gpu
-					unhealthMemR += memory
-				}
+				reqCPU += cpu
+				reqGPU += gpu
+				reqMem += memory
 				if _, ok := pod.Memory.Metadata["service_id"]; ok {
 					rbdMemR += memory
 					rbdGPUR += gpu
 					rbdCPUR += cpu
-				}
-			}
-			nodeAllocatableResourceList[node.Name] = nodeAllocatableResource
-
-			// Gets the node resource with the maximum remaining scheduling memory
-			if maxAllocatableMemory == nil {
-				maxAllocatableMemory = nodeAllocatableResource
-			} else {
-				if nodeAllocatableResource.Memory > maxAllocatableMemory.Memory {
-					maxAllocatableMemory = nodeAllocatableResource
 				}
 			}
 		}
@@ -290,42 +268,29 @@ func (c *clusterAction) GetClusterInfo(ctx context.Context) (*model.ClusterResou
 	}
 
 	result := &model.ClusterResource{
-		CapCPU:                           int(healthCapCPU + unhealthCapCPU),
-		CapMem:                           int(healthCapMem+unhealthCapMem) / 1024 / 1024,
-		CapGPU:                           int(healthCapGPU + unhealthCapGPU),
-		HealthCapCPU:                     int(healthCapCPU),
-		HealthCapGPU:                     int(healthCapGPU),
-		HealthCapMem:                     int(healthCapMem) / 1024 / 1024,
-		UnhealthCapCPU:                   int(unhealthCapCPU),
-		UnhealthCapGPU:                   int(unhealthCapGPU),
-		UnhealthCapMem:                   int(unhealthCapMem) / 1024 / 1024,
-		ReqCPU:                           float32(healthcpuR+unhealthCPUR) / 1000,
-		ReqGPU:                           float32(healthgpuR + unhealthGPUR),
-		ReqMem:                           int(healthmemR+unhealthMemR) / 1024 / 1024,
-		RainbondReqCPU:                   float32(rbdCPUR) / 1000,
-		RainbondReqGPU:                   float32(rbdGPUR),
-		RainbondReqMem:                   int(rbdMemR) / 1024 / 1024,
-		HealthReqCPU:                     float32(healthcpuR) / 1000,
-		HealthReqGPU:                     float32(healthgpuR),
-		HealthReqMem:                     int(healthmemR) / 1024 / 1024,
-		UnhealthReqCPU:                   float32(unhealthCPUR) / 1000,
-		UnhealthReqGPU:                   float32(unhealthGPUR),
-		UnhealthReqMem:                   int(unhealthMemR) / 1024 / 1024,
-		ComputeNode:                      computeNode,
-		NotReadyComputeNode:              notReadyComputeNode,
-		CapDisk:                          diskCap,
-		ReqDisk:                          reqDisk,
-		MaxAllocatableMemoryNodeResource: maxAllocatableMemory,
-		Pods:                             all_pods,
-		ManageNode:                       manageNode,
-		NotReadyManageNode:               notReadyManageNode,
-		EtcdNode:                         etcdNode,
-		NotReadyEtcdNode:                 notReadyEtcdNode,
-		Applications:                     int64(len(existApplications)),
-		Components:                       int64(len(existComponents)),
-		ResourceProxyStatus:              true,
-		K8sVersion:                       k8sutil.GetKubeVersion().String(),
-		NodeReady:                        nodeReady,
+		CapCPU:              int(capCPU),
+		CapMem:              int(capMem) / 1024 / 1024,
+		CapGPU:              int(capGPU),
+		ReqCPU:              float32(reqCPU) / 1000,
+		ReqGPU:              float32(reqGPU),
+		ReqMem:              int(reqMem) / 1024 / 1024,
+		RainbondReqCPU:      float32(rbdCPUR) / 1000,
+		RainbondReqGPU:      float32(rbdGPUR),
+		RainbondReqMem:      int(rbdMemR) / 1024 / 1024,
+		ComputeNode:         computeNode,
+		NotReadyComputeNode: notReadyComputeNode,
+		CapDisk:             diskCap,
+		ReqDisk:             reqDisk,
+		Pods:                all_pods,
+		ManageNode:          manageNode,
+		NotReadyManageNode:  notReadyManageNode,
+		EtcdNode:            etcdNode,
+		NotReadyEtcdNode:    notReadyEtcdNode,
+		Applications:        int64(len(existApplications)),
+		Components:          int64(len(existComponents)),
+		ResourceProxyStatus: true,
+		K8sVersion:          k8sutil.GetKubeVersion().String(),
+		NodeReady:           nodeReady,
 	}
 
 	result.AllNode = len(nodes)
