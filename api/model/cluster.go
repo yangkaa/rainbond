@@ -6,45 +6,32 @@ import (
 
 //ClusterResource -
 type ClusterResource struct {
-	AllNode                          int           `json:"all_node"`
-	NotReadyNode                     int           `json:"notready_node"`
-	ComputeNode                      int           `json:"compute_node"`
-	NotReadyComputeNode              int           `json:"notready_compute_node"`
-	ManageNode                       int           `json:"manage_node"`
-	NotReadyManageNode               int           `json:"notready_manage_node"`
-	EtcdNode                         int           `json:"etcd_node"`
-	NotReadyEtcdNode                 int           `json:"notready_etcd_node"`
-	Tenant                           int           `json:"tenant"`
-	CapCPU                           int           `json:"cap_cpu"`
-	CapMem                           int           `json:"cap_mem"`
-	CapGPU                           int           `json:"cap_gpu"`
-	HealthCapCPU                     int           `json:"health_cap_cpu"`
-	HealthCapMem                     int           `json:"health_cap_mem"`
-	HealthCapGPU                     int           `json:"health_cap_gpu"`
-	UnhealthCapCPU                   int           `json:"unhealth_cap_cpu"`
-	UnhealthCapMem                   int           `json:"unhealth_cap_mem"`
-	UnhealthCapGPU                   int           `json:"unhealth_cap_gpu"`
-	ReqCPU                           float32       `json:"req_cpu"`
-	ReqMem                           int           `json:"req_mem"`
-	ReqGPU                           float32       `json:"req_gpu"`
-	RainbondReqMem                   int           `json:"rbd_req_mem"` // Resources to embody rainbond scheduling
-	RainbondReqCPU                   float32       `json:"rbd_req_cpu"`
-	RainbondReqGPU                   float32       `json:"rbd_req_gpu"`
-	HealthReqCPU                     float32       `json:"health_req_cpu"`
-	HealthReqMem                     int           `json:"health_req_mem"`
-	HealthReqGPU                     float32       `json:"health_req_gpu"`
-	UnhealthReqCPU                   float32       `json:"unhealth_req_cpu"`
-	UnhealthReqMem                   int           `json:"unhealth_req_mem"`
-	UnhealthReqGPU                   float32       `json:"unhealth_req_gpu"`
-	CapDisk                          uint64        `json:"cap_disk"`
-	ReqDisk                          uint64        `json:"req_disk"`
-	MaxAllocatableMemoryNodeResource *NodeResource `json:"max_allocatable_memory_node_resource"`
-	Pods                             int64         `json:"pods"`
-	Components                       int64         `json:"components"`
-	Applications                     int64         `json:"applications"`
-	ResourceProxyStatus              bool          `json:"resource_proxy_status"`
-	K8sVersion                       string        `json:"k8s_version"`
-	NodeReady                        int32         `json:"node_ready"`
+	AllNode             int     `json:"all_node"`
+	NotReadyNode        int     `json:"notready_node"`
+	ComputeNode         int     `json:"compute_node"`
+	NotReadyComputeNode int     `json:"notready_compute_node"`
+	ManageNode          int     `json:"manage_node"`
+	NotReadyManageNode  int     `json:"notready_manage_node"`
+	EtcdNode            int     `json:"etcd_node"`
+	NotReadyEtcdNode    int     `json:"notready_etcd_node"`
+	Tenant              int     `json:"tenant"`
+	CapCPU              int     `json:"cap_cpu"`
+	CapMem              int     `json:"cap_mem"`
+	CapGPU              int     `json:"cap_gpu"`
+	ReqCPU              float32 `json:"req_cpu"`
+	ReqMem              int     `json:"req_mem"`
+	ReqGPU              float32 `json:"req_gpu"`
+	RainbondReqMem      int     `json:"rbd_req_mem"` // Resources to embody rainbond scheduling
+	RainbondReqCPU      float32 `json:"rbd_req_cpu"`
+	RainbondReqGPU      float32 `json:"rbd_req_gpu"`
+	CapDisk             uint64  `json:"cap_disk"`
+	ReqDisk             uint64  `json:"req_disk"`
+	Pods                int64   `json:"pods"`
+	Components          int64   `json:"components"`
+	Applications        int64   `json:"applications"`
+	ResourceProxyStatus bool    `json:"resource_proxy_status"`
+	K8sVersion          string  `json:"k8s_version"`
+	NodeReady           int32   `json:"node_ready"`
 }
 
 // NodeResource is a collection of compute resource.
