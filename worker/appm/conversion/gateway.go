@@ -539,15 +539,15 @@ func (a *AppServiceBuild) parseAnnotations(rule *model.HTTPRule) (map[string]str
 	annos["IsLimiting"] = "false"
 	if rule.IsLimiting {
 		annos["IsLimiting"] = "true"
+		annos["BurstTrafficNumber"] = fmt.Sprintf("%d", rule.BurstTrafficNumber)
+		limitingPolicy, err := a.dbmanager.LimitingPolicyDao().GetLimitingPolicyByLimitingName(rule.LimitingPolicyName)
+		if err != nil {
+			return nil, err
+		}
+		annos["LimitingName"] = limitingPolicy.LimitingName
+		annos["AccessMemorySize"] = fmt.Sprintf("%d", limitingPolicy.AccessMemorySize)
+		annos["MaxAccessRate"] = fmt.Sprintf("%d", limitingPolicy.MaxAccessRate)
 	}
-	annos["BurstTrafficNumber"] = fmt.Sprintf("%d", rule.BurstTrafficNumber)
-	limitingPolicy, err := a.dbmanager.LimitingPolicyDao().GetLimitingPolicyByLimitingName(rule.LimitingPolicyName)
-	if err != nil {
-		return nil, err
-	}
-	annos["LimitingName"] = limitingPolicy.LimitingName
-	annos["AccessMemorySize"] = fmt.Sprintf("%d", limitingPolicy.AccessMemorySize)
-	annos["MaxAccessRate"] = fmt.Sprintf("%d", limitingPolicy.MaxAccessRate)
 
 	// path-rewrite
 	if rule.PathRewrite {
