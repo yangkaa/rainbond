@@ -49,7 +49,7 @@ var EventTypeReadinessProbeFailed EventType = "ReadinessProbeFailed"
 var EventTypeAbnormalRecovery EventType = "AbnormalRecovery"
 
 // GetEventTypes -
-func GetEventTypes()[]string{
+func GetEventTypes() []string {
 	return []string{
 		EventTypeOOMKilled.String(),
 		EventTypeAbnormalExited.String(),
@@ -121,7 +121,7 @@ func (p *PodEvent) Handle() {
 	}
 }
 
-//GetChan get pod update chan
+// GetChan get pod update chan
 func (p *PodEvent) GetChan() chan<- *corev1.Pod {
 	return p.podEventCh
 }
