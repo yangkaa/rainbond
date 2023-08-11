@@ -249,8 +249,8 @@ func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv 
 				"app_id":     vs.AppID,
 			},
 			ProxyStreamNextUpstream:        true,
-			ProxyStreamNextUpstreamTimeout: "600s",
-			ProxyStreamNextUpstreamTries:   3,
+			ProxyStreamNextUpstreamTimeout: o.ocfg.UpstreamTimeout,
+			ProxyStreamNextUpstreamTries:   o.ocfg.UpstreamTries,
 		}
 		if vs.SSLCert != nil {
 			server.SSLProtocols = vs.SSlProtocols
@@ -287,8 +287,8 @@ func (o *OrService) getNgxServer(conf *v1.Config) (l7srv []*model.Server, l4srv 
 			},
 			UpstreamName:                   vs.PoolName,
 			ProxyStreamNextUpstream:        true,
-			ProxyStreamNextUpstreamTimeout: "600s",
-			ProxyStreamNextUpstreamTries:   3,
+			ProxyStreamNextUpstreamTimeout: o.ocfg.UpstreamTimeout,
+			ProxyStreamNextUpstreamTries:   o.ocfg.UpstreamTries,
 		}
 		server.Listen = strings.Join(vs.Listening, " ")
 		for _, loc := range vs.Locations {
