@@ -27,20 +27,20 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-//Exporter 收集器
+// Exporter 收集器
 type Exporter struct {
-	error                     prometheus.Gauge
-	totalScrapes              prometheus.Counter
-	scrapeErrors              *prometheus.CounterVec
-	workerUp                  prometheus.Gauge
-	dbmanager                 db.Manager
-	masterController          *master.Controller
-	controllermanager         *controller.Manager
-	taskNum                   prometheus.Counter
-	taskUpNum                 prometheus.Gauge
-	taskError                 prometheus.Counter
-	storeComponentNum         prometheus.Gauge
-	thirdComponentDiscoverNum prometheus.Gauge
+	error             prometheus.Gauge
+	totalScrapes      prometheus.Counter
+	scrapeErrors      *prometheus.CounterVec
+	workerUp          prometheus.Gauge
+	dbmanager         db.Manager
+	masterController  *master.Controller
+	controllermanager *controller.Manager
+	taskNum           prometheus.Counter
+	taskUpNum         prometheus.Gauge
+	taskError         prometheus.Counter
+	storeComponentNum prometheus.Gauge
+	//thirdComponentDiscoverNum prometheus.Gauge
 }
 
 var scrapeDurationDesc = prometheus.NewDesc(
@@ -55,7 +55,7 @@ var healthDesc = prometheus.NewDesc(
 	[]string{"service_name"}, nil,
 )
 
-//Describe Describe
+// Describe Describe
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	metricCh := make(chan prometheus.Metric)
 	doneCh := make(chan struct{})
@@ -103,7 +103,7 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric) {
 
 var namespace = "worker"
 
-//New 创建一个收集器
+// New 创建一个收集器
 func New(masterController *master.Controller, controllermanager *controller.Manager) *Exporter {
 	return &Exporter{
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
