@@ -149,7 +149,7 @@ func (o *OrService) PersistConfig(conf *v1.Config) error {
 
 	limitings := make(map[string]*model.Limiting)
 	for _, l7 := range l7srv {
-		if l7.AccessMemorySize != "0" || l7.LimitingName != "" {
+		if l7.AccessMemorySize == "0" || l7.LimitingName == "" {
 			continue
 		}
 		limitings[l7.LimitingName] = &model.Limiting{
