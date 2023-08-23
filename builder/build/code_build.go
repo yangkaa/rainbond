@@ -22,6 +22,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/goodrain/rainbond/db"
+	"github.com/jinzhu/gorm"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -142,7 +145,32 @@ func (s *slugBuild) buildRunnerImage(slugPackage string) (string, error) {
 		return "", fmt.Errorf("pull image %s: %v", builder.RUNNERIMAGENAME, err)
 	}
 	logrus.Infof("pull image %s successfully.", builder.RUNNERIMAGENAME)
-	err := sources.ImageBuild(s.re.Arch, cacheDir, "", "", s.re.RbdNamespace, s.re.ServiceID, s.re.DeployVersion, s.re.Logger, "run-build", "", s.re.BuildKitImage, s.re.BuildKitArgs, s.re.BuildKitCache, s.re.KubeClient)
+	codeInspectSwitch := false
+	codeInspect, err := db.GetManager().TenantServiceCodeInspectionDao().GetTenantServiceCodeInspection(s.re.ServiceID)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", fmt.Errorf("get tenant service code inspection filure: %v", err)
+	}
+	if codeInspect != nil {
+		codeInspectSwitch = codeInspect.Switch
+	}
+	err = sources.ImageBuild(
+		s.re.RepositoryURL,
+		s.re.Arch,
+		cacheDir,
+		"",
+		"",
+		s.re.RbdNamespace,
+		s.re.ServiceID,
+		s.re.DeployVersion,
+		s.re.Logger,
+		"run-build",
+		"",
+		s.re.BuildKitImage,
+		s.re.BuildKitArgs,
+		s.re.BuildKitCache,
+		s.re.KubeClient,
+		codeInspectSwitch,
+	)
 	if err != nil {
 		s.re.Logger.Error(fmt.Sprintf("build image %s of new version failure", imageName), map[string]string{"step": "builder-exector", "status": "failure"})
 		logrus.Errorf("build image error: %s", err.Error())

@@ -686,7 +686,35 @@ func (t *TenantServicesDeleteImpl) List() ([]*model.TenantServicesDelete, error)
 	return components, nil
 }
 
-//TenantServiceSecurityContextDaoImpl 组件安全操作
+//TenantServiceCodeInspectionDaoImpl 组件源码安全
+type TenantServiceCodeInspectionDaoImpl struct {
+	DB *gorm.DB
+}
+
+func (t *TenantServiceCodeInspectionDaoImpl) AddModel(mo model.Interface) error {
+	codeInspection := mo.(*model.TenantServiceCodeInspection)
+	return t.DB.Create(codeInspection).Error
+}
+
+func (t *TenantServiceCodeInspectionDaoImpl) UpdateModel(mo model.Interface) error {
+	codeInspection := mo.(*model.TenantServiceCodeInspection)
+	return t.DB.Save(codeInspection).Error
+}
+
+func (t *TenantServiceCodeInspectionDaoImpl) GetTenantServiceCodeInspection(serviceID string) (*model.TenantServiceCodeInspection, error) {
+	var codeInspection model.TenantServiceCodeInspection
+	if err := t.DB.Where("service_id = ?", serviceID).Find(&codeInspection).Error; err != nil {
+		return nil, err
+	}
+	return &codeInspection, nil
+}
+
+func (t *TenantServiceCodeInspectionDaoImpl) DeleteTenantServiceCodeInspection(serviceID string) error {
+	var codeInspection model.TenantServiceCodeInspection
+	return t.DB.Where("service_id = ?", serviceID).Delete(&codeInspection).Error
+}
+
+//TenantServiceSecurityContextDaoImpl 组件配置安全
 type TenantServiceSecurityContextDaoImpl struct {
 	DB *gorm.DB
 }
@@ -696,7 +724,6 @@ func (t *TenantServiceSecurityContextDaoImpl) AddModel(mo model.Interface) error
 	return t.DB.Create(securityContext).Error
 }
 
-//UpdateModel 更新租户
 func (t *TenantServiceSecurityContextDaoImpl) UpdateModel(mo model.Interface) error {
 	securityContext := mo.(*model.TenantServiceSecurityContext)
 	return t.DB.Save(securityContext).Error

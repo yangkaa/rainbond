@@ -392,7 +392,16 @@ func EncodeAuthToBase64(authConfig types.AuthConfig) (string, error) {
 }
 
 //ImageBuild use buildkit build image
-func ImageBuild(arch, contextDir, cachePVCName, cacheMode, RbdNamespace, ServiceID, DeployVersion string, logger event.Logger, buildType, plugImageName, BuildKitImage string, BuildKitArgs []string, BuildKitCache bool, kubeClient kubernetes.Interface) error {
+func ImageBuild(
+	repositoryURL, arch, contextDir, cachePVCName, cacheMode, RbdNamespace, ServiceID, DeployVersion string,
+	logger event.Logger,
+	buildType, plugImageName,
+	BuildKitImage string,
+	BuildKitArgs []string,
+	BuildKitCache bool,
+	kubeClient kubernetes.Interface,
+	codeInspectSwitch bool,
+) error {
 	// create image name
 	var buildImageName string
 	if buildType == "plug-build" {
@@ -421,6 +430,12 @@ func ImageBuild(arch, contextDir, cachePVCName, cacheMode, RbdNamespace, Service
 				"job":     "codebuild",
 			},
 		},
+	}
+	if codeInspectSwitch {
+		ann := make(map[string]string)
+		ann["repository_url"] = repositoryURL
+		ann["code_inspection"] = "open"
+		job.Annotations = ann
 	}
 	podSpec := corev1.PodSpec{
 		RestartPolicy: corev1.RestartPolicyOnFailure,

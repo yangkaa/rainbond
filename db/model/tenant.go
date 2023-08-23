@@ -374,7 +374,19 @@ func (t *TenantServicesDelete) TableName() string {
 	return "tenant_services_delete"
 }
 
-//TenantServiceSecurityContext 组件安全
+//TenantServiceCodeInspection 源码安全
+type TenantServiceCodeInspection struct {
+	Model
+	ServiceID string `gorm:"column:service_id;size:32" json:"service_id"`
+	Switch    bool   `gorm:"column:switch" json:"switch"`
+}
+
+//TableName 表名
+func (t *TenantServiceCodeInspection) TableName() string {
+	return "tenant_services_code_inspection"
+}
+
+//TenantServiceSecurityContext 组件配置安全
 type TenantServiceSecurityContext struct {
 	Model
 	ServiceID                string `gorm:"column:service_id;size:32" json:"service_id"`

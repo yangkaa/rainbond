@@ -58,6 +58,8 @@ type Manager interface {
 	TenantServiceDeleteDao() dao.TenantServiceDeleteDao
 	TenantServiceDaoTransactions(db *gorm.DB) dao.TenantServiceDao
 	TenantServiceDeleteDaoTransactions(db *gorm.DB) dao.TenantServiceDeleteDao
+	TenantServiceCodeInspectionDao() dao.TenantServiceCodeInspection
+	TenantServiceCodeInspectionDaoTransactions(db *gorm.DB) dao.TenantServiceCodeInspection
 	TenantServicesSecurityContextDao() dao.TenantServiceSecurityContextDao
 	TenantServicesSecurityContextDaoTransactions(db *gorm.DB) dao.TenantServiceSecurityContextDao
 	TenantServicesPortDao() dao.TenantServicesPortDao
