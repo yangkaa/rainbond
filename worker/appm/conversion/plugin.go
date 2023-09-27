@@ -21,11 +21,12 @@ package conversion
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/goodrain/rainbond/cmd/init-probe/healthy"
-	"github.com/goodrain/rainbond/worker/appm/volume"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/goodrain/rainbond/cmd/init-probe/healthy"
+	"github.com/goodrain/rainbond/worker/appm/volume"
 
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
@@ -275,6 +276,9 @@ func createTCPDefaultPluginContainer(as *typesv1.AppService, pluginID string, en
 }
 
 func setSidecarContainerLifecycle(as *typesv1.AppService, con *corev1.Container, pluginConfig *api_model.ResourceSpec) {
+	if strings.ToLower(os.Getenv("GLOBAL_DISABLE_SIDECAR_CHECK")) == "true" {
+		return
+	}
 	if strings.ToLower(as.ExtensionSet["disable_sidecar_check"]) != "true" {
 		var port int
 		if as.ExtensionSet["sidecar_check_port"] != "" {
