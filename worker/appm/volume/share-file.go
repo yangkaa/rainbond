@@ -83,6 +83,7 @@ func (v *ShareFileVolume) CreateVolume(define *Define) error {
 		define.volumes = append(define.volumes, vo)
 		v.generateVolumeSubPath(define, vm)
 	}
+	logrus.Infof("这里没名字44444%v", volumeMountName)
 	define.volumeMounts = append(define.volumeMounts, *vm)
 
 	return nil
@@ -108,7 +109,8 @@ func (v *ShareFileVolume) CreateDependVolume(define *Define) error {
 		MountPath: volumeMountPath,
 		ReadOnly:  false,
 	}
-	v.generateVolumeSubPath(define, vm)
+	//v.generateVolumeSubPath(define, vm)
+	logrus.Infof("这里没名字5555555%v", volumeMountName)
 	define.volumeMounts = append(define.volumeMounts, *vm)
 	return nil
 }

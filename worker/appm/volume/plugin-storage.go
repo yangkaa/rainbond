@@ -5,13 +5,14 @@ import (
 	api_model "github.com/goodrain/rainbond/api/model"
 	"github.com/goodrain/rainbond/util"
 	v1 "github.com/goodrain/rainbond/worker/appm/types/v1"
+	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"path"
 )
 
-//PluginStorageVolume 插件新增存储
+// PluginStorageVolume 插件新增存储
 type PluginStorageVolume struct {
 	Plugin api_model.PluginStorage
 	Base
@@ -19,7 +20,7 @@ type PluginStorageVolume struct {
 	AS       *v1.AppService
 }
 
-//CreateVolume 创建插件存储或配置文件
+// CreateVolume 创建插件存储或配置文件
 func (v *PluginStorageVolume) CreateVolume(define *Define) error {
 	v.as = v.AS
 	if v.Plugin.AttrType == "config-file" {
@@ -56,6 +57,7 @@ func (v *PluginStorageVolume) CreateVolume(define *Define) error {
 			MountPath: volumeMountPath,
 			ReadOnly:  volumeReadOnly,
 		}
+		logrus.Infof("这里没名字7777777%v", volumeMountName)
 		v.generateVolumeSubPath(define, vm)
 		define.volumeMounts = append(define.volumeMounts, *vm)
 	}

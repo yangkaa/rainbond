@@ -20,6 +20,7 @@ package volume
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -45,6 +46,7 @@ func (n *NFSVolume) CreateVolume(define *Define) error {
 		Name:      NFSName,
 		MountPath: n.svm.VolumePath,
 	}
+	logrus.Infof("这里没名字6666666%v", NFSName)
 	define.volumeMounts = append(define.volumeMounts, volumeMounts)
 	return nil
 }

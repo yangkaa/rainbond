@@ -71,6 +71,7 @@ func (v *MemoryFSVolume) CreateVolume(define *Define) error {
 		ReadOnly:  volumeReadOnly,
 		SubPath:   "",
 	}
+	logrus.Infof("这里没名字3333%v", volumeMountName)
 	define.volumeMounts = append(define.volumeMounts, vm)
 	return nil
 }

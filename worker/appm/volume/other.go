@@ -84,6 +84,7 @@ func (v *OtherVolume) CreateVolume(define *Define) error {
 		MountPath: volumeMountPath,
 		ReadOnly:  volumeReadOnly,
 	}
+	logrus.Infof("这里没名字22222%v", volumeMountName)
 	define.volumeMounts = append(define.volumeMounts, vm)
 	return nil
 }

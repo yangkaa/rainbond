@@ -58,12 +58,12 @@ func (v *LocalVolume) CreateVolume(define *Define) error {
 	vo.PersistentVolumeClaim = &corev1.PersistentVolumeClaimVolumeSource{ClaimName: claim.GetName(), ReadOnly: volumeReadOnly}
 	define.volumes = append(define.volumes, vo)
 	statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, *claim)
-
 	vm := corev1.VolumeMount{
 		Name:      volumeMountName,
 		MountPath: volumeMountPath,
 		ReadOnly:  volumeReadOnly,
 	}
+	logrus.Infof("这里没名字1111%v", volumeMountName)
 	define.volumeMounts = append(define.volumeMounts, vm)
 	return nil
 }

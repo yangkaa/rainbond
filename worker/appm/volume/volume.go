@@ -137,9 +137,9 @@ func newVolumeClaim(name, volumePath, accessMode, storageClassName string, capac
 }
 
 /*
-	RWO - ReadWriteOnce
-	ROX - ReadOnlyMany
-	RWX - ReadWriteMany
+RWO - ReadWriteOnce
+ROX - ReadOnlyMany
+RWX - ReadWriteMany
 */
 func parseAccessMode(accessMode string) corev1.PersistentVolumeAccessMode {
 	accessMode = strings.ToUpper(accessMode)
@@ -192,6 +192,7 @@ func (v *Define) SetVolume(VolumeType dbmodel.VolumeType, name, mountPath, hostP
 				ReadOnly:  readOnly,
 				SubPath:   "",
 			}
+			logrus.Infof("这里没888888888%v", name)
 			v.volumeMounts = append(v.volumeMounts, vm)
 		}
 	case dbmodel.ShareFileVolumeType:
@@ -211,6 +212,7 @@ func (v *Define) SetVolume(VolumeType dbmodel.VolumeType, name, mountPath, hostP
 					ReadOnly:  readOnly,
 					SubPath:   "",
 				}
+				logrus.Infof("这里没8889999998%v", name)
 				v.volumeMounts = append(v.volumeMounts, vm)
 			}
 		}
@@ -228,6 +230,7 @@ func (v *Define) SetVolumeCMap(cmap *corev1.ConfigMap, k, p string, isReadOnly b
 		ReadOnly:  false,
 		SubPath:   path.Base(p),
 	}
+	logrus.Infof("这里没名字6666666%v", cmap.Name)
 	v.volumeMounts = append(v.volumeMounts, vm)
 	var defaultMode int32 = 0777
 	if mode != nil {
@@ -337,7 +340,7 @@ func convertRulesToEnvs(as *v1.AppService, dbmanager db.Manager, ports []*dbmode
 	return
 }
 
-//RewriteHostPathInWindows rewrite host path
+// RewriteHostPathInWindows rewrite host path
 func RewriteHostPathInWindows(hostPath string) string {
 	localPath := os.Getenv("LOCAL_DATA_PATH")
 	sharePath := os.Getenv("SHARE_DATA_PATH")
@@ -352,7 +355,7 @@ func RewriteHostPathInWindows(hostPath string) string {
 	return hostPath
 }
 
-//RewriteContainerPathInWindows mount path in windows
+// RewriteContainerPathInWindows mount path in windows
 func RewriteContainerPathInWindows(mountPath string) string {
 	if mountPath == "" {
 		return ""

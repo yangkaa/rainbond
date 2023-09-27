@@ -705,7 +705,7 @@ func createResources(as *v1.AppService) corev1.ResourceRequirements {
 	return rr
 }
 
-//GetGPUMemKey -
+// GetGPUMemKey -
 func GetGPUMemKey() corev1.ResourceName {
 	if os.Getenv("GPU_MEM_KEY") != "" {
 		return corev1.ResourceName(os.Getenv("GPU_MEM_KEY"))
@@ -713,7 +713,7 @@ func GetGPUMemKey() corev1.ResourceName {
 	return "rainbond.com/gpu-mem"
 }
 
-//GetGPUCountKey -
+// GetGPUCountKey -
 func GetGPUCountKey() corev1.ResourceName {
 	if os.Getenv("GPU_COUNT_KEY") != "" {
 		return corev1.ResourceName(os.Getenv("GPU_COUNT_KEY"))
@@ -1117,6 +1117,9 @@ func createServiceAccountName(as *v1.AppService, dbmanager db.Manager) (string, 
 
 func createVolumeMounts(dv *volume.Define, as *v1.AppService, dbmanager db.Manager) ([]corev1.VolumeMount, error) {
 	volumeMounts := dv.GetVolumeMounts()
+	for _, v := range volumeMounts {
+		logrus.Infof("mmmmmmmmmmmmmmm名字%v", v.Name)
+	}
 	volumeMountsAttribute, err := dbmanager.ComponentK8sAttributeDao().GetByComponentIDAndName(as.ServiceID, model.K8sAttributeNameVolumeMounts)
 	if err != nil {
 		return nil, err
