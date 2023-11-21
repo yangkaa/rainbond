@@ -732,7 +732,7 @@ func (a *ApplicationAction) ListAppStatuses(ctx context.Context, appIDs []string
 			timeout = time.Duration(t) * time.Second
 		}
 	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	deadline, ok := ctx.Deadline()
 	if !ok {
