@@ -53,7 +53,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-//RuntimeServer app runtime grpc server
+// RuntimeServer app runtime grpc server
 type RuntimeServer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -69,7 +69,7 @@ type RuntimeServer struct {
 	updateCh  *channels.RingChannel
 }
 
-//CreaterRuntimeServer create a runtime grpc server
+// CreaterRuntimeServer create a runtime grpc server
 func CreaterRuntimeServer(conf option.Config,
 	store store.Storer,
 	clientset kubernetes.Interface,
@@ -92,7 +92,7 @@ func CreaterRuntimeServer(conf option.Config,
 	return rs
 }
 
-//Start start runtime server
+// Start start runtime server
 func (r *RuntimeServer) Start(errchan chan error) {
 	go func() {
 		lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", r.conf.HostIP, r.conf.ServerPort))
@@ -217,8 +217,8 @@ func (r *RuntimeServer) getHelmAppStatus(app *model.Application) (*pb.AppStatus,
 	}, nil
 }
 
-//GetTenantResource get tenant resource
-//if TenantId is "" will return the sum of the all tenant
+// GetTenantResource get tenant resource
+// if TenantId is "" will return the sum of the all tenant
 func (r *RuntimeServer) GetTenantResource(ctx context.Context, re *pb.TenantRequest) (*pb.TenantResource, error) {
 	var tr pb.TenantResource
 	tenant, err := db.GetManager().TenantDao().GetTenantByUUID(re.TenantId)
@@ -242,7 +242,7 @@ func (r *RuntimeServer) GetTenantResource(ctx context.Context, re *pb.TenantRequ
 	return &tr, nil
 }
 
-//GetTenantResources get tenant resources
+// GetTenantResources get tenant resources
 func (r *RuntimeServer) GetTenantResources(context.Context, *pb.Empty) (*pb.TenantResourceList, error) {
 	res := r.store.GetTenantResourceList()
 	var trs = make(map[string]*pb.TenantResource)
@@ -266,7 +266,7 @@ func (r *RuntimeServer) GetTenantResources(context.Context, *pb.Empty) (*pb.Tena
 	return &pb.TenantResourceList{Resources: trs}, nil
 }
 
-//GetAppPods get app pod list
+// GetAppPods get app pod list
 func (r *RuntimeServer) GetAppPods(ctx context.Context, re *pb.ServiceRequest) (*pb.ServiceAppPodList, error) {
 	app := r.store.GetAppService(re.ServiceId)
 	if app == nil {
@@ -319,7 +319,7 @@ func (r *RuntimeServer) GetAppPods(ctx context.Context, re *pb.ServiceRequest) (
 	}, nil
 }
 
-//GetMultiAppPods get multi app pods
+// GetMultiAppPods get multi app pods
 func (r *RuntimeServer) GetMultiAppPods(ctx context.Context, re *pb.ServicesRequest) (*pb.MultiServiceAppPodList, error) {
 	serviceIDs := strings.Split(re.ServiceIds, ",")
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
@@ -398,7 +398,7 @@ func DescribeEvents(el *corev1.EventList) []*pb.PodEvent {
 	return podEvents
 }
 
-//GetDeployInfo get deploy info
+// GetDeployInfo get deploy info
 func (r *RuntimeServer) GetDeployInfo(ctx context.Context, re *pb.ServiceRequest) (*pb.DeployInfo, error) {
 	var deployinfo pb.DeployInfo
 	appService := r.store.GetAppService(re.ServiceId)
@@ -468,8 +468,8 @@ func (r *RuntimeServer) GetDeployInfo(ctx context.Context, re *pb.ServiceRequest
 	return &deployinfo, nil
 }
 
-//registServer
-//regist sync server to etcd
+// registServer
+// regist sync server to etcd
 func (r *RuntimeServer) registServer() error {
 	if !r.store.Ready() {
 		util.Exec(r.ctx, func() error {
@@ -851,11 +851,18 @@ func isOldPod(pod *corev1.Pod, rss []*appv1.ReplicaSet) bool {
 
 // ListAppStatuses returns the statuses of application based on the given appIds.
 func (r *RuntimeServer) ListAppStatuses(ctx context.Context, in *pb.AppStatusesReq) (*pb.AppStatuses, error) {
+	start := time.Now() // 记录函数开始时间
+	defer func() {
+		elapsed := time.Since(start)
+		logrus.Infof("ListAppStatuses took %s", elapsed)
+	}()
+
 	apps, err := db.GetManager().ApplicationDao().ListByAppIDs(in.AppIds)
 	if err != nil {
 		return nil, err
 	}
 	var appStatuses []*pb.AppStatus
+	stepStart := time.Now() // 记录步骤开始时间
 	for _, app := range apps {
 		if app.AppType == model.AppTypeHelm {
 			helmAppStatus, err := r.getHelmAppStatus(app)
@@ -873,6 +880,8 @@ func (r *RuntimeServer) ListAppStatuses(ctx context.Context, in *pb.AppStatusesR
 		}
 		appStatuses = append(appStatuses, appStatus)
 	}
+	elapsed := time.Since(stepStart) // 记录步骤执行时间
+	logrus.Infof("Step took %s", elapsed)
 	return &pb.AppStatuses{
 		AppStatuses: appStatuses,
 	}, nil

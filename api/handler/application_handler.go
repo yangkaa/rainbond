@@ -725,8 +725,20 @@ func (a *ApplicationAction) deleteByComponentIDs(tx *gorm.DB, app *dbmodel.Appli
 // ListAppStatuses -
 func (a *ApplicationAction) ListAppStatuses(ctx context.Context, appIDs []string) ([]*model.AppStatus, error) {
 	var resp []*model.AppStatus
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	timeout := 15 * time.Second
+	if os.Getenv("APP_STATUS_TIMEOUT") != "" {
+		t, err := strconv.Atoi(os.Getenv("APP_STATUS_TIMEOUT"))
+		if err == nil {
+			timeout = time.Duration(t) * time.Second
+		}
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return nil, errors.New("context deadline not set")
+	}
+	logrus.Infof("ListAppStatuses deadline: %v", deadline)
 	appStatuses, err := a.statusCli.ListAppStatuses(ctx, &pb.AppStatusesReq{
 		AppIds: appIDs,
 	})
