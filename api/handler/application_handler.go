@@ -738,7 +738,7 @@ func (a *ApplicationAction) ListAppStatuses(ctx context.Context, appIDs []string
 	if !ok {
 		return nil, errors.New("context deadline not set")
 	}
-	logrus.Infof("ListAppStatuses deadline: %v", deadline)
+	logrus.Infof("now: %v, ListAppStatuses deadline: %v, sub: %v", time.Now(), deadline, deadline.Sub(time.Now()))
 	appStatuses, err := a.statusCli.ListAppStatuses(ctx, &pb.AppStatusesReq{
 		AppIds: appIDs,
 	})
