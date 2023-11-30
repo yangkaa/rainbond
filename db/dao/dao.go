@@ -176,6 +176,12 @@ type TenantServiceDeleteDao interface {
 	List() ([]*model.TenantServicesDelete, error)
 }
 
+type TenantServiceCodeInspection interface {
+	Dao
+	GetTenantServiceCodeInspection(serviceID string) (*model.TenantServiceCodeInspection, error)
+	DeleteTenantServiceCodeInspection(serviceID string) error
+}
+
 type TenantServiceSecurityContextDao interface {
 	Dao
 	GetTenantServiceSecurityContext(serviceID string) (*model.TenantServiceSecurityContext, error)
