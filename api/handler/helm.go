@@ -18,13 +18,13 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-//AppTemplate -
+// AppTemplate -
 type AppTemplate struct {
 	Name     string
 	Versions hrepo.ChartVersions
 }
 
-//HelmAction -
+// HelmAction -
 type HelmAction struct {
 	ctx            context.Context
 	kubeClient     *kubernetes.Clientset
@@ -56,6 +56,7 @@ func (h *HelmAction) GetChartInformation(chart api_model.ChartInformation) (*[]a
 		return nil, &util.APIHandleError{Code: 400, Err: errors.Wrap(err, "GetChartInformation NewRequest")}
 	}
 	client := &http.Client{}
+	req.SetBasicAuth(chart.Username, chart.Password)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, &util.APIHandleError{Code: 400, Err: errors.Wrap(err, "GetChartInformation client.Do")}
@@ -101,7 +102,7 @@ func (h *HelmAction) CheckHelmApp(checkHelmApp api_model.CheckHelmApp) (string, 
 	return helmAppYaml, nil
 }
 
-//UpdateHelmRepo update repo
+// UpdateHelmRepo update repo
 func (h *HelmAction) UpdateHelmRepo(names string) error {
 	err := UpdateRepo(names)
 	if err != nil {
@@ -110,7 +111,7 @@ func (h *HelmAction) UpdateHelmRepo(names string) error {
 	return nil
 }
 
-//AddHelmRepo add helm repo
+// AddHelmRepo add helm repo
 func (h *HelmAction) AddHelmRepo(helmRepo api_model.CheckHelmApp) error {
 	err := h.repo.Add(helmRepo.RepoName, helmRepo.RepoURL, helmRepo.Username, helmRepo.Password)
 	if err != nil {
@@ -120,7 +121,7 @@ func (h *HelmAction) AddHelmRepo(helmRepo api_model.CheckHelmApp) error {
 	return nil
 }
 
-//GetHelmAppYaml get helm app yaml
+// GetHelmAppYaml get helm app yaml
 func GetHelmAppYaml(name, chart, version, namespace, chartPath string, overrides []string) (string, error) {
 	logrus.Info("get into GetHelmAppYaml function")
 	helmCmd, err := helm.NewHelm(namespace, repoFile, repoCache)
@@ -136,7 +137,7 @@ func GetHelmAppYaml(name, chart, version, namespace, chartPath string, overrides
 	return release.Manifest, nil
 }
 
-//UpdateRepo Update Helm warehouse
+// UpdateRepo Update Helm warehouse
 func UpdateRepo(names string) error {
 	helmCmd, err := helm.NewHelm("", repoFile, repoCache)
 	if err != nil {
