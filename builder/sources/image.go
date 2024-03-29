@@ -391,7 +391,7 @@ func EncodeAuthToBase64(authConfig types.AuthConfig) (string, error) {
 	return base64.URLEncoding.EncodeToString(buf), nil
 }
 
-//ImageBuild use buildkit build image
+// ImageBuild use buildkit build image
 func ImageBuild(
 	repositoryURL, arch, contextDir, cachePVCName, cacheMode, RbdNamespace, ServiceID, DeployVersion string,
 	logger event.Logger,
@@ -473,7 +473,12 @@ func ImageBuild(
 		Image:     BuildKitImage,
 		Stdin:     true,
 		StdinOnce: true,
-		Command:   []string{"buildctl-daemonless.sh"},
+		Env: []corev1.EnvVar{{
+			Name:  "BUILDCTL_CONNECT_RETRIES_MAX",
+			Value: "20",
+		},
+		},
+		Command: []string{"buildctl-daemonless.sh"},
 		Args: []string{
 			"build",
 			"--frontend",
@@ -797,7 +802,7 @@ func CreateImageName(ServiceID, DeployVersion string) string {
 	return strings.ToLower(fmt.Sprintf("%s/%s:%s", builder.REGISTRYDOMAIN, workloadName, DeployVersion))
 }
 
-//GetImageFirstPart -
+// GetImageFirstPart -
 func GetImageFirstPart(str string) (string, string) {
 	imageDomain, imageName := str, ""
 	if strings.Contains(str, "/") {
@@ -809,7 +814,7 @@ func GetImageFirstPart(str string) (string, string) {
 	return imageDomain, imageName
 }
 
-//PrepareBuildKitTomlCM -
+// PrepareBuildKitTomlCM -
 func PrepareBuildKitTomlCM(ctx context.Context, kubeClient kubernetes.Interface, namespace, buildKitTomlCMName, imageDomain string) error {
 	buildKitTomlCM, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(ctx, buildKitTomlCMName, metav1.GetOptions{})
 	if err != nil && !k8serror.IsNotFound(err) {
