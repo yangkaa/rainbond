@@ -19,6 +19,7 @@
 package handler
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -28,8 +29,11 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"net/http"
 	"os"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -68,7 +72,7 @@ import (
 // ErrServiceNotClosed -
 var ErrServiceNotClosed = errors.New("Service has not been closed")
 
-//ServiceAction service act
+// ServiceAction service act
 type ServiceAction struct {
 	MQClient       gclient.MQClient
 	EtcdCli        *clientv3.Client
@@ -88,7 +92,7 @@ type dCfg struct {
 	Password string   `json:"password"`
 }
 
-//CreateManager create Manger
+// CreateManager create Manger
 func CreateManager(conf option.Config,
 	mqClient gclient.MQClient,
 	etcdCli *clientv3.Client,
@@ -109,7 +113,7 @@ func CreateManager(conf option.Config,
 	}
 }
 
-//ServiceBuild service build
+// ServiceBuild service build
 func (s *ServiceAction) ServiceBuild(tenantID, serviceID string, r *api_model.BuildServiceStruct) error {
 	eventID := r.Body.EventID
 	logger := event.GetManager().GetLogger(eventID)
@@ -267,7 +271,7 @@ func (s *ServiceAction) isWindowsService(serviceID string) bool {
 	return true
 }
 
-//AddLabel add labels
+// AddLabel add labels
 func (s *ServiceAction) AddLabel(l *api_model.LabelsStruct, serviceID string) error {
 
 	tx := db.GetManager().Begin()
@@ -296,7 +300,7 @@ func (s *ServiceAction) AddLabel(l *api_model.LabelsStruct, serviceID string) er
 	return nil
 }
 
-//UpdateLabel updates labels
+// UpdateLabel updates labels
 func (s *ServiceAction) UpdateLabel(l *api_model.LabelsStruct, serviceID string) error {
 	tx := db.GetManager().Begin()
 	defer func() {
@@ -335,7 +339,7 @@ func (s *ServiceAction) UpdateLabel(l *api_model.LabelsStruct, serviceID string)
 	return nil
 }
 
-//DeleteLabel deletes label
+// DeleteLabel deletes label
 func (s *ServiceAction) DeleteLabel(l *api_model.LabelsStruct, serviceID string) error {
 	tx := db.GetManager().Begin()
 	defer func() {
@@ -360,7 +364,7 @@ func (s *ServiceAction) DeleteLabel(l *api_model.LabelsStruct, serviceID string)
 	return nil
 }
 
-//StartStopService start service
+// StartStopService start service
 func (s *ServiceAction) StartStopService(sss *api_model.StartStopStruct) error {
 	services, err := db.GetManager().TenantServiceDao().GetServiceByID(sss.ServiceID)
 	if err != nil {
@@ -386,7 +390,7 @@ func (s *ServiceAction) StartStopService(sss *api_model.StartStopStruct) error {
 	return nil
 }
 
-//ServiceVertical vertical service
+// ServiceVertical vertical service
 func (s *ServiceAction) ServiceVertical(ctx context.Context, vs *model.VerticalScalingTaskBody) error {
 	service, err := db.GetManager().TenantServiceDao().GetServiceByID(vs.ServiceID)
 	if err != nil {
@@ -442,7 +446,7 @@ func (s *ServiceAction) ServiceVertical(ctx context.Context, vs *model.VerticalS
 	return nil
 }
 
-//ServiceHorizontal Service Horizontal
+// ServiceHorizontal Service Horizontal
 func (s *ServiceAction) ServiceHorizontal(hs *model.HorizontalScalingTaskBody) error {
 	service, err := db.GetManager().TenantServiceDao().GetServiceByID(hs.ServiceID)
 	if err != nil {
@@ -490,7 +494,7 @@ func (s *ServiceAction) ServiceHorizontal(hs *model.HorizontalScalingTaskBody) e
 	return nil
 }
 
-//ServiceUpgrade service upgrade
+// ServiceUpgrade service upgrade
 func (s *ServiceAction) ServiceUpgrade(ru *model.RollingUpgradeTaskBody) error {
 	services, err := db.GetManager().TenantServiceDao().GetServiceByID(ru.ServiceID)
 	if err != nil {
@@ -531,7 +535,7 @@ func (s *ServiceAction) ServiceUpgrade(ru *model.RollingUpgradeTaskBody) error {
 	return nil
 }
 
-//ServiceCreate create service
+// ServiceCreate create service
 func (s *ServiceAction) ServiceCreate(sc *api_model.ServiceStruct) error {
 	jsonSC, err := ffjson.Marshal(sc)
 	if err != nil {
@@ -890,7 +894,7 @@ func (s *ServiceAction) convertProbeModel(req *api_model.ServiceProbe, serviceID
 	}
 }
 
-//ServiceUpdate update service
+// ServiceUpdate update service
 func (s *ServiceAction) ServiceUpdate(sc map[string]interface{}) error {
 	ts, err := db.GetManager().TenantServiceDao().GetServiceByID(sc["service_id"].(string))
 	if err != nil {
@@ -957,7 +961,7 @@ func (s *ServiceAction) ServiceUpdate(sc map[string]interface{}) error {
 	return nil
 }
 
-//LanguageSet language set
+// LanguageSet language set
 func (s *ServiceAction) LanguageSet(langS *api_model.LanguageSet) error {
 	logrus.Debugf("service id is %s, language is %s", langS.ServiceID, langS.Language)
 	services, err := db.GetManager().TenantServiceDao().GetServiceByID(langS.ServiceID)
@@ -975,7 +979,7 @@ func (s *ServiceAction) LanguageSet(langS *api_model.LanguageSet) error {
 	return nil
 }
 
-//GetService get service(s)
+// GetService get service(s)
 func (s *ServiceAction) GetService(tenantID string) ([]*dbmodel.TenantServices, error) {
 	services, err := db.GetManager().TenantServiceDao().GetServicesAllInfoByTenantID(tenantID)
 	if err != nil {
@@ -995,7 +999,7 @@ func (s *ServiceAction) GetService(tenantID string) ([]*dbmodel.TenantServices, 
 	return services, nil
 }
 
-//GetServicesByAppID get service(s) by appID
+// GetServicesByAppID get service(s) by appID
 func (s *ServiceAction) GetServicesByAppID(appID string, page, pageSize int) (*api_model.ListServiceResponse, error) {
 	var resp api_model.ListServiceResponse
 	services, total, err := db.GetManager().TenantServiceDao().GetServicesInfoByAppID(appID, page, pageSize)
@@ -1025,7 +1029,7 @@ func (s *ServiceAction) GetServicesByAppID(appID string, page, pageSize int) (*a
 	return &resp, nil
 }
 
-//GetPagedTenantRes get pagedTenantServiceRes(s)
+// GetPagedTenantRes get pagedTenantServiceRes(s)
 func (s *ServiceAction) GetPagedTenantRes(offset, len int) ([]*api_model.TenantResource, int, error) {
 	allstatus := s.statusCli.GetAllStatus()
 	var serviceIDs []string
@@ -1054,7 +1058,7 @@ func (s *ServiceAction) GetPagedTenantRes(offset, len int) ([]*api_model.TenantR
 	return result, count, nil
 }
 
-//GetTenantRes get pagedTenantServiceRes(s)
+// GetTenantRes get pagedTenantServiceRes(s)
 func (s *ServiceAction) GetTenantRes(uuid string) (*api_model.TenantResource, error) {
 	if logrus.IsLevelEnabled(logrus.DebugLevel) {
 		defer core_util.Elapsed("[ServiceAction] get tenant resource")()
@@ -1135,7 +1139,7 @@ func (s *ServiceAction) GetTenantRes(uuid string) (*api_model.TenantResource, er
 // 	return &res, nil
 // }
 
-//GetServicesDiskDeprecated get service disk
+// GetServicesDiskDeprecated get service disk
 //
 // Deprecated
 func GetServicesDiskDeprecated(ids []string, prometheusCli prometheus.Interface) map[string]float64 {
@@ -1156,7 +1160,7 @@ func GetServicesDiskDeprecated(ids []string, prometheusCli prometheus.Interface)
 	return result
 }
 
-//CodeCheck code check
+// CodeCheck code check
 func (s *ServiceAction) CodeCheck(c *api_model.CheckCodeStruct) error {
 	err := s.MQClient.SendBuilderTopic(gclient.TaskStruct{
 		TaskType: "code_check",
@@ -1170,7 +1174,7 @@ func (s *ServiceAction) CodeCheck(c *api_model.CheckCodeStruct) error {
 	return nil
 }
 
-//ServiceDepend service depend
+// ServiceDepend service depend
 func (s *ServiceAction) ServiceDepend(action string, ds *api_model.DependService) error {
 	switch action {
 	case "add":
@@ -1198,12 +1202,12 @@ func (s *ServiceAction) ServiceDepend(action string, ds *api_model.DependService
 	return nil
 }
 
-//CloseServiceSecurityContext -
+// CloseServiceSecurityContext -
 func (s *ServiceAction) CloseServiceSecurityContext(seviceID string) error {
 	return db.GetManager().TenantServicesSecurityContextDao().DeleteTenantServiceSecurityContext(seviceID)
 }
 
-//OpenServiceSecurityContext -
+// OpenServiceSecurityContext -
 func (s *ServiceAction) OpenServiceSecurityContext(ss *api_model.ServiceSecurityContext) error {
 	oldSecurityContext, dbErr := db.GetManager().TenantServicesSecurityContextDao().GetTenantServiceSecurityContext(ss.ServiceID)
 	sp := &corev1.SeccompProfile{Type: corev1.SeccompProfileType(ss.SeccompProfile.SeccompProfileType), LocalhostProfile: &ss.SeccompProfile.LocalhostProfile}
@@ -1238,7 +1242,7 @@ func (s *ServiceAction) OpenServiceSecurityContext(ss *api_model.ServiceSecurity
 	return db.GetManager().TenantServicesSecurityContextDao().UpdateModel(oldSecurityContext)
 }
 
-//EnvAttr env attr
+// EnvAttr env attr
 func (s *ServiceAction) EnvAttr(action string, at *dbmodel.TenantServiceEnvVar) error {
 	switch action {
 	case "add":
@@ -1346,7 +1350,7 @@ func (s *ServiceAction) SyncComponentPorts(tx *gorm.DB, app *dbmodel.Application
 	return db.GetManager().TenantServicesPortDaoTransactions(tx).CreateOrUpdatePortsInBatch(ports)
 }
 
-//PortVar port var
+// PortVar port var
 func (s *ServiceAction) PortVar(action, tenantID, serviceID string, vps *api_model.ServicePorts, oldPort int) error {
 	crt, err := db.GetManager().TenantServicePluginRelationDao().CheckSomeModelPluginByServiceID(
 		serviceID,
@@ -1436,7 +1440,7 @@ func (s *ServiceAction) PortVar(action, tenantID, serviceID string, vps *api_mod
 	return nil
 }
 
-//PortOuter 端口对外服务操作
+// PortOuter 端口对外服务操作
 func (s *ServiceAction) PortOuter(tenantName, serviceID string, containerPort int,
 	servicePort *api_model.ServicePortInnerOrOuter) (*dbmodel.TenantServiceLBMappingPort, string, error) {
 	p, err := db.GetManager().TenantServicesPortDao().GetPort(serviceID, containerPort)
@@ -1563,8 +1567,8 @@ func (s *ServiceAction) PortOuter(tenantName, serviceID string, containerPort in
 	return vsPort, p.Protocol, nil
 }
 
-//PortInner 端口对内服务操作
-//TODO: send task to worker
+// PortInner 端口对内服务操作
+// TODO: send task to worker
 func (s *ServiceAction) PortInner(tenantName, serviceID, operation string, port int) error {
 	p, err := db.GetManager().TenantServicesPortDao().GetPort(serviceID, port)
 	if err != nil {
@@ -1679,7 +1683,7 @@ func (s *ServiceAction) PortInner(tenantName, serviceID, operation string, port 
 	return nil
 }
 
-//VolumnVar var volumn
+// VolumnVar var volumn
 func (s *ServiceAction) VolumnVar(tsv *dbmodel.TenantServiceVolume, tenantID, fileContent, action string) *util.APIHandleError {
 	localPath := os.Getenv("LOCAL_DATA_PATH")
 	sharePath := os.Getenv("SHARE_DATA_PATH")
@@ -1835,7 +1839,7 @@ func (s *ServiceAction) UpdVolume(sid string, req *api_model.UpdVolumeReq) error
 	return nil
 }
 
-//GetVolumes 获取应用全部存储
+// GetVolumes 获取应用全部存储
 func (s *ServiceAction) GetVolumes(serviceID string) ([]*api_model.VolumeWithStatusStruct, *util.APIHandleError) {
 	volumeWithStatusList := make([]*api_model.VolumeWithStatusStruct, 0)
 	vs, err := db.GetManager().TenantServiceVolumeDao().GetTenantServiceVolumesByServiceID(serviceID)
@@ -1895,7 +1899,7 @@ func (s *ServiceAction) GetVolumes(serviceID string) ([]*api_model.VolumeWithSta
 	return volumeWithStatusList, nil
 }
 
-//VolumeDependency VolumeDependency
+// VolumeDependency VolumeDependency
 func (s *ServiceAction) VolumeDependency(tsr *dbmodel.TenantServiceMountRelation, action string) *util.APIHandleError {
 	switch action {
 	case "add":
@@ -1930,7 +1934,7 @@ func (s *ServiceAction) VolumeDependency(tsr *dbmodel.TenantServiceMountRelation
 	return nil
 }
 
-//GetDepVolumes 获取依赖存储
+// GetDepVolumes 获取依赖存储
 func (s *ServiceAction) GetDepVolumes(serviceID string) ([]*dbmodel.TenantServiceMountRelation, *util.APIHandleError) {
 	dbManager := db.GetManager()
 	mounts, err := dbManager.TenantServiceMountRelationDao().GetTenantServiceMountRelationsByService(serviceID)
@@ -1940,7 +1944,7 @@ func (s *ServiceAction) GetDepVolumes(serviceID string) ([]*dbmodel.TenantServic
 	return mounts, nil
 }
 
-//ServiceProbe ServiceProbe
+// ServiceProbe ServiceProbe
 func (s *ServiceAction) ServiceProbe(tsp *dbmodel.TenantServiceProbe, action string) error {
 	switch action {
 	case "add":
@@ -1959,7 +1963,7 @@ func (s *ServiceAction) ServiceProbe(tsp *dbmodel.TenantServiceProbe, action str
 	return nil
 }
 
-//RollBack RollBack
+// RollBack RollBack
 func (s *ServiceAction) RollBack(rs *api_model.RollbackStruct) error {
 	service, err := db.GetManager().TenantServiceDao().GetServiceByID(rs.ServiceID)
 	if err != nil {
@@ -1991,7 +1995,7 @@ func (s *ServiceAction) RollBack(rs *api_model.RollbackStruct) error {
 	return nil
 }
 
-//GetStatus GetStatus
+// GetStatus GetStatus
 func (s *ServiceAction) GetStatus(serviceID string) (*api_model.StatusList, error) {
 	services, errS := db.GetManager().TenantServiceDao().GetServiceByID(serviceID)
 	if errS != nil {
@@ -2022,7 +2026,7 @@ func (s *ServiceAction) GetStatus(serviceID string) (*api_model.StatusList, erro
 	return sl, nil
 }
 
-//GetServicesStatus  获取一组应用状态，若 serviceIDs为空,获取租户所有应用状态
+// GetServicesStatus  获取一组应用状态，若 serviceIDs为空,获取租户所有应用状态
 func (s *ServiceAction) GetServicesStatus(tenantID string, serviceIDs []string) []map[string]interface{} {
 	if len(serviceIDs) == 0 {
 		services, _ := db.GetManager().TenantServiceDao().GetServicesByTenantID(tenantID)
@@ -2069,7 +2073,7 @@ func (s *ServiceAction) GetEnterpriseServicesStatus(enterpriseID string) (map[st
 	return statusList, nil
 }
 
-//CreateTenant create tenant
+// CreateTenant create tenant
 func (s *ServiceAction) CreateTenant(t *dbmodel.Tenants) error {
 	tenant, _ := db.GetManager().TenantDao().GetTenantIDByName(t.Name)
 	if tenant != nil {
@@ -2110,7 +2114,7 @@ func (s *ServiceAction) CreateTenant(t *dbmodel.Tenants) error {
 	})
 }
 
-//CreateTenandIDAndName create tenant_id and tenant_name
+// CreateTenandIDAndName create tenant_id and tenant_name
 func (s *ServiceAction) CreateTenandIDAndName(eid string) (string, string, error) {
 	id := uuid.NewV4().String()
 	uid := strings.Replace(id, "-", "", -1)
@@ -2119,13 +2123,13 @@ func (s *ServiceAction) CreateTenandIDAndName(eid string) (string, string, error
 	return uid, name, nil
 }
 
-//K8sPodInfos -
+// K8sPodInfos -
 type K8sPodInfos struct {
 	NewPods []*K8sPodInfo `json:"new_pods"`
 	OldPods []*K8sPodInfo `json:"old_pods"`
 }
 
-//K8sPodInfo for api
+// K8sPodInfo for api
 type K8sPodInfo struct {
 	PodName   string                       `json:"pod_name"`
 	PodIP     string                       `json:"pod_ip"`
@@ -2134,7 +2138,7 @@ type K8sPodInfo struct {
 	Container map[string]map[string]string `json:"container"`
 }
 
-//GetPods get pods
+// GetPods get pods
 func (s *ServiceAction) GetPods(serviceID string) (*K8sPodInfos, error) {
 	pods, err := s.statusCli.GetServicePods(serviceID)
 	if err != nil && !strings.Contains(err.Error(), server.ErrAppServiceNotFound.Error()) &&
@@ -2183,7 +2187,7 @@ func (s *ServiceAction) GetPods(serviceID string) (*K8sPodInfos, error) {
 	}, nil
 }
 
-//GetMultiServicePods get pods
+// GetMultiServicePods get pods
 func (s *ServiceAction) GetMultiServicePods(serviceIDs []string) (*K8sPodInfos, error) {
 	mpods, err := s.statusCli.GetMultiServicePods(serviceIDs)
 	if err != nil && !strings.Contains(err.Error(), server.ErrAppServiceNotFound.Error()) &&
@@ -2230,7 +2234,7 @@ func (s *ServiceAction) GetComponentPodNums(ctx context.Context, componentIDs []
 	return podNums, nil
 }
 
-//GetPodContainerMemory Use Prometheus to query memory resources
+// GetPodContainerMemory Use Prometheus to query memory resources
 func (s *ServiceAction) GetPodContainerMemory(podNames []string) (map[string]map[string]string, error) {
 	memoryUsageMap := make(map[string]map[string]string, 10)
 	queryName := strings.Join(podNames, "|")
@@ -2255,7 +2259,7 @@ func (s *ServiceAction) GetPodContainerMemory(podNames []string) (map[string]map
 	return memoryUsageMap, nil
 }
 
-//TransServieToDelete trans service info to delete table
+// TransServieToDelete trans service info to delete table
 func (s *ServiceAction) TransServieToDelete(ctx context.Context, tenantID, serviceID string) error {
 	_, err := db.GetManager().TenantServiceDao().GetServiceByID(serviceID)
 	if err != nil && gorm.ErrRecordNotFound == err {
@@ -2413,7 +2417,7 @@ func (s *ServiceAction) gcTaskBody(tenantID, serviceID string) (map[string]inter
 	}, nil
 }
 
-//GetServiceDeployInfo get service deploy info
+// GetServiceDeployInfo get service deploy info
 func (s *ServiceAction) GetServiceDeployInfo(tenantID, serviceID string) (*pb.DeployInfo, *util.APIHandleError) {
 	info, err := s.statusCli.GetServiceDeployInfo(serviceID)
 	if err != nil {
@@ -2983,7 +2987,7 @@ func (s *ServiceAction) SyncComponentPlugins(tx *gorm.DB, app *dbmodel.Applicati
 	return db.GetManager().TenantPluginVersionConfigDaoTransactions(tx).CreateOrUpdatePluginVersionConfigsInBatch(pluginVersionConfigs)
 }
 
-//handlePluginMappingPort -
+// handlePluginMappingPort -
 func (s *ServiceAction) handlePluginMappingPort(tenantID, componentID, pluginModel string, ports []*api_model.BasePort) []*dbmodel.TenantServicesStreamPluginPort {
 	existPorts := make(map[int]struct{})
 	for _, port := range ports {
@@ -3135,7 +3139,7 @@ func (s *ServiceAction) Log(w http.ResponseWriter, r *http.Request, component *d
 	return nil
 }
 
-//TransStatus trans service status
+// TransStatus trans service status
 func TransStatus(eStatus string) string {
 	switch eStatus {
 	case "starting":
@@ -3164,4 +3168,212 @@ func TransStatus(eStatus string) string {
 		return "已完成"
 	}
 	return ""
+}
+
+func (s *ServiceAction) AppFileUpload(containerName, podName, srcPath, destPath, namespace string) error {
+	reader, writer := io.Pipe()
+	if destPath != "/" && strings.HasSuffix(string(destPath[len(destPath)-1]), "/") {
+		destPath = destPath[:len(destPath)-1]
+	}
+	destPath = destPath + "/" + path.Base(srcPath)
+	go func() {
+		defer writer.Close()
+		cmdutil.CheckErr(cpMakeTar(srcPath, destPath, writer))
+	}()
+	var cmdArr []string
+	cmdArr = []string{"tar", "-xmf", "-"}
+	destDir := path.Dir(destPath)
+	if len(destDir) > 0 {
+		cmdArr = append(cmdArr, "-C", destDir)
+	}
+	req := s.kubeClient.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: containerName,
+			Command:   cmdArr,
+			Stdin:     true,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       false,
+		}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(s.config, "POST", req.URL())
+	if err != nil {
+		return err
+	}
+	return exec.Stream(remotecommand.StreamOptions{
+		Stdin:  reader,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Tty:    false,
+	})
+}
+
+func (s *ServiceAction) AppFileDownload(containerName, podName, filePath, namespace string) error {
+	reader, outStream := io.Pipe()
+	req := s.kubeClient.CoreV1().RESTClient().Get().
+		Resource("pods").
+		Name(podName).
+		Namespace(namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: containerName,
+			Command:   []string{"tar", "cf", "-", filePath},
+			Stdin:     true,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       false,
+		}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(s.config, "POST", req.URL())
+	if err != nil {
+		return err
+	}
+	go func() {
+		defer outStream.Close()
+		err = exec.Stream(remotecommand.StreamOptions{
+			Stdin:  os.Stdin,
+			Stdout: outStream,
+			Stderr: os.Stderr,
+			Tty:    false,
+		})
+		cmdutil.CheckErr(err)
+	}()
+	prefix := getPrefix(filePath)
+	prefix = path.Clean(prefix)
+	destPath := path.Join("./", path.Base(prefix))
+	err = unTarAll(reader, destPath, prefix)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cpMakeTar(srcPath string, destPath string, out io.Writer) error {
+	tw := tar.NewWriter(out)
+
+	defer func() {
+		if err := tw.Close(); err != nil {
+			fmt.Printf("Error closing tar writer: %v\n", err)
+		}
+	}()
+
+	// 获取源路径的信息
+	srcInfo, err := os.Stat(srcPath)
+	if err != nil {
+		return fmt.Errorf("failed to get info for %s: %v", srcPath, err)
+	}
+
+	basePath := srcPath
+	if srcInfo.IsDir() {
+		basePath = filepath.Dir(srcPath)
+	}
+
+	return filepath.Walk(srcPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// 获取相对于源路径的相对路径
+		relPath, err := filepath.Rel(basePath, path)
+		if err != nil {
+			return err
+		}
+
+		// 创建 tar 归档文件的文件头信息
+		hdr, err := tar.FileInfoHeader(info, relPath)
+		if err != nil {
+			return fmt.Errorf("failed to create header for %s: %v", path, err)
+		}
+
+		// 写入文件头信息到 tar 归档
+		if err := tw.WriteHeader(hdr); err != nil {
+			return fmt.Errorf("failed to write header for %s: %v", path, err)
+		}
+
+		if info.Mode().IsRegular() {
+			// 如果是普通文件，则将文件内容写入到 tar 归档
+			file, err := os.Open(path)
+			if err != nil {
+				return fmt.Errorf("failed to open %s: %v", path, err)
+			}
+			defer file.Close()
+
+			_, err = io.Copy(tw, file)
+			if err != nil {
+				return fmt.Errorf("failed to write file %s to tar: %v", path, err)
+			}
+		}
+
+		return nil
+	})
+}
+
+func unTarAll(reader io.Reader, destDir, prefix string) error {
+	tarReader := tar.NewReader(reader)
+	for {
+		header, err := tarReader.Next()
+		if err != nil {
+			if err != io.EOF {
+				return err
+			}
+			break
+		}
+
+		if !strings.HasPrefix(header.Name, prefix) {
+			return fmt.Errorf("tar contents corrupted")
+		}
+
+		mode := header.FileInfo().Mode()
+		destFileName := filepath.Join(destDir, header.Name[len(prefix):])
+
+		baseName := filepath.Dir(destFileName)
+		if err := os.MkdirAll(baseName, 0755); err != nil {
+			return err
+		}
+		if header.FileInfo().IsDir() {
+			if err := os.MkdirAll(destFileName, 0755); err != nil {
+				return err
+			}
+			continue
+		}
+
+		evaledPath, err := filepath.EvalSymlinks(baseName)
+		if err != nil {
+			return err
+		}
+
+		if mode&os.ModeSymlink != 0 {
+			linkname := header.Linkname
+
+			if !filepath.IsAbs(linkname) {
+				_ = filepath.Join(evaledPath, linkname)
+			}
+
+			if err := os.Symlink(linkname, destFileName); err != nil {
+				return err
+			}
+		} else {
+			outFile, err := os.Create(destFileName)
+			if err != nil {
+				return err
+			}
+			defer outFile.Close()
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				return err
+			}
+			if err := outFile.Close(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func getPrefix(file string) string {
+	return strings.TrimLeft(file, "/")
 }

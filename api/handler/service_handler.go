@@ -31,8 +31,10 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-//ServiceHandler service handler
+// ServiceHandler service handler
 type ServiceHandler interface {
+	AppFileDownload(containerName, podName, filePath, namespace string) error
+	AppFileUpload(containerName, podName, srcPath, destPath, namespace string) error
 	ServiceBuild(tenantID, serviceID string, r *api_model.BuildServiceStruct) error
 	AddLabel(l *api_model.LabelsStruct, serviceID string) error
 	DeleteLabel(l *api_model.LabelsStruct, serviceID string) error

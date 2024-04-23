@@ -24,9 +24,11 @@ import (
 	"github.com/goodrain/rainbond/api/util"
 	dbmodel "github.com/goodrain/rainbond/db/model"
 	httputil "github.com/goodrain/rainbond/util/http"
+	"io"
 	"net/http"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/goodrain/rainbond/api/discover"
@@ -37,7 +39,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//DockerConsole docker console
+// DockerConsole docker console
 type DockerConsole struct {
 	socketproxy proxy.Proxy
 }
@@ -47,7 +49,7 @@ var defaultEventLogEndpoints = []string{"local=>rbd-eventlog:6363"}
 
 var dockerConsole *DockerConsole
 
-//GetDockerConsole get Docker console
+// GetDockerConsole get Docker console
 func GetDockerConsole() *DockerConsole {
 	if dockerConsole != nil {
 		return dockerConsole
@@ -59,19 +61,19 @@ func GetDockerConsole() *DockerConsole {
 	return dockerConsole
 }
 
-//Get get
+// Get get
 func (d DockerConsole) Get(w http.ResponseWriter, r *http.Request) {
 	d.socketproxy.Proxy(w, r)
 }
 
 var dockerLog *DockerLog
 
-//DockerLog docker log
+// DockerLog docker log
 type DockerLog struct {
 	socketproxy proxy.Proxy
 }
 
-//GetDockerLog get docker log
+// GetDockerLog get docker log
 func GetDockerLog() *DockerLog {
 	if dockerLog == nil {
 		dockerLog = &DockerLog{
@@ -82,19 +84,19 @@ func GetDockerLog() *DockerLog {
 	return dockerLog
 }
 
-//Get get
+// Get get
 func (d DockerLog) Get(w http.ResponseWriter, r *http.Request) {
 	d.socketproxy.Proxy(w, r)
 }
 
-//MonitorMessage monitor message
+// MonitorMessage monitor message
 type MonitorMessage struct {
 	socketproxy proxy.Proxy
 }
 
 var monitorMessage *MonitorMessage
 
-//GetMonitorMessage get MonitorMessage
+// GetMonitorMessage get MonitorMessage
 func GetMonitorMessage() *MonitorMessage {
 	if monitorMessage == nil {
 		monitorMessage = &MonitorMessage{
@@ -105,19 +107,19 @@ func GetMonitorMessage() *MonitorMessage {
 	return monitorMessage
 }
 
-//Get get
+// Get get
 func (d MonitorMessage) Get(w http.ResponseWriter, r *http.Request) {
 	d.socketproxy.Proxy(w, r)
 }
 
-//EventLog event log
+// EventLog event log
 type EventLog struct {
 	socketproxy proxy.Proxy
 }
 
 var eventLog *EventLog
 
-//GetEventLog get event log
+// GetEventLog get event log
 func GetEventLog() *EventLog {
 	if eventLog == nil {
 		eventLog = &EventLog{
@@ -128,19 +130,19 @@ func GetEventLog() *EventLog {
 	return eventLog
 }
 
-//Get get
+// Get get
 func (d EventLog) Get(w http.ResponseWriter, r *http.Request) {
 	d.socketproxy.Proxy(w, r)
 }
 
-//LogFile log file down server
+// LogFile log file down server
 type LogFile struct {
 	Root string
 }
 
 var logFile *LogFile
 
-//GetLogFile get  log file
+// GetLogFile get  log file
 func GetLogFile() *LogFile {
 	root := os.Getenv("SERVICE_LOG_ROOT")
 	if root == "" {
@@ -155,7 +157,7 @@ func GetLogFile() *LogFile {
 	return logFile
 }
 
-//Get get
+// Get get
 func (d LogFile) Get(w http.ResponseWriter, r *http.Request) {
 	gid := chi.URLParam(r, "gid")
 	filename := chi.URLParam(r, "filename")
@@ -184,12 +186,12 @@ func (d LogFile) GetInstallLog(w http.ResponseWriter, r *http.Request) {
 
 var pubSubControll *PubSubControll
 
-//PubSubControll service pub sub
+// PubSubControll service pub sub
 type PubSubControll struct {
 	socketproxy proxy.Proxy
 }
 
-//GetPubSubControll get service pub sub controller
+// GetPubSubControll get service pub sub controller
 func GetPubSubControll() *PubSubControll {
 	if pubSubControll == nil {
 		pubSubControll = &PubSubControll{
@@ -200,7 +202,7 @@ func GetPubSubControll() *PubSubControll {
 	return pubSubControll
 }
 
-//Get pubsub controller
+// Get pubsub controller
 func (d PubSubControll) Get(w http.ResponseWriter, r *http.Request) {
 	serviceID := chi.URLParam(r, "serviceID")
 	name, _ := handler.GetEventHandler().GetLogInstance(serviceID)
@@ -211,7 +213,7 @@ func (d PubSubControll) Get(w http.ResponseWriter, r *http.Request) {
 	d.socketproxy.Proxy(w, r)
 }
 
-//GetHistoryLog get service docker logs
+// GetHistoryLog get service docker logs
 func (d PubSubControll) GetHistoryLog(w http.ResponseWriter, r *http.Request) {
 	serviceID := r.Context().Value(ctxutil.ContextKey("service_id")).(string)
 	name, _ := handler.GetEventHandler().GetLogInstance(serviceID)
@@ -224,12 +226,12 @@ func (d PubSubControll) GetHistoryLog(w http.ResponseWriter, r *http.Request) {
 
 var fileManage *FileManage
 
-//FileManage docker log
+// FileManage docker log
 type FileManage struct {
 	socketproxy proxy.Proxy
 }
 
-//GetFileManage get docker log
+// GetFileManage get docker log
 func GetFileManage() *FileManage {
 	if fileManage == nil {
 		fileManage = &FileManage{
@@ -240,7 +242,7 @@ func GetFileManage() *FileManage {
 	return fileManage
 }
 
-//Get get
+// Get get
 func (f FileManage) Get(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	w.Header().Add("Access-Control-Allow-Origin", origin)
@@ -250,9 +252,9 @@ func (f FileManage) Get(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		w.Header().Set("Content-Type", "application/octet-stream")
-		f.socketproxy.Proxy(w, r)
+		f.DownloadFile(w, r)
 	case "POST":
-		f.socketproxy.Proxy(w, r)
+		f.UploadFile(w, r)
 		f.UploadEvent(w, r)
 	case "OPTIONS":
 		httputil.ReturnSuccess(r, w, nil)
@@ -274,4 +276,68 @@ func (f FileManage) UploadEvent(w http.ResponseWriter, r *http.Request) {
 		httputil.ReturnError(r, w, 500, "操作失败")
 	}
 	httputil.ReturnSuccess(r, w, nil)
+}
+
+func (f FileManage) UploadFile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("volume_name", r.FormValue("volume_name"))
+	w.Header().Add("user_name", r.FormValue("user_name"))
+	w.Header().Add("tenant_id", r.FormValue("tenant_id"))
+	w.Header().Add("service_id", r.FormValue("service_id"))
+	w.Header().Add("status", "failed")
+	destPath := r.FormValue("path")
+	podName := r.FormValue("pod_name")
+	namespace := r.FormValue("namespace")
+	containerName := r.FormValue("container_name")
+	if destPath == "" {
+		httputil.ReturnError(r, w, 400, "Path cannot be empty")
+		return
+	}
+	reader, header, err := r.FormFile("file")
+	if err != nil {
+		logrus.Errorf("Failed to parse upload file: %s", err.Error())
+		httputil.ReturnError(r, w, 501, "Failed to parse upload file.")
+		return
+	}
+	defer reader.Close()
+	w.Header().Add("file_name", header.Filename)
+	srcPath := path.Join("./", header.Filename)
+	file, err := os.OpenFile(srcPath, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		logrus.Errorf("upload file open %v failure: %v", header.Filename, err.Error())
+		httputil.ReturnError(r, w, 502, "Failed to open file: "+err.Error())
+	}
+	defer os.Remove(srcPath)
+	defer file.Close()
+	if _, err := io.Copy(file, reader); err != nil {
+		logrus.Errorf("upload file write %v failure: %v", srcPath, err.Error())
+		httputil.ReturnError(r, w, 503, "Failed to write file: "+err.Error())
+		return
+	}
+	err = handler.GetServiceManager().AppFileUpload(containerName, podName, srcPath, destPath, namespace)
+	if err != nil {
+		logrus.Errorf("upload file %v to %v %v failure: %v", header.Filename, podName, destPath, err.Error())
+		httputil.ReturnError(r, w, 503, "Failed to write file: "+err.Error())
+		return
+	}
+	w.Header().Set("status", "success")
+}
+
+func (f FileManage) DownloadFile(w http.ResponseWriter, r *http.Request) {
+	podName := r.FormValue("pod_name")
+	p := r.FormValue("path")
+	namespace := r.FormValue("namespace")
+	fileName := strings.TrimSpace(chi.URLParam(r, "fileName"))
+
+	filePath := path.Join(p, fileName)
+	containerName := r.FormValue("container_name")
+
+	err := handler.GetServiceManager().AppFileDownload(containerName, podName, filePath, namespace)
+	if err != nil {
+		logrus.Errorf("downloading file from Pod failure: %v", err)
+		http.Error(w, "Error downloading file from Pod", http.StatusInternalServerError)
+		return
+	}
+	defer os.Remove(path.Join("./", fileName))
+	w.Header().Set("Content-Disposition", "attachment;filename="+fileName)
+	http.ServeFile(w, r, path.Join("./", fileName))
 }
