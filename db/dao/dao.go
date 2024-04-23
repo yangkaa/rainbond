@@ -165,6 +165,7 @@ type TenantServiceDao interface {
 	CreateOrUpdateComponentsInBatch(components []*model.TenantServices) error
 	DeleteByComponentIDs(tenantID, appID string, componentIDs []string) error
 	IsK8sComponentNameDuplicate(appID, serviceID, k8sComponentName string) bool
+	GetServiceByk8sComponentName(k8sComponentName string) (*model.TenantServices, error)
 }
 
 //TenantServiceDeleteDao TenantServiceDeleteDao
@@ -173,6 +174,12 @@ type TenantServiceDeleteDao interface {
 	GetTenantServicesDeleteByCreateTime(createTime time.Time) ([]*model.TenantServicesDelete, error)
 	DeleteTenantServicesDelete(record *model.TenantServicesDelete) error
 	List() ([]*model.TenantServicesDelete, error)
+}
+
+type TenantServiceCodeInspection interface {
+	Dao
+	GetTenantServiceCodeInspection(serviceID string) (*model.TenantServiceCodeInspection, error)
+	DeleteTenantServiceCodeInspection(serviceID string) error
 }
 
 type TenantServiceSecurityContextDao interface {

@@ -818,6 +818,39 @@ func (t *TenantStruct) SetLanguage(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func (t *TenantStruct) CodeInspectionService(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "DELETE":
+		t.CloseCodeInspection(w, r)
+	case "PUT":
+		t.OpenCodeInspection(w, r)
+	}
+}
+
+// CloseCodeInspection -
+func (t *TenantStruct) CloseCodeInspection(w http.ResponseWriter, r *http.Request) {
+	serviceID := r.Context().Value(ctxutil.ContextKey("service_id")).(string)
+	err := handler.GetServiceManager().CloseServiceCodeInspection(serviceID)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("close service code inspection failure: %v", err))
+		return
+	}
+	httputil.ReturnSuccess(r, w, "删除成功")
+	return
+}
+
+// OpenCodeInspection -
+func (t *TenantStruct) OpenCodeInspection(w http.ResponseWriter, r *http.Request) {
+	serviceID := r.Context().Value(ctxutil.ContextKey("service_id")).(string)
+	err := handler.GetServiceManager().OpenServiceCodeInspection(serviceID)
+	if err != nil {
+		httputil.ReturnError(r, w, 500, fmt.Sprintf("open service code inspection failure: %v", err))
+		return
+	}
+	httputil.ReturnSuccess(r, w, "修改成功")
+	return
+}
+
 // SecurityContextService -
 func (t *TenantStruct) SecurityContextService(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
@@ -826,7 +859,6 @@ func (t *TenantStruct) SecurityContextService(w http.ResponseWriter, r *http.Req
 	case "PUT":
 		t.OpenSecurityContext(w, r)
 	}
-
 }
 
 // CloseSecurityContext -

@@ -18,13 +18,13 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-//AppTemplate -
+// AppTemplate -
 type AppTemplate struct {
 	Name     string
 	Versions hrepo.ChartVersions
 }
 
-//HelmAction -
+// HelmAction -
 type HelmAction struct {
 	ctx            context.Context
 	kubeClient     *kubernetes.Clientset
@@ -56,6 +56,7 @@ func (h *HelmAction) GetChartInformation(chart api_model.ChartInformation) (*[]a
 		return nil, &util.APIHandleError{Code: 400, Err: errors.Wrap(err, "GetChartInformation NewRequest")}
 	}
 	client := &http.Client{}
+	req.SetBasicAuth(chart.Username, chart.Password)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, &util.APIHandleError{Code: 400, Err: errors.Wrap(err, "GetChartInformation client.Do")}
@@ -94,14 +95,14 @@ func (h *HelmAction) GetChartInformation(chart api_model.ChartInformation) (*[]a
 
 // CheckHelmApp check helm app
 func (h *HelmAction) CheckHelmApp(checkHelmApp api_model.CheckHelmApp) (string, error) {
-	helmAppYaml, err := GetHelmAppYaml(checkHelmApp.Name, checkHelmApp.Chart, checkHelmApp.Version, checkHelmApp.Namespace, checkHelmApp.Overrides)
+	helmAppYaml, err := GetHelmAppYaml(checkHelmApp.Name, checkHelmApp.Chart, checkHelmApp.Version, checkHelmApp.Namespace, "", checkHelmApp.Overrides)
 	if err != nil {
 		return "", errors.Wrap(err, "helm app check failed")
 	}
 	return helmAppYaml, nil
 }
 
-//UpdateHelmRepo update repo
+// UpdateHelmRepo update repo
 func (h *HelmAction) UpdateHelmRepo(names string) error {
 	err := UpdateRepo(names)
 	if err != nil {
@@ -110,7 +111,7 @@ func (h *HelmAction) UpdateHelmRepo(names string) error {
 	return nil
 }
 
-//AddHelmRepo add helm repo
+// AddHelmRepo add helm repo
 func (h *HelmAction) AddHelmRepo(helmRepo api_model.CheckHelmApp) error {
 	err := h.repo.Add(helmRepo.RepoName, helmRepo.RepoURL, helmRepo.Username, helmRepo.Password)
 	if err != nil {
@@ -120,15 +121,15 @@ func (h *HelmAction) AddHelmRepo(helmRepo api_model.CheckHelmApp) error {
 	return nil
 }
 
-//GetHelmAppYaml get helm app yaml
-func GetHelmAppYaml(name, chart, version, namespace string, overrides []string) (string, error) {
+// GetHelmAppYaml get helm app yaml
+func GetHelmAppYaml(name, chart, version, namespace, chartPath string, overrides []string) (string, error) {
 	logrus.Info("get into GetHelmAppYaml function")
 	helmCmd, err := helm.NewHelm(namespace, repoFile, repoCache)
 	if err != nil {
 		logrus.Errorf("Failed to create help client：%v", err)
 		return "", err
 	}
-	release, err := helmCmd.Install(name, chart, version, overrides)
+	release, err := helmCmd.Install(chartPath, name, chart, version, overrides)
 	if err != nil {
 		logrus.Errorf("helm --dry-run install failure: %v", err)
 		return "", err
@@ -136,7 +137,7 @@ func GetHelmAppYaml(name, chart, version, namespace string, overrides []string) 
 	return release.Manifest, nil
 }
 
-//UpdateRepo Update Helm warehouse
+// UpdateRepo Update Helm warehouse
 func UpdateRepo(names string) error {
 	helmCmd, err := helm.NewHelm("", repoFile, repoCache)
 	if err != nil {
@@ -149,4 +150,13 @@ func UpdateRepo(names string) error {
 		return err
 	}
 	return nil
+}
+
+// GetYamlByChart get yaml by chart
+func (h *HelmAction) GetYamlByChart(chartPath, namespace, name, version string, overrides []string) (string, error) {
+	helmAppYaml, err := GetHelmAppYaml(name, "", version, namespace, chartPath, overrides)
+	if err != nil {
+		return "", errors.Wrap(err, "helm app check failed")
+	}
+	return helmAppYaml, nil
 }

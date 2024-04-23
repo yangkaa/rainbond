@@ -150,6 +150,11 @@ func (d *dockerfileBuild) runBuildJob(re *Request, buildImageName string) error 
 		Stdin:     true,
 		StdinOnce: true,
 		Command:   []string{"buildctl-daemonless.sh"},
+		Env: []corev1.EnvVar{{
+			Name:  "BUILDCTL_CONNECT_RETRIES_MAX",
+			Value: "20",
+		},
+		},
 		Args: []string{
 			"build",
 			"--frontend",
@@ -213,6 +218,14 @@ func (d *dockerfileBuild) createVolumeAndMount(re *Request, secretName, ServiceI
 	volumes = []corev1.Volume{
 		dockerfileBuildVolume,
 		{
+			Name: "grdata",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "rbd-cpt-grdata",
+				},
+			},
+		},
+		{
 			Name: "buildkittoml",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -251,6 +264,10 @@ func (d *dockerfileBuild) createVolumeAndMount(re *Request, secretName, ServiceI
 		},
 	}
 	volumeMounts = []corev1.VolumeMount{
+		{
+			Name:      "grdata",
+			MountPath: "/grdata",
+		},
 		{
 			Name:      "dockerfile-build",
 			MountPath: "/cache",

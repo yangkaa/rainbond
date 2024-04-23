@@ -1202,7 +1202,35 @@ func (s *ServiceAction) ServiceDepend(action string, ds *api_model.DependService
 	return nil
 }
 
-// CloseServiceSecurityContext -
+//OpenServiceCodeInspection -
+func (s *ServiceAction) OpenServiceCodeInspection(serviceID string) error {
+	ci, dbErr := db.GetManager().TenantServiceCodeInspectionDao().GetTenantServiceCodeInspection(serviceID)
+	if dbErr != nil {
+		if errors.Is(dbErr, gorm.ErrRecordNotFound) {
+			codeInspect := dbmodel.TenantServiceCodeInspection{
+				ServiceID: serviceID,
+				Switch:    true,
+			}
+			return db.GetManager().TenantServiceCodeInspectionDao().AddModel(&codeInspect)
+		} else {
+			return dbErr
+		}
+	}
+	ci.Switch = true
+	return db.GetManager().TenantServiceCodeInspectionDao().UpdateModel(ci)
+}
+
+//CloseServiceCodeInspection -
+func (s *ServiceAction) CloseServiceCodeInspection(seviceID string) error {
+	ci, err := db.GetManager().TenantServiceCodeInspectionDao().GetTenantServiceCodeInspection(seviceID)
+	if err != nil {
+		return err
+	}
+	ci.Switch = false
+	return db.GetManager().TenantServiceCodeInspectionDao().UpdateModel(ci)
+}
+
+//CloseServiceSecurityContext -
 func (s *ServiceAction) CloseServiceSecurityContext(seviceID string) error {
 	return db.GetManager().TenantServicesSecurityContextDao().DeleteTenantServiceSecurityContext(seviceID)
 }
@@ -1229,7 +1257,7 @@ func (s *ServiceAction) OpenServiceSecurityContext(ss *api_model.ServiceSecurity
 			}
 			return db.GetManager().TenantServicesSecurityContextDao().AddModel(&safety)
 		} else {
-			return err
+			return dbErr
 		}
 	}
 	oldSecurityContext.SeccompProfile = string(spJSON)
@@ -2327,6 +2355,7 @@ func (s *ServiceAction) deleteComponent(tx *gorm.DB, service *dbmodel.TenantServ
 		db.GetManager().ThirdPartySvcDiscoveryCfgDaoTransactions(tx).DeleteByServiceID,
 		db.GetManager().TenantServiceLabelDaoTransactions(tx).DeleteLabelByServiceID,
 		db.GetManager().TenantServicesSecurityContextDaoTransactions(tx).DeleteTenantServiceSecurityContext,
+		db.GetManager().TenantServiceCodeInspectionDaoTransactions(tx).DeleteTenantServiceCodeInspection,
 		db.GetManager().VersionInfoDaoTransactions(tx).DeleteVersionByServiceID,
 		db.GetManager().TenantPluginVersionENVDaoTransactions(tx).DeleteEnvByServiceID,
 		db.GetManager().ServiceProbeDaoTransactions(tx).DELServiceProbesByServiceID,

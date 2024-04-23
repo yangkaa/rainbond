@@ -143,6 +143,7 @@ func (m *Manager) RegisterTableModel() {
 	m.models = append(m.models, &model.CodeCheckResult{})
 	m.models = append(m.models, &model.ServiceEvent{})
 	m.models = append(m.models, &model.TenantServiceSecurityContext{})
+	m.models = append(m.models, &model.TenantServiceCodeInspection{})
 	m.models = append(m.models, &model.VersionInfo{})
 	m.models = append(m.models, &model.RegionUserInfo{})
 	m.models = append(m.models, &model.TenantServicesStreamPluginPort{})

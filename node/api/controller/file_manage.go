@@ -1,13 +1,13 @@
 package controller
 
 import (
-	"fmt"
 	"github.com/go-chi/chi"
 	httputil "github.com/goodrain/rainbond/util/http"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -34,7 +34,7 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer reader.Close()
 	w.Header().Add("file_name", header.Filename)
-	srcPath := fmt.Sprintf("./%s", header.Filename)
+	srcPath := path.Join("./", header.Filename)
 	file, err := os.OpenFile(srcPath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		logrus.Errorf("upload file open %v failure: %v", header.Filename, err.Error())
@@ -57,13 +57,14 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("status", "success")
 }
 
-//DownloadFile -
+// DownloadFile -
 func DownloadFile(w http.ResponseWriter, r *http.Request) {
 	podName := r.FormValue("pod_name")
-	path := r.FormValue("path")
+	p := r.FormValue("path")
 	namespace := r.FormValue("namespace")
 	fileName := strings.TrimSpace(chi.URLParam(r, "fileName"))
-	filePath := fmt.Sprintf("%s/%s", path, fileName)
+
+	filePath := path.Join(p, fileName)
 	containerName := r.FormValue("container_name")
 
 	err := appService.AppFileDownload(containerName, podName, filePath, namespace)
@@ -72,7 +73,7 @@ func DownloadFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error downloading file from Pod", http.StatusInternalServerError)
 		return
 	}
-	defer os.Remove(fmt.Sprintf("./%s", fileName))
+	defer os.Remove(path.Join("./", fileName))
 	w.Header().Set("Content-Disposition", "attachment;filename="+fileName)
-	http.ServeFile(w, r, fmt.Sprintf("./%s", fileName))
+	http.ServeFile(w, r, path.Join("./", fileName))
 }

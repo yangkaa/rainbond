@@ -71,6 +71,7 @@ func (v2 *V2) helmRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/check_helm_app", controller.GetManager().CheckHelmApp)
 	r.Get("/get_chart_information", controller.GetManager().GetChartInformation)
+	r.Get("/get_chart_yaml", controller.GetManager().GetYamlByChart)
 	return r
 }
 
@@ -286,9 +287,13 @@ func (v2 *V2) serviceRouter() chi.Router {
 	r.Post("/upgrade", middleware.WrapEL(controller.GetManager().UpgradeService, dbmodel.TargetTypeService, "upgrade-service", dbmodel.ASYNEVENTTYPE, true))
 	//应用状态获取(act)
 	r.Get("/status", controller.GetManager().StatusService)
-	//组件安全开关
+	//组件安全
+	//配置安全开关
 	r.Put("/security_context", controller.GetManager().SecurityContextService)
 	r.Delete("/security_context", controller.GetManager().SecurityContextService)
+	//源码安全
+	r.Put("/code_inspection", controller.GetManager().CodeInspectionService)
+	r.Delete("/code_inspection", controller.GetManager().CodeInspectionService)
 	//构建版本列表
 	r.Get("/build-list", controller.GetManager().BuildList)
 	r.Get("/file-manage", controller.GetManager().FileManageService)

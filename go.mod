@@ -288,7 +288,7 @@ require (
 	golang.org/x/tools v0.2.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	google.golang.org/genproto v0.0.0-20220421151946-72621c1f0bd3 // indirect
-	k8s.io/kubectl v0.24.0 // indirect
+	k8s.io/kubectl v0.24.0
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 )
 
@@ -301,7 +301,7 @@ replace (
 	github.com/docker/docker => github.com/docker/docker v20.10.2+incompatible
 	github.com/envoyproxy/go-control-plane => github.com/envoyproxy/go-control-plane v0.9.5
 	github.com/godbus/dbus => github.com/godbus/dbus/v5 v5.0.4
-	github.com/goodrain/rainbond-oam => github.com/goodrain/rainbond-oam v0.0.0-20230614023629-d4b302e90dfa
+	github.com/goodrain/rainbond-oam => github.com/goodrain/rainbond-oam v0.0.0-20231124034417-c9417f778e7f
 	github.com/prometheus/common => github.com/prometheus/common v0.15.0
 	google.golang.org/grpc => google.golang.org/grpc v1.27.1
 	helm.sh/helm/v3 => helm.sh/helm/v3 v3.9.0
