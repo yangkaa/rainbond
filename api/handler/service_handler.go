@@ -87,7 +87,7 @@ type ServiceHandler interface {
 	GetServiceCheckInfo(uuid string) (*exector.ServiceCheckResult, *util.APIHandleError)
 	GetServiceDeployInfo(tenantID, serviceID string) (*pb.DeployInfo, *util.APIHandleError)
 	ListVersionInfo(serviceID string) (*api_model.BuildListRespVO, error)
-	FileManageInfo(serviceID, podName, tarPath, namespace string) ([]api_model.FileInfo, error)
+	FileManageInfo(podName, tarPath, namespace, containerName string) ([]api_model.FileInfo, error)
 	EventBuildVersion(serviceID, buildVersion string) (*api_model.BuildListRespVO, error)
 
 	AddAutoscalerRule(req *api_model.AutoscalerRuleReq) error

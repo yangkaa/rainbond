@@ -1202,7 +1202,7 @@ func (s *ServiceAction) ServiceDepend(action string, ds *api_model.DependService
 	return nil
 }
 
-//OpenServiceCodeInspection -
+// OpenServiceCodeInspection -
 func (s *ServiceAction) OpenServiceCodeInspection(serviceID string) error {
 	ci, dbErr := db.GetManager().TenantServiceCodeInspectionDao().GetTenantServiceCodeInspection(serviceID)
 	if dbErr != nil {
@@ -1220,7 +1220,7 @@ func (s *ServiceAction) OpenServiceCodeInspection(serviceID string) error {
 	return db.GetManager().TenantServiceCodeInspectionDao().UpdateModel(ci)
 }
 
-//CloseServiceCodeInspection -
+// CloseServiceCodeInspection -
 func (s *ServiceAction) CloseServiceCodeInspection(seviceID string) error {
 	ci, err := db.GetManager().TenantServiceCodeInspectionDao().GetTenantServiceCodeInspection(seviceID)
 	if err != nil {
@@ -1230,7 +1230,7 @@ func (s *ServiceAction) CloseServiceCodeInspection(seviceID string) error {
 	return db.GetManager().TenantServiceCodeInspectionDao().UpdateModel(ci)
 }
 
-//CloseServiceSecurityContext -
+// CloseServiceSecurityContext -
 func (s *ServiceAction) CloseServiceSecurityContext(seviceID string) error {
 	return db.GetManager().TenantServicesSecurityContextDao().DeleteTenantServiceSecurityContext(seviceID)
 }
@@ -2455,13 +2455,8 @@ func (s *ServiceAction) GetServiceDeployInfo(tenantID, serviceID string) (*pb.De
 	return info, nil
 }
 
-func (s *ServiceAction) FileManageInfo(serviceID, podName, tarPath, namespace string) ([]api_model.FileInfo, error) {
+func (s *ServiceAction) FileManageInfo(podName, tarPath, namespace, containerName string) ([]api_model.FileInfo, error) {
 	var fileInfos []api_model.FileInfo
-	service, err := db.GetManager().TenantServiceDao().GetServiceByID(serviceID)
-	if err != nil {
-		return nil, err
-	}
-	containerName := service.K8sComponentName
 	output, err := s.executeCommand(podName, namespace, containerName, []string{"ls", "-l", tarPath})
 	if err != nil {
 		return nil, err
