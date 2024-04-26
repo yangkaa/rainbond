@@ -152,7 +152,7 @@ func (d *dockerfileBuild) runBuildJob(re *Request, buildImageName string) error 
 		Command:   []string{"buildctl-daemonless.sh"},
 		Env: []corev1.EnvVar{{
 			Name:  "BUILDCTL_CONNECT_RETRIES_MAX",
-			Value: "20",
+			Value: "200",
 		},
 		},
 		Args: []string{

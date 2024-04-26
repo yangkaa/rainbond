@@ -475,7 +475,7 @@ func ImageBuild(
 		StdinOnce: true,
 		Env: []corev1.EnvVar{{
 			Name:  "BUILDCTL_CONNECT_RETRIES_MAX",
-			Value: "20",
+			Value: "200",
 		},
 		},
 		Command: []string{"buildctl-daemonless.sh"},
