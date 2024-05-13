@@ -36,7 +36,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-//Monitor monitor
+// Monitor monitor
 type Monitor struct {
 	config         *option.Config
 	ctx            context.Context
@@ -50,7 +50,7 @@ type Monitor struct {
 	stopCh         chan struct{}
 }
 
-//Start start
+// Start start
 func (d *Monitor) Start() {
 	d.discoverv1.AddProject("prometheus", &callback.Prometheus{Prometheus: d.manager})
 	d.discoverv1.AddProject("event_log_event_http", &callback.EventLog{Prometheus: d.manager})
@@ -233,18 +233,15 @@ func (d *Monitor) Stop() {
 // NewMonitor new monitor
 func NewMonitor(opt *option.Config, p *prometheus.Manager) *Monitor {
 	ctx, cancel := context.WithCancel(context.Background())
-	defaultTimeout := time.Second * 3
 
 	etcdClientArgs := &etcdutil.ClientArgs{
-		Endpoints:   opt.EtcdEndpoints,
-		DialTimeout: defaultTimeout,
-		CaFile:      opt.EtcdCaFile,
-		CertFile:    opt.EtcdCertFile,
-		KeyFile:     opt.EtcdKeyFile,
+		Endpoints: opt.EtcdEndpoints,
+		CaFile:    opt.EtcdCaFile,
+		CertFile:  opt.EtcdCertFile,
+		KeyFile:   opt.EtcdKeyFile,
 	}
 
 	cli, err := etcdutil.NewClient(ctx, etcdClientArgs)
-	v3.New(v3.Config{})
 	if err != nil {
 		logrus.Fatal(err)
 	}
