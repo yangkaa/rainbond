@@ -233,6 +233,7 @@ func (d *Monitor) Stop() {
 // NewMonitor new monitor
 func NewMonitor(opt *option.Config, p *prometheus.Manager) *Monitor {
 	ctx, cancel := context.WithCancel(context.Background())
+	defaultTimeout := time.Second * 3
 
 	etcdClientArgs := &etcdutil.ClientArgs{
 		Endpoints: opt.EtcdEndpoints,
