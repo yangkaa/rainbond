@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"path"
 	"sigs.k8s.io/yaml"
+	"strings"
 )
 
 // AppTemplate -
@@ -51,7 +52,7 @@ var (
 
 // GetChartInformation 获取 helm 应用 chart 包的详细版本信息
 func (h *HelmAction) GetChartInformation(chart api_model.ChartInformation) (*[]api_model.HelmChartInformation, *util.APIHandleError) {
-	req, err := http.NewRequest("GET", chart.RepoURL+"/index.yaml", nil)
+	req, err := http.NewRequest("GET", strings.TrimSuffix(chart.RepoURL, "/")+"/index.yaml", nil)
 	if err != nil {
 		return nil, &util.APIHandleError{Code: 400, Err: errors.Wrap(err, "GetChartInformation NewRequest")}
 	}
