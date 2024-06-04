@@ -34,7 +34,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//GetTenantServicePluginRelation GetTenantServicePluginRelation
+// GetTenantServicePluginRelation GetTenantServicePluginRelation
 func (s *ServiceAction) GetTenantServicePluginRelation(serviceID string) ([]*dbmodel.TenantServicePluginRelation, *util.APIHandleError) {
 	gps, err := db.GetManager().TenantServicePluginRelationDao().GetALLRelationByServiceID(serviceID)
 	if err != nil {
@@ -43,7 +43,7 @@ func (s *ServiceAction) GetTenantServicePluginRelation(serviceID string) ([]*dbm
 	return gps, nil
 }
 
-//TenantServiceDeletePluginRelation uninstall plugin for app
+// TenantServiceDeletePluginRelation uninstall plugin for app
 func (s *ServiceAction) TenantServiceDeletePluginRelation(tenantID, serviceID, pluginID string) *util.APIHandleError {
 	tx := db.GetManager().Begin()
 	defer func() {
@@ -85,21 +85,11 @@ func (s *ServiceAction) TenantServiceDeletePluginRelation(tenantID, serviceID, p
 	return nil
 }
 
-//SetTenantServicePluginRelation SetTenantServicePluginRelation
+// SetTenantServicePluginRelation SetTenantServicePluginRelation
 func (s *ServiceAction) SetTenantServicePluginRelation(tenantID, serviceID string, pss *api_model.PluginSetStruct) (*dbmodel.TenantServicePluginRelation, *util.APIHandleError) {
 	plugin, err := db.GetManager().TenantPluginDao().GetPluginByID(pss.Body.PluginID, tenantID)
 	if err != nil {
 		return nil, util.CreateAPIHandleErrorFromDBError("get plugin by plugin id", err)
-	}
-	crt, err := db.GetManager().TenantServicePluginRelationDao().CheckSomeModelLikePluginByServiceID(
-		serviceID,
-		plugin.PluginModel,
-	)
-	if err != nil {
-		return nil, util.CreateAPIHandleErrorFromDBError("check plugin model", err)
-	}
-	if crt {
-		return nil, util.CreateAPIHandleError(400, fmt.Errorf("can not add this kind plugin, a same kind plugin has been linked"))
 	}
 	pluginversion, err := db.GetManager().TenantPluginBuildVersionDao().GetBuildVersionByVersionID(plugin.PluginID, pss.Body.VersionID)
 	if err != nil {
@@ -182,7 +172,7 @@ func (s *ServiceAction) SetTenantServicePluginRelation(tenantID, serviceID strin
 	return relation, nil
 }
 
-//UpdateTenantServicePluginRelation UpdateTenantServicePluginRelation
+// UpdateTenantServicePluginRelation UpdateTenantServicePluginRelation
 func (s *ServiceAction) UpdateTenantServicePluginRelation(serviceID string, pss *api_model.PluginSetStruct) (*dbmodel.TenantServicePluginRelation, *util.APIHandleError) {
 	relation, err := db.GetManager().TenantServicePluginRelationDao().GetRelateionByServiceIDAndPluginID(serviceID, pss.Body.PluginID)
 	if err != nil {
@@ -221,7 +211,7 @@ func checkPluginHaveInbound(model string) bool {
 	return model == dbmodel.InBoundNetPlugin || model == dbmodel.InBoundAndOutBoundNetPlugin
 }
 
-//UpdateVersionEnv UpdateVersionEnv
+// UpdateVersionEnv UpdateVersionEnv
 func (s *ServiceAction) UpdateVersionEnv(uve *api_model.SetVersionEnv) *util.APIHandleError {
 	plugin, err := db.GetManager().TenantPluginDao().GetPluginByID(uve.PluginID, uve.Body.TenantID)
 	if err != nil {
@@ -290,7 +280,7 @@ func (s *ServiceAction) upNormalEnvs(tx *gorm.DB, uve *api_model.SetVersionEnv) 
 	return nil
 }
 
-//SavePluginConfig save plugin dynamic discovery config
+// SavePluginConfig save plugin dynamic discovery config
 func (s *ServiceAction) SavePluginConfig(serviceID, pluginID string, config *api_model.ResourceSpec) *util.APIHandleError {
 	if config == nil {
 		return nil
@@ -327,7 +317,7 @@ func (s *ServiceAction) SavePluginConfig(serviceID, pluginID string, config *api
 	return nil
 }
 
-//DeletePluginConfig delete service plugin dynamic discovery config
+// DeletePluginConfig delete service plugin dynamic discovery config
 func (s *ServiceAction) DeletePluginConfig(serviceID, pluginID string) *util.APIHandleError {
 	tx := db.GetManager().Begin()
 	err := s.deletePluginConfig(tx, serviceID, pluginID)
@@ -343,7 +333,7 @@ func (s *ServiceAction) DeletePluginConfig(serviceID, pluginID string) *util.API
 	return nil
 }
 
-//DeletePluginConfig delete service plugin dynamic discovery config
+// DeletePluginConfig delete service plugin dynamic discovery config
 func (s *ServiceAction) deletePluginConfig(tx *gorm.DB, serviceID, pluginID string) *util.APIHandleError {
 	if tx != nil {
 		if err := db.GetManager().TenantPluginVersionConfigDaoTransactions(tx).DeletePluginConfig(serviceID, pluginID); err != nil {
