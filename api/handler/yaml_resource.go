@@ -323,19 +323,19 @@ func (c *clusterAction) AppYamlResourceImport(yamlResource api_model.YamlResourc
 			return ar, &util.APIHandleError{Code: 400, Err: fmt.Errorf("get component error:%v", err)}
 		}
 		if component != nil && app.AppID == component.AppID {
-			_, err = c.DeleteComponentResource(component)
-			if err != nil {
-				logrus.Errorf("%v", err)
-				return ar, &util.APIHandleError{Code: 400, Err: fmt.Errorf("delete component resource err:%v", err)}
-			}
-			componentResource.HealthyCheckManagement.ProbeID = c.createHealthyCheck(componentResource.HealthyCheckManagement, component, "delete")
-			component.ContainerCPU = int(componentResource.BasicManagement.CPU)
-			component.ContainerMemory = int(componentResource.BasicManagement.Memory)
-			component.Replicas = int(*componentResource.BasicManagement.Replicas)
-			if err := db.GetManager().TenantServiceDao().UpdateModel(component); err != nil {
-				logrus.Errorf("update service error, %v", err)
-				return ar, &util.APIHandleError{Code: 400, Err: fmt.Errorf("update component error:%v", err)}
-			}
+			//_, err = c.DeleteComponentResource(component)
+			//if err != nil {
+			//	logrus.Errorf("%v", err)
+			//	return ar, &util.APIHandleError{Code: 400, Err: fmt.Errorf("delete component resource err:%v", err)}
+			//}
+			//componentResource.HealthyCheckManagement.ProbeID = c.createHealthyCheck(componentResource.HealthyCheckManagement, component, "delete")
+			//component.ContainerCPU = int(componentResource.BasicManagement.CPU)
+			//component.ContainerMemory = int(componentResource.BasicManagement.Memory)
+			//component.Replicas = int(*componentResource.BasicManagement.Replicas)
+			//if err := db.GetManager().TenantServiceDao().UpdateModel(component); err != nil {
+			//	logrus.Errorf("update service error, %v", err)
+			//	return ar, &util.APIHandleError{Code: 400, Err: fmt.Errorf("update component error:%v", err)}
+			//}
 		} else {
 			component, err = c.CreateComponent(app, yamlResource.TenantID, componentResource, yamlResource.Namespace, true, existComponents)
 			if err != nil {
@@ -343,13 +343,13 @@ func (c *clusterAction) AppYamlResourceImport(yamlResource api_model.YamlResourc
 				return ar, &util.APIHandleError{Code: 400, Err: fmt.Errorf("create component error:%v", err)}
 			}
 			componentResource.HealthyCheckManagement.ProbeID = c.createHealthyCheck(componentResource.HealthyCheckManagement, component, "add")
+			c.createENV(componentResource.ENVManagement, component)
+			c.createConfig(componentResource.ConfigManagement, component)
+			c.createPort(componentResource.PortManagement, component)
+			componentResource.TelescopicManagement.RuleID = c.createTelescopic(componentResource.TelescopicManagement, component)
+			componentResource.HealthyCheckManagement.ProbeID = c.createHealthyCheck(componentResource.HealthyCheckManagement, component, "add")
+			c.createK8sAttributes(componentResource.ComponentK8sAttributesManagement, yamlResource.TenantID, component)
 		}
-		c.createENV(componentResource.ENVManagement, component)
-		c.createConfig(componentResource.ConfigManagement, component)
-		c.createPort(componentResource.PortManagement, component)
-		componentResource.TelescopicManagement.RuleID = c.createTelescopic(componentResource.TelescopicManagement, component)
-		componentResource.HealthyCheckManagement.ProbeID = c.createHealthyCheck(componentResource.HealthyCheckManagement, component, "add")
-		c.createK8sAttributes(componentResource.ComponentK8sAttributesManagement, yamlResource.TenantID, component)
 		componentAttributes = append(componentAttributes, api_model.ComponentAttributes{
 			TS:                     component,
 			Image:                  componentResource.BasicManagement.Image,
