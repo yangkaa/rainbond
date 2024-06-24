@@ -154,6 +154,7 @@ func (s *slugBuild) buildRunnerImage(slugPackage string) (string, error) {
 		codeInspectSwitch = codeInspect.Switch
 	}
 	err = sources.ImageBuild(
+		&s.re.CodeSouceInfo,
 		s.re.RepositoryURL,
 		s.re.Arch,
 		cacheDir,

@@ -106,6 +106,7 @@ func (d *customDockerfileBuild) Build(re *Request) (*Response, error) {
 	}
 	// build image
 	err = sources.ImageBuild(
+		&re.CodeSouceInfo,
 		re.RepositoryURL,
 		re.Arch,
 		d.sourceDir,

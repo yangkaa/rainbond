@@ -106,6 +106,7 @@ func (e *exectorManager) runD(t *model.BuildPluginTaskBody, logger event.Logger)
 	buildImageName := fmt.Sprintf(builder.REGISTRYDOMAIN+"/plugin_%s_%s:%s", n1, t.PluginID, t.DeployVersion)
 	logger.Info("start build image", map[string]string{"step": "builder-exector"})
 	err := sources.ImageBuild(
+		nil,
 		t.GitURL,
 		"",
 		sourceDir,

@@ -393,7 +393,15 @@ func EncodeAuthToBase64(authConfig types.AuthConfig) (string, error) {
 
 // ImageBuild use buildkit build image
 func ImageBuild(
-	repositoryURL, arch, contextDir, cachePVCName, cacheMode, RbdNamespace, ServiceID, DeployVersion string,
+	codeSourceInfo *CodeSourceInfo,
+	repositoryURL,
+	arch,
+	contextDir,
+	cachePVCName,
+	cacheMode,
+	RbdNamespace,
+	ServiceID,
+	DeployVersion string,
 	logger event.Logger,
 	buildType, plugImageName,
 	BuildKitImage string,
@@ -434,6 +442,9 @@ func ImageBuild(
 	if codeInspectSwitch {
 		ann := make(map[string]string)
 		ann["repository_url"] = repositoryURL
+		ann["repository_username"] = codeSourceInfo.User
+		ann["repository_password"] = codeSourceInfo.Password
+		ann["repository_branch"] = codeSourceInfo.Branch
 		ann["code_inspection"] = "open"
 		job.Annotations = ann
 	}
