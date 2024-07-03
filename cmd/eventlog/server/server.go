@@ -56,7 +56,7 @@ func NewLogServer() *LogServer {
 	}
 }
 
-//AddFlags 添加参数
+// AddFlags 添加参数
 func (s *LogServer) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.Conf.Entry.EventLogServer.BindIP, "eventlog.bind.ip", "0.0.0.0", "Collect the log service to listen the IP")
 	fs.IntVar(&s.Conf.Entry.EventLogServer.BindPort, "eventlog.bind.port", 6366, "Collect the log service to listen the Port")
@@ -106,6 +106,7 @@ func (s *LogServer) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.Conf.WebSocket.PrometheusMetricPath, "monitor-path", "/metrics", "promethesu monitor metrics path")
 	fs.StringVar(&s.Conf.EventStore.DB.Type, "db.type", "mysql", "Data persistence type.")
 	fs.StringVar(&s.Conf.EventStore.DB.URL, "db.url", "root:admin@tcp(127.0.0.1:3306)/event", "Data persistence db url.")
+	fs.StringVar(&s.Conf.EventStore.DB.DBInterpolateParams, "db-interpolate-params", "false", "db interpolate params, for compatible oceanbase, should set true")
 	fs.IntVar(&s.Conf.EventStore.DB.PoolSize, "db.pool.size", 3, "Data persistence db pool init size.")
 	fs.IntVar(&s.Conf.EventStore.DB.PoolMaxSize, "db.pool.maxsize", 10, "Data persistence db pool max size.")
 	fs.StringVar(&s.Conf.EventStore.DB.HomePath, "docker.log.homepath", "/grdata/logs/", "container log persistent home path")
@@ -115,7 +116,7 @@ func (s *LogServer) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&s.Conf.Cluster.PubSub.PollingTimeout, "zmq4-polling-timeout", 200*time.Millisecond, "The timeout determines the time-out on the polling of sockets")
 }
 
-//InitLog 初始化log
+// InitLog 初始化log
 func (s *LogServer) InitLog() {
 	log := logrus.New()
 	if l, err := logrus.ParseLevel(s.Conf.Log.LogLevel); err == nil {
@@ -155,7 +156,7 @@ func (s *LogServer) InitLog() {
 	s.Logger = log
 }
 
-//InitConf 初始化配置
+// InitConf 初始化配置
 func (s *LogServer) InitConf() {
 	s.Conf.Cluster.Discover.ClusterMode = s.Conf.ClusterMode
 	s.Conf.Cluster.PubSub.ClusterMode = s.Conf.ClusterMode
@@ -171,7 +172,7 @@ func (s *LogServer) InitConf() {
 	}
 }
 
-//Run 执行
+// Run 执行
 func (s *LogServer) Run() error {
 	s.Logger.Debug("Start run server.")
 	log := s.Logger

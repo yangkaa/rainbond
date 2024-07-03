@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-//Config config server
+// Config config server
 type Config struct {
 	EtcdEndPoints           []string
 	EtcdCaFile              string
@@ -38,6 +38,7 @@ type Config struct {
 	EtcdPrefix              string
 	ClusterName             string
 	MysqlConnectionInfo     string
+	DBInterpolateParams     string
 	DBType                  string
 	PrometheusMetricPath    string
 	EventLogServers         []string
@@ -67,19 +68,19 @@ type Helm struct {
 	ChartCache string
 }
 
-//Worker  worker server
+// Worker  worker server
 type Worker struct {
 	Config
 	LogLevel string
 	RunMode  string //default,sync
 }
 
-//NewWorker new server
+// NewWorker new server
 func NewWorker() *Worker {
 	return &Worker{}
 }
 
-//AddFlags config
+// AddFlags config
 func (a *Worker) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.LogLevel, "log-level", "info", "the worker log level")
 	fs.StringSliceVar(&a.EtcdEndPoints, "etcd-endpoints", []string{"http://127.0.0.1:2379"}, "etcd v3 cluster endpoints.")
@@ -92,6 +93,7 @@ func (a *Worker) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.Listen, "listen", ":6369", "prometheus listen host and port")
 	fs.StringVar(&a.DBType, "db-type", "mysql", "db type mysql or etcd")
 	fs.StringVar(&a.MysqlConnectionInfo, "mysql", "root:admin@tcp(127.0.0.1:3306)/region", "mysql db connection info")
+	fs.StringVar(&a.DBInterpolateParams, "db-interpolate-params", "false", "db interpolate params, for compatible oceanbase, should set true")
 	fs.StringSliceVar(&a.EventLogServers, "event-servers", []string{"127.0.0.1:6366"}, "event log server address. simple lb")
 	fs.StringVar(&a.KubeConfig, "kube-config", "", "kubernetes api server config file")
 	fs.IntVar(&a.KubeAPIQPS, "kube-api-qps", 50, "kube client qps")
@@ -113,7 +115,7 @@ func (a *Worker) AddFlags(fs *pflag.FlagSet) {
 	a.Helm.ChartCache = path.Join(a.Helm.DataDir, "chart")
 }
 
-//SetLog 设置log
+// SetLog 设置log
 func (a *Worker) SetLog() {
 	level, err := logrus.ParseLevel(a.LogLevel)
 	if err != nil {
@@ -123,7 +125,7 @@ func (a *Worker) SetLog() {
 	logrus.SetLevel(level)
 }
 
-//CheckEnv 检测环境变量
+// CheckEnv 检测环境变量
 func (a *Worker) CheckEnv() error {
 	if err := os.Setenv("GRDATA_PVC_NAME", a.Config.GrdataPVCName); err != nil {
 		return fmt.Errorf("set env 'GRDATA_PVC_NAME': %v", err)

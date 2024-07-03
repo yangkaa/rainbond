@@ -27,7 +27,7 @@ import (
 	"runtime"
 )
 
-//Config config server
+// Config config server
 type Config struct {
 	EtcdEndPoints        []string
 	EtcdCaFile           string
@@ -37,6 +37,7 @@ type Config struct {
 	EtcdPrefix           string
 	ClusterName          string
 	MysqlConnectionInfo  string
+	DBInterpolateParams  string
 	BuildKitImage        string
 	BuildKitArgs         string
 	BuildKitCache        bool
@@ -62,19 +63,19 @@ type Config struct {
 	RuntimeEndpoint      string
 }
 
-//Builder  builder server
+// Builder  builder server
 type Builder struct {
 	Config
 	LogLevel string
 	RunMode  string //default,sync
 }
 
-//NewBuilder new server
+// NewBuilder new server
 func NewBuilder() *Builder {
 	return &Builder{}
 }
 
-//AddFlags config
+// AddFlags config
 func (a *Builder) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.LogLevel, "log-level", "info", "the builder log level")
 	fs.StringSliceVar(&a.EtcdEndPoints, "etcd-endpoints", []string{"http://127.0.0.1:2379"}, "etcd v3 cluster endpoints.")
@@ -87,6 +88,7 @@ func (a *Builder) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.BuildKitImage, "buildkit-image", "registry.cn-hangzhou.aliyuncs.com/goodrain/buildkit:v0.12.0", "buildkit image version")
 	fs.StringVar(&a.DBType, "db-type", "mysql", "db type mysql or etcd")
 	fs.StringVar(&a.MysqlConnectionInfo, "mysql", "root:admin@tcp(127.0.0.1:3306)/region", "mysql db connection info")
+	fs.StringVar(&a.DBInterpolateParams, "db-interpolate-params", "false", "db interpolate params, for compatible oceanbase, should set true")
 	fs.StringSliceVar(&a.EventLogServers, "event-servers", []string{"127.0.0.1:6366"}, "event log server address. simple lb")
 	fs.StringVar(&a.KubeConfig, "kube-config", "", "kubernetes api server config file")
 	fs.IntVar(&a.MaxTasks, "max-tasks", 50, "Maximum number of simultaneous build tasks")
@@ -110,7 +112,7 @@ func (a *Builder) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&a.BuildKitCache, "buildkit-cache", true, "whether to enable the buildkit image cache")
 }
 
-//SetLog 设置log
+// SetLog 设置log
 func (a *Builder) SetLog() {
 	level, err := logrus.ParseLevel(a.LogLevel)
 	if err != nil {
@@ -120,7 +122,7 @@ func (a *Builder) SetLog() {
 	logrus.SetLevel(level)
 }
 
-//CheckConfig check config
+// CheckConfig check config
 func (a *Builder) CheckConfig() error {
 	if a.Topic != client.BuilderTopic && a.Topic != client.WindowsBuilderTopic {
 		return fmt.Errorf("Topic is only suppory `%s` and `%s`", client.BuilderTopic, client.WindowsBuilderTopic)
