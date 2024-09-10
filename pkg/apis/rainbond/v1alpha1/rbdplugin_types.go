@@ -22,6 +22,58 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type PluginType string
+
+const (
+	JSInject PluginType = "JSInject"
+	Iframe   PluginType = "Iframe"
+)
+
+// 为 PluginType 提供 String() 方法
+func (p PluginType) String() string {
+	switch p {
+	case JSInject:
+		return "JSInject"
+	case Iframe:
+		return "Iframe"
+	default:
+		return "Unknown"
+	}
+}
+
+// PluginView View where the plugin is located
+// +kubebuilder:validation:Enum=Platform;Team;Application;Component
+type PluginView string
+
+const (
+	Platform    PluginView = "Platform"
+	Team        PluginView = "Team"
+	Application PluginView = "Application"
+	Component   PluginView = "Component"
+)
+
+// 为 PluginView 提供 String() 方法
+func (p PluginView) String() string {
+	switch p {
+	case Platform:
+		return "Platform"
+	case Team:
+		return "Team"
+	case Application:
+		return "Application"
+	case Component:
+		return "Component"
+	default:
+		return "Unknown"
+	}
+}
+
+type Author struct {
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email,omitempty"`
+	URL   string `json:"url,omitempty"`
+}
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -31,12 +83,18 @@ type RBDPluginSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of RBDPlugin. Edit rbdplugin_types.go to remove/update
-	Author      string `json:"author,omitempty"`
-	Version     string `json:"version,omitempty"`
+	// DisplayName The alias is the name used for display, and if this field is not set, the name in the metadata will be used
+	DisplayName string `json:"display_name,omitempty"`
 	Description string `json:"description,omitempty"`
-	Icon        string `json:"icon,omitempty"`
-	// Alias The alias is the name used for display, and if this field is not set, the name in the metadata will be used
-	Alias string `json:"alias,omitempty"`
+	// +kubebuilder:validation:Enum=JSInject;Iframe
+	PluginType PluginType `json:"plugin_type,omitempty"`
+
+	PluginView []PluginView `json:"plugin_views,omitempty"`
+
+	Authors     []Author `json:"authors,omitempty"`
+	Icon        string   `json:"icon,omitempty"`
+	Version     string   `json:"version,omitempty"`
+	FrontedPath string   `json:"fronted_path,omitempty"`
 	// AccessUrls Access URL defines the accessible address of the plug-in.
 	// If this field is not set, all accessible addresses under the application will be listed in the platform.
 	AccessURLs []string `json:"access_urls,omitempty"`
