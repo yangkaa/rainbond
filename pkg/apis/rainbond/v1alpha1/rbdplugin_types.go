@@ -22,6 +22,32 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type PluginLabelPrefix string
+
+const (
+	PluginEnableLabel PluginLabelPrefix = "plugin.rainbond.io/enable"
+)
+
+// 为 PluginType 提供 String() 方法
+func (p PluginLabelPrefix) String() string {
+	return string(p)
+}
+
+func (p PluginLabelPrefix) Combine(v PluginLabelValue) string {
+	return p.String() + "=" + v.String()
+}
+
+type PluginLabelValue string
+
+const (
+	True  PluginLabelValue = "true"
+	False PluginLabelValue = "false"
+)
+
+func (p PluginLabelValue) String() string {
+	return string(p)
+}
+
 type PluginType string
 
 const (
@@ -31,14 +57,7 @@ const (
 
 // 为 PluginType 提供 String() 方法
 func (p PluginType) String() string {
-	switch p {
-	case JSInject:
-		return "JSInject"
-	case Iframe:
-		return "Iframe"
-	default:
-		return "Unknown"
-	}
+	return string(p)
 }
 
 // PluginView View where the plugin is located
@@ -54,18 +73,7 @@ const (
 
 // 为 PluginView 提供 String() 方法
 func (p PluginView) String() string {
-	switch p {
-	case Platform:
-		return "Platform"
-	case Team:
-		return "Team"
-	case Application:
-		return "Application"
-	case Component:
-		return "Component"
-	default:
-		return "Unknown"
-	}
+	return string(p)
 }
 
 type Author struct {
