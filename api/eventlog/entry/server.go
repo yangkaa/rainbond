@@ -19,14 +19,13 @@
 package entry
 
 import (
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/goodrain/rainbond/eventlog/store"
-
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	"github.com/goodrain/rainbond/api/eventlog/store"
 	"github.com/sirupsen/logrus"
 	"github.com/thejerf/suture"
 )
 
-//Entry 数据入口
+// Entry 数据入口
 type Entry struct {
 	supervisor   *suture.Supervisor
 	log          *logrus.Entry
@@ -34,7 +33,7 @@ type Entry struct {
 	storeManager store.Manager
 }
 
-//NewEntry 创建
+// NewEntry 创建
 func NewEntry(conf conf.EntryConf, log *logrus.Entry, storeManager store.Manager) *Entry {
 	return &Entry{
 		log:          log,
@@ -43,13 +42,14 @@ func NewEntry(conf conf.EntryConf, log *logrus.Entry, storeManager store.Manager
 	}
 }
 
-//Start 启动
+// Start 启动
 func (e *Entry) Start() error {
 	supervisor := suture.New("Entry Server", suture.Spec{
 		Log: func(m string) {
 			e.log.Info(m)
 		},
 	})
+	// 构建事件和运行事件信息
 	eventServer, err := NewEventLogServer(e.conf.EventLogServer, e.log.WithField("server", "EventLog"), e.storeManager)
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func (e *Entry) Start() error {
 	return nil
 }
 
-//Stop 停止
+// Stop 停止
 func (e *Entry) Stop() {
 	if e.supervisor != nil {
 		e.supervisor.Stop()

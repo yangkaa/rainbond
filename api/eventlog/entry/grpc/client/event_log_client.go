@@ -16,33 +16,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package db
+package client
 
 import (
-	"fmt"
-
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/sirupsen/logrus"
+	"context"
+	"github.com/goodrain/rainbond/api/eventlog/entry/grpc/pb"
+	grpc1 "google.golang.org/grpc"
 )
 
-type Manager interface {
-	SaveMessage([]*EventLogMessage) error
-	Close() error
-	GetMessages(id, level string, length int) (interface{}, error)
-}
-
-//NewManager 创建存储管理器
-func NewManager(conf conf.DBConf, log *logrus.Entry) (Manager, error) {
-	switch conf.Type {
-	case "file":
-		return &filePlugin{
-			homePath: conf.HomePath,
-		}, nil
-	case "eventfile":
-		return &EventFilePlugin{
-			HomePath: conf.HomePath,
-		}, nil
-	default:
-		return nil, fmt.Errorf("do not support plugin")
+// NewEventClient new a event client
+func NewEventClient(ctx context.Context, server string) (pb.EventLogClient, error) {
+	conn, err := grpc1.DialContext(ctx, server, grpc1.WithInsecure())
+	if err != nil {
+		return nil, err
 	}
+	return pb.NewEventLogClient(conn), nil
 }

@@ -19,17 +19,16 @@
 package store
 
 import (
+	"github.com/goodrain/rainbond/api/eventlog/db"
 	"sync"
 	"time"
-
-	"github.com/goodrain/rainbond/eventlog/db"
 
 	"github.com/prometheus/client_golang/prometheus"
 
 	"golang.org/x/net/context"
 )
 
-//MessageStore store
+// MessageStore store
 type MessageStore interface {
 	InsertMessage(*db.EventLogMessage)
 	InsertGarbageMessage(...*db.EventLogMessage)
@@ -43,7 +42,7 @@ type MessageStore interface {
 	Scrape(ch chan<- prometheus.Metric, namespace, exporter, from string) error
 }
 
-//NewStore 创建
+// NewStore 创建
 func NewStore(storeType string, manager *storeManager) MessageStore {
 	ctx, cancel := context.WithCancel(context.Background())
 	if storeType == "handle" {

@@ -20,8 +20,8 @@ package entry
 
 import (
 	"errors"
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/goodrain/rainbond/eventlog/store"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	"github.com/goodrain/rainbond/api/eventlog/store"
 	"time"
 
 	"golang.org/x/net/context"
@@ -32,7 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//MonitorMessageServer 监控实时数据接受服务
+// MonitorMessageServer 监控实时数据接受服务
 type MonitorMessageServer struct {
 	conf               conf.MonitorMessageServerConf
 	log                *logrus.Entry
@@ -46,7 +46,7 @@ type MonitorMessageServer struct {
 	stopReceiveMessage bool
 }
 
-//NewMonitorMessageServer 创建zmq sub
+// NewMonitorMessageServer 创建zmq sub
 func NewMonitorMessageServer(conf conf.MonitorMessageServerConf, log *logrus.Entry, storeManager store.Manager) (*MonitorMessageServer, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &MonitorMessageServer{
@@ -75,12 +75,12 @@ func NewMonitorMessageServer(conf conf.MonitorMessageServerConf, log *logrus.Ent
 	return s, nil
 }
 
-//Serve 执行
+// Serve 执行
 func (s *MonitorMessageServer) Serve() {
 	s.handleMessage()
 }
 
-//Stop 停止
+// Stop 停止
 func (s *MonitorMessageServer) Stop() {
 	s.cancel()
 	s.log.Info("receive event message server stop")
@@ -135,7 +135,7 @@ type event struct {
 	Update string        `json:"update_time"`
 }
 
-//ListenError listen error chan
+// ListenError listen error chan
 func (s *MonitorMessageServer) ListenError() chan error {
 	return s.listenErr
 }

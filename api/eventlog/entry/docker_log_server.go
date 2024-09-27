@@ -20,12 +20,11 @@ package entry
 
 import (
 	"errors"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	"github.com/goodrain/rainbond/api/eventlog/store"
+	util2 "github.com/goodrain/rainbond/api/eventlog/util"
 	"net"
 	"time"
-
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/goodrain/rainbond/eventlog/store"
-	"github.com/goodrain/rainbond/eventlog/util"
 
 	"golang.org/x/net/context"
 
@@ -37,7 +36,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//DockerLogServer 日志接受服务
+// DockerLogServer 日志接受服务
 type DockerLogServer struct {
 	conf               conf.DockerLogServerConf
 	log                *logrus.Entry
@@ -49,11 +48,11 @@ type DockerLogServer struct {
 	listenErr          chan error
 	serverLock         sync.Mutex
 	stopReceiveMessage bool
-	bufferServer       *util.Server
+	bufferServer       *util2.Server
 	listen             *net.TCPListener
 }
 
-//NewDockerLogServer 创建zmq server服务端
+// NewDockerLogServer 创建zmq server服务端
 func NewDockerLogServer(conf conf.DockerLogServerConf, log *logrus.Entry, storeManager store.Manager) (*DockerLogServer, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &DockerLogServer{
@@ -90,11 +89,11 @@ func NewDockerLogServer(conf conf.DockerLogServerConf, log *logrus.Entry, storeM
 		}
 		s.listen = listener
 		// creates a server
-		config := &util.Config{
+		config := &util2.Config{
 			PacketSendChanLimit:    10,
 			PacketReceiveChanLimit: 5000,
 		}
-		s.bufferServer = util.NewServer(config, s, s.context)
+		s.bufferServer = util2.NewServer(config, s, s.context)
 		s.log.Infof("Docker container log server listen %s", tcpAddr)
 	}
 	s.messageChan = s.storemanager.DockerLogMessageChan()
@@ -104,7 +103,7 @@ func NewDockerLogServer(conf conf.DockerLogServerConf, log *logrus.Entry, storeM
 	return s, nil
 }
 
-//Serve 执行
+// Serve 执行
 func (s *DockerLogServer) Serve() {
 	if s.conf.Mode == "zmq" {
 		s.handleMessage()
@@ -115,14 +114,14 @@ func (s *DockerLogServer) Serve() {
 
 // OnConnect is called when the connection was accepted,
 // If the return value of false is closed
-func (s *DockerLogServer) OnConnect(c *util.Conn) bool {
+func (s *DockerLogServer) OnConnect(c *util2.Conn) bool {
 	s.log.Debugf("receive a log client connect.")
 	return true
 }
 
 // OnMessage is called when the connection receives a packet,
 // If the return value of false is closed
-func (s *DockerLogServer) OnMessage(p util.Packet) bool {
+func (s *DockerLogServer) OnMessage(p util2.Packet) bool {
 	if len(p.Serialize()) > 0 {
 		select {
 		case s.messageChan <- p.Serialize():
@@ -138,11 +137,11 @@ func (s *DockerLogServer) OnMessage(p util.Packet) bool {
 }
 
 // OnClose is called when the connection closed
-func (s *DockerLogServer) OnClose(*util.Conn) {
+func (s *DockerLogServer) OnClose(*util2.Conn) {
 	s.log.Debugf("a log client closed.")
 }
 
-//Stop 停止
+// Stop 停止
 func (s *DockerLogServer) Stop() {
 	s.cancel()
 	if s.bufferServer != nil {
@@ -194,7 +193,7 @@ func (s *DockerLogServer) handleMessage() {
 	s.log.Info("Handle message core stop.")
 }
 
-//ListenError listen error chan
+// ListenError listen error chan
 func (s *DockerLogServer) ListenError() chan error {
 	return s.listenErr
 }

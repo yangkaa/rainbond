@@ -20,12 +20,11 @@ package store
 
 import (
 	"errors"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	db2 "github.com/goodrain/rainbond/api/eventlog/db"
 	"strconv"
 
-	"github.com/goodrain/rainbond/eventlog/db"
 	coreutil "github.com/goodrain/rainbond/util"
-
-	"github.com/goodrain/rainbond/eventlog/conf"
 
 	"time"
 
@@ -54,12 +53,12 @@ type Manager interface {
 	DockerLogMessageChan() chan []byte
 	GetDockerLogs(serviceID string, length int) []string
 	MonitorMessageChan() chan [][]byte
-	WebSocketMessageChan(mode, eventID, subID string) chan *db.EventLogMessage
+	WebSocketMessageChan(mode, eventID, subID string) chan *db2.EventLogMessage
 	NewMonitorMessageChan() chan []byte
 	RealseWebSocketMessageChan(mode, EventID, subID string)
 	Run() error
 	Stop()
-	Monitor() []db.MonitorData
+	Monitor() []db2.MonitorData
 	Scrape(ch chan<- prometheus.Metric, namespace, exporter, from string) error
 	Error() chan error
 	HealthCheck() map[string]string
@@ -68,12 +67,12 @@ type Manager interface {
 // NewManager 存储管理器
 func NewManager(conf conf.EventStoreConf, log *logrus.Entry) (Manager, error) {
 	conf.DB.Type = "eventfile"
-	dbPlugin, err := db.NewManager(conf.DB, log)
+	dbPlugin, err := db2.NewManager(conf.DB, log)
 	if err != nil {
 		return nil, err
 	}
 	conf.DB.Type = "file"
-	filePlugin, err := db.NewManager(conf.DB, log)
+	filePlugin, err := db2.NewManager(conf.DB, log)
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +119,8 @@ type storeManager struct {
 	chanCacheSize          int
 	conf                   conf.EventStoreConf
 	log                    *logrus.Entry
-	dbPlugin               db.Manager
-	filePlugin             db.Manager
+	dbPlugin               db2.Manager
+	filePlugin             db2.Manager
 	errChan                chan error
 }
 
@@ -172,14 +171,14 @@ func (s *storeManager) Scrape(ch chan<- prometheus.Metric, namespace, exporter, 
 	return nil
 }
 
-func (s *storeManager) Monitor() []db.MonitorData {
+func (s *storeManager) Monitor() []db2.MonitorData {
 	data := s.dockerLogStore.GetMonitorData()
 	moData := s.newmonitorMessageStore.GetMonitorData()
 	if moData != nil {
 		data.LogSizePeerM += moData.LogSizePeerM
 		data.ServiceSize += moData.ServiceSize
 	}
-	re := []db.MonitorData{*data}
+	re := []db2.MonitorData{*data}
 	dataHand := s.handleMessageStore.GetMonitorData()
 	if dataHand != nil {
 		re = append(re, *dataHand)
@@ -230,7 +229,7 @@ func (s *storeManager) NewMonitorMessageChan() chan []byte {
 	return s.newmonitorMessageChan
 }
 
-func (s *storeManager) WebSocketMessageChan(mode, eventID, subID string) chan *db.EventLogMessage {
+func (s *storeManager) WebSocketMessageChan(mode, eventID, subID string) chan *db2.EventLogMessage {
 	if mode == "event" {
 		ch := s.readMessageStore.SubChan(eventID, subID)
 		return ch
@@ -325,12 +324,12 @@ func (s *storeManager) checkHealth() {
 
 }
 
-func (s *storeManager) parsingMessage(msg []byte, messageType string) (*db.EventLogMessage, error) {
+func (s *storeManager) parsingMessage(msg []byte, messageType string) (*db2.EventLogMessage, error) {
 	if msg == nil {
 		return nil, errors.New("unable parsing nil message")
 	}
 	//message := s.pool.Get().(*db.EventLogMessage)不能使用对象池，会阻塞进程
-	var message db.EventLogMessage
+	var message db2.EventLogMessage
 	message.Content = msg
 	if messageType == "json" {
 		err := ffjson.Unmarshal(msg, &message)
@@ -360,7 +359,7 @@ loop:
 			if msg == nil {
 				continue
 			}
-			s.newmonitorMessageStore.InsertMessage(&db.EventLogMessage{MonitorData: msg})
+			s.newmonitorMessageStore.InsertMessage(&db2.EventLogMessage{MonitorData: msg})
 		}
 	}
 	s.errChan <- fmt.Errorf("handle monitor log core exist")
@@ -413,8 +412,8 @@ func (s *storeManager) handleSubMessage() {
 				continue
 			}
 			if len(msg) == 2 {
-				if string(msg[0]) == string(db.ServiceNewMonitorMessage) {
-					s.newmonitorMessageStore.InsertMessage(&db.EventLogMessage{MonitorData: msg[1]})
+				if string(msg[0]) == string(db2.ServiceNewMonitorMessage) {
+					s.newmonitorMessageStore.InsertMessage(&db2.EventLogMessage{MonitorData: msg[1]})
 					continue
 				}
 				//s.log.Debugf("receive sub message %s", string(msg))
@@ -423,7 +422,7 @@ func (s *storeManager) handleSubMessage() {
 					s.log.Error("parsing the message before insert message error.", err.Error())
 					continue
 				}
-				if string(msg[0]) == string(db.EventMessage) {
+				if string(msg[0]) == string(db2.EventMessage) {
 					s.readMessageStore.InsertMessage(message)
 				}
 			}
@@ -485,7 +484,7 @@ loop:
 			buffer := bytes.NewBuffer(containerID)
 			buffer.WriteString(":")
 			buffer.Write(log)
-			message := db.EventLogMessage{
+			message := db2.EventLogMessage{
 				Message: buffer.String(),
 				Content: buffer.Bytes(),
 				EventID: serviceID,

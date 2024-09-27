@@ -20,10 +20,9 @@ package store
 
 import (
 	"errors"
+	"github.com/goodrain/rainbond/api/eventlog/db"
 	"sync"
 	"time"
-
-	"github.com/goodrain/rainbond/eventlog/db"
 
 	"github.com/sirupsen/logrus"
 )

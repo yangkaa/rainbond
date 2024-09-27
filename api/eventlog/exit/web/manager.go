@@ -21,13 +21,13 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	"github.com/goodrain/rainbond/api/eventlog/store"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/goodrain/rainbond/eventlog/store"
 	"github.com/goodrain/rainbond/util"
 	httputil "github.com/goodrain/rainbond/util/http"
 

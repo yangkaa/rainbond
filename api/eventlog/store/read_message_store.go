@@ -19,11 +19,10 @@
 package store
 
 import (
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	"github.com/goodrain/rainbond/api/eventlog/db"
 	"sync"
 	"time"
-
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/goodrain/rainbond/eventlog/db"
 
 	"golang.org/x/net/context"
 

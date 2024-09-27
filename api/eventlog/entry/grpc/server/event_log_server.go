@@ -21,13 +21,11 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	"github.com/goodrain/rainbond/api/eventlog/entry/grpc/pb"
+	"github.com/goodrain/rainbond/api/eventlog/store"
 	"io"
 	"net"
-
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/goodrain/rainbond/eventlog/store"
-
-	"github.com/goodrain/rainbond/eventlog/entry/grpc/pb"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -45,7 +43,7 @@ type EventLogRPCServer struct {
 	lis          net.Listener
 }
 
-//NewServer server
+// NewServer server
 func NewServer(conf conf.EventLogServerConf, log *logrus.Entry, storeManager store.Manager, listenErr chan error) *EventLogRPCServer {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &EventLogRPCServer{
@@ -59,7 +57,7 @@ func NewServer(conf conf.EventLogServerConf, log *logrus.Entry, storeManager sto
 	}
 }
 
-//Start start grpc server
+// Start start grpc server
 func (s *EventLogRPCServer) Start() error {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.conf.BindIP, s.conf.BindPort))
 	if err != nil {
@@ -79,7 +77,7 @@ func (s *EventLogRPCServer) Start() error {
 	return nil
 }
 
-//Stop stop
+// Stop stop
 func (s *EventLogRPCServer) Stop() {
 	s.cancel()
 	// if s.lis != nil {
@@ -87,7 +85,7 @@ func (s *EventLogRPCServer) Stop() {
 	// }
 }
 
-//Log impl EventLogServerServer
+// Log impl EventLogServerServer
 func (s *EventLogRPCServer) Log(stream pb.EventLog_LogServer) error {
 	for {
 		select {

@@ -20,10 +20,9 @@ package entry
 
 import (
 	"errors"
-
-	"github.com/goodrain/rainbond/eventlog/conf"
-	grpcserver "github.com/goodrain/rainbond/eventlog/entry/grpc/server"
-	"github.com/goodrain/rainbond/eventlog/store"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	grpcserver "github.com/goodrain/rainbond/api/eventlog/entry/grpc/server"
+	"github.com/goodrain/rainbond/api/eventlog/store"
 
 	"golang.org/x/net/context"
 
@@ -32,7 +31,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//EventLogServer 日志接受服务
+// EventLogServer 日志接受服务
 type EventLogServer struct {
 	conf               conf.EventLogServerConf
 	log                *logrus.Entry
@@ -46,7 +45,7 @@ type EventLogServer struct {
 	eventRPCServer     *grpcserver.EventLogRPCServer
 }
 
-//NewEventLogServer 创建zmq server服务端
+// NewEventLogServer 创建zmq server服务端
 func NewEventLogServer(conf conf.EventLogServerConf, log *logrus.Entry, storeManager store.Manager) (*EventLogServer, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &EventLogServer{
@@ -68,19 +67,19 @@ func NewEventLogServer(conf conf.EventLogServerConf, log *logrus.Entry, storeMan
 	return s, nil
 }
 
-//Serve 执行
+// Serve 执行
 func (s *EventLogServer) Serve() {
 	s.eventRPCServer.Start()
 }
 
-//Stop 停止
+// Stop 停止
 func (s *EventLogServer) Stop() {
 	s.cancel()
 	s.eventRPCServer.Stop()
 	s.log.Info("receive event message server stop")
 }
 
-//ListenError listen error chan
+// ListenError listen error chan
 func (s *EventLogServer) ListenError() chan error {
 	return s.listenErr
 }

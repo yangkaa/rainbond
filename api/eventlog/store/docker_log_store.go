@@ -19,11 +19,10 @@
 package store
 
 import (
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	db2 "github.com/goodrain/rainbond/api/eventlog/db"
 	"sync"
 	"time"
-
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/goodrain/rainbond/eventlog/db"
 
 	"golang.org/x/net/context"
 
@@ -39,7 +38,7 @@ type dockerLogStore struct {
 	cancel       func()
 	ctx          context.Context
 	pool         *sync.Pool
-	filePlugin   db.Manager
+	filePlugin   db2.Manager
 	LogSizePeerM int64
 	LogSize      int64
 	barrelSize   int
@@ -63,7 +62,7 @@ func (h *dockerLogStore) Scrape(ch chan<- prometheus.Metric, namespace, exporter
 
 	return nil
 }
-func (h *dockerLogStore) insertMessage(message *db.EventLogMessage) bool {
+func (h *dockerLogStore) insertMessage(message *db2.EventLogMessage) bool {
 	h.rwLock.RLock() //读锁
 	defer h.rwLock.RUnlock()
 	if ba, ok := h.barrels[message.EventID]; ok {
@@ -72,7 +71,7 @@ func (h *dockerLogStore) insertMessage(message *db.EventLogMessage) bool {
 	}
 	return false
 }
-func (h *dockerLogStore) InsertMessage(message *db.EventLogMessage) {
+func (h *dockerLogStore) InsertMessage(message *db2.EventLogMessage) {
 	if message == nil || message.EventID == "" {
 		return
 	}
@@ -90,7 +89,7 @@ func (h *dockerLogStore) InsertMessage(message *db.EventLogMessage) {
 	h.barrels[message.EventID] = ba
 	h.barrelSize++
 }
-func (h *dockerLogStore) subChan(eventID, subID string) chan *db.EventLogMessage {
+func (h *dockerLogStore) subChan(eventID, subID string) chan *db2.EventLogMessage {
 	h.rwLock.RLock() //读锁
 	defer h.rwLock.RUnlock()
 	if ba, ok := h.barrels[eventID]; ok {
@@ -99,7 +98,7 @@ func (h *dockerLogStore) subChan(eventID, subID string) chan *db.EventLogMessage
 	}
 	return nil
 }
-func (h *dockerLogStore) SubChan(eventID, subID string) chan *db.EventLogMessage {
+func (h *dockerLogStore) SubChan(eventID, subID string) chan *db2.EventLogMessage {
 	if ch := h.subChan(eventID, subID); ch != nil {
 		return ch
 	}
@@ -123,8 +122,8 @@ func (h *dockerLogStore) Run() {
 	go h.handleBarrelEvent()
 }
 
-func (h *dockerLogStore) GetMonitorData() *db.MonitorData {
-	data := &db.MonitorData{
+func (h *dockerLogStore) GetMonitorData() *db2.MonitorData {
+	data := &db2.MonitorData{
 		ServiceSize:  len(h.barrels),
 		LogSizePeerM: h.LogSizePeerM,
 	}
@@ -212,9 +211,9 @@ func (h *dockerLogStore) saveBeforeGc(eventID string, v *dockerLogEventBarrel) {
 	v.persistenceBarrel = nil
 	v.persistencelock.Unlock()
 }
-func (h *dockerLogStore) InsertGarbageMessage(message ...*db.EventLogMessage) {}
+func (h *dockerLogStore) InsertGarbageMessage(message ...*db2.EventLogMessage) {}
 
-//TODD
+// TODD
 func (h *dockerLogStore) handleBarrelEvent() {
 	for {
 		select {

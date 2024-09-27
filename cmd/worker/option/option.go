@@ -104,7 +104,7 @@ func (a *Worker) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.SharedStorageClass, "shared-storageclass", "", "custom shared storage class.use the specified storageclass to create shared storage, if this parameter is not specified, it will use rainbondsssc by default")
 
 	fs.StringVar(&a.MQAPI, "mq-api", "rbd-mq:6300", "acp_mq api")
-	fs.StringSliceVar(&a.EventLogServers, "event-servers", []string{"rbd-eventlog:6366"}, "event log server address. simple lb")
+	fs.StringSliceVar(&a.EventLogServers, "event-servers", []string{"rbd-api-api-inner:6366"}, "event log server address. simple lb")
 
 	a.Helm.RepoFile = path.Join(a.Helm.DataDir, "repo/repositories.yaml")
 	a.Helm.RepoCache = path.Join(a.Helm.DataDir, "cache")

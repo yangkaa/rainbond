@@ -16,20 +16,39 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package client
+package db
 
 import (
-	"context"
-	"github.com/goodrain/rainbond/eventlog/entry/grpc/pb"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	"time"
 
-	grpc1 "google.golang.org/grpc"
+	"github.com/goodrain/rainbond/db"
+	"github.com/goodrain/rainbond/db/config"
+	"github.com/sirupsen/logrus"
 )
 
-//NewEventClient new a event client
-func NewEventClient(ctx context.Context, server string) (pb.EventLogClient, error) {
-	conn, err := grpc1.DialContext(ctx, server, grpc1.WithInsecure())
-	if err != nil {
-		return nil, err
+// CreateDBManager -
+func CreateDBManager(conf conf.DBConf) error {
+	logrus.Infof("creating dbmanager ,details %v", conf)
+	var tryTime time.Duration
+	tryTime = 0
+	var err error
+	for tryTime < 4 {
+		tryTime++
+		if err = db.CreateManager(config.Config{
+			MysqlConnectionInfo: conf.URL,
+			DBType:              conf.Type,
+		}); err != nil {
+			logrus.Errorf("get db manager failed, try time is %v,%s", tryTime, err.Error())
+			time.Sleep((5 + tryTime*10) * time.Second)
+		} else {
+			break
+		}
 	}
-	return pb.NewEventLogClient(conn), nil
+	if err != nil {
+		logrus.Errorf("get db manager failed,%s", err.Error())
+		return err
+	}
+	logrus.Debugf("init db manager success")
+	return nil
 }

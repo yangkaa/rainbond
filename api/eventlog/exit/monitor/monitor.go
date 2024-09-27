@@ -19,7 +19,7 @@
 package monitor
 
 import (
-	"github.com/goodrain/rainbond/eventlog/store"
+	"github.com/goodrain/rainbond/api/eventlog/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

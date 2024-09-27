@@ -20,6 +20,11 @@ package server
 
 import (
 	"fmt"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	"github.com/goodrain/rainbond/api/eventlog/db"
+	"github.com/goodrain/rainbond/api/eventlog/entry"
+	"github.com/goodrain/rainbond/api/eventlog/exit/web"
+	"github.com/goodrain/rainbond/api/eventlog/store"
 	"github.com/goodrain/rainbond/pkg/component/es"
 	"os"
 	"os/signal"
@@ -27,11 +32,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/goodrain/rainbond/eventlog/db"
-	"github.com/goodrain/rainbond/eventlog/entry"
-	"github.com/goodrain/rainbond/eventlog/exit/web"
-	"github.com/goodrain/rainbond/eventlog/store"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )

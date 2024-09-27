@@ -20,15 +20,15 @@ package store
 
 import (
 	"fmt"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
+	db2 "github.com/goodrain/rainbond/api/eventlog/db"
+	"github.com/goodrain/rainbond/api/eventlog/util"
 	"strings"
 	"sync"
 	"time"
 
 	cdb "github.com/goodrain/rainbond/db"
 	"github.com/goodrain/rainbond/db/model"
-	"github.com/goodrain/rainbond/eventlog/conf"
-	"github.com/goodrain/rainbond/eventlog/db"
-	"github.com/goodrain/rainbond/eventlog/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -40,11 +40,11 @@ type handleMessageStore struct {
 	garbageLock            sync.Mutex
 	conf                   conf.EventStoreConf
 	log                    *logrus.Entry
-	garbageMessage         []*db.EventLogMessage
+	garbageMessage         []*db2.EventLogMessage
 	garbageGC              chan int
 	ctx                    context.Context
 	barrelEvent            chan []string
-	dbPlugin               db.Manager
+	dbPlugin               db2.Manager
 	cancel                 func()
 	handleEventCoreSize    int
 	stopGarbage            chan struct{}
@@ -80,22 +80,22 @@ func (h *handleMessageStore) Scrape(ch chan<- prometheus.Metric, namespace, expo
 	return nil
 }
 
-func (h *handleMessageStore) GetMonitorData() *db.MonitorData {
-	da := &db.MonitorData{
+func (h *handleMessageStore) GetMonitorData() *db2.MonitorData {
+	da := &db2.MonitorData{
 		LogSizePeerM: h.size,
 		ServiceSize:  len(h.barrels),
 	}
 	return da
 }
 
-func (h *handleMessageStore) SubChan(eventID, subID string) chan *db.EventLogMessage {
+func (h *handleMessageStore) SubChan(eventID, subID string) chan *db2.EventLogMessage {
 	return nil
 }
 func (h *handleMessageStore) RealseSubChan(eventID, subID string) {}
 
-//GC 操作进行时 消息接收会停止
-//TODD 怎么加快gc?
-//使用对象池
+// GC 操作进行时 消息接收会停止
+// TODD 怎么加快gc?
+// 使用对象池
 func (h *handleMessageStore) Gc() {
 	h.log.Debug("Handle message store gc core start.")
 	tiker := time.NewTicker(time.Second * 30)
@@ -163,7 +163,7 @@ func (h *handleMessageStore) saveBeforeGc(v *EventBarrel) {
 	v.persistencelock.Unlock()
 	h.log.Debugf("Handle message store complete gc barrel(%s)", v.eventID)
 }
-func (h *handleMessageStore) insertMessage(message *db.EventLogMessage) bool {
+func (h *handleMessageStore) insertMessage(message *db2.EventLogMessage) bool {
 	h.lock.RLock()
 	defer h.lock.RUnlock()
 	if barrel, ok := h.barrels[message.EventID]; ok {
@@ -176,7 +176,7 @@ func (h *handleMessageStore) insertMessage(message *db.EventLogMessage) bool {
 	}
 	return false
 }
-func (h *handleMessageStore) InsertMessage(message *db.EventLogMessage) {
+func (h *handleMessageStore) InsertMessage(message *db2.EventLogMessage) {
 	if message == nil || message.EventID == "" {
 		return
 	}
@@ -199,7 +199,7 @@ func (h *handleMessageStore) InsertMessage(message *db.EventLogMessage) {
 	h.allBarrel++
 }
 
-func (h *handleMessageStore) InsertGarbageMessage(message ...*db.EventLogMessage) {
+func (h *handleMessageStore) InsertGarbageMessage(message ...*db2.EventLogMessage) {
 	h.garbageLock.Lock()
 	defer h.garbageLock.Unlock()
 	h.garbageMessage = append(h.garbageMessage, message...)
@@ -259,7 +259,7 @@ func (h *handleMessageStore) persistence(eventID string) {
 	}
 }
 
-//TODD
+// TODD
 func (h *handleMessageStore) handleBarrelEvent() {
 	for {
 		select {

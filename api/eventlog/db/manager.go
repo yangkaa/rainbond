@@ -19,36 +19,30 @@
 package db
 
 import (
-	"time"
+	"fmt"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
 
-	"github.com/goodrain/rainbond/db"
-	"github.com/goodrain/rainbond/db/config"
-	"github.com/goodrain/rainbond/eventlog/conf"
 	"github.com/sirupsen/logrus"
 )
 
-//CreateDBManager -
-func CreateDBManager(conf conf.DBConf) error {
-	logrus.Infof("creating dbmanager ,details %v", conf)
-	var tryTime time.Duration
-	tryTime = 0
-	var err error
-	for tryTime < 4 {
-		tryTime++
-		if err = db.CreateManager(config.Config{
-			MysqlConnectionInfo: conf.URL,
-			DBType:              conf.Type,
-		}); err != nil {
-			logrus.Errorf("get db manager failed, try time is %v,%s", tryTime, err.Error())
-			time.Sleep((5 + tryTime*10) * time.Second)
-		} else {
-			break
-		}
+type Manager interface {
+	SaveMessage([]*EventLogMessage) error
+	Close() error
+	GetMessages(id, level string, length int) (interface{}, error)
+}
+
+// NewManager 创建存储管理器
+func NewManager(conf conf.DBConf, log *logrus.Entry) (Manager, error) {
+	switch conf.Type {
+	case "file":
+		return &filePlugin{
+			homePath: conf.HomePath,
+		}, nil
+	case "eventfile":
+		return &EventFilePlugin{
+			HomePath: conf.HomePath,
+		}, nil
+	default:
+		return nil, fmt.Errorf("do not support plugin")
 	}
-	if err != nil {
-		logrus.Errorf("get db manager failed,%s", err.Error())
-		return err
-	}
-	logrus.Debugf("init db manager success")
-	return nil
 }
