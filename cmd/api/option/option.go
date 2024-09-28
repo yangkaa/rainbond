@@ -190,10 +190,10 @@ func (a *APIServer) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.EventLogConfig.Conf.Cluster.Discover.NodeID, "node-id", "", "the unique ID for this node.")
 	fs.DurationVar(&a.EventLogConfig.Conf.Cluster.PubSub.PollingTimeout, "zmq4-polling-timeout", 200*time.Millisecond, "The timeout determines the time-out on the polling of sockets")
 
-	fs.StringVar(&a.EventLogConfig.Conf.ElasticSearchURL, "es-url", "http://47.92.106.114:9200", "es url")
-	fs.StringVar(&a.EventLogConfig.Conf.ElasticSearchUsername, "es-username", "", "es username")
-	fs.StringVar(&a.EventLogConfig.Conf.ElasticSearchPassword, "es-password", "", "es pwd")
-	fs.BoolVar(&a.EventLogConfig.Conf.ElasticEnable, "es-enable", false, "enable es")
+	//fs.StringVar(&a.EventLogConfig.Conf.ElasticSearchURL, "es-url", "http://47.92.106.114:9200", "es url")
+	//fs.StringVar(&a.EventLogConfig.Conf.ElasticSearchUsername, "es-username", "", "es username")
+	//fs.StringVar(&a.EventLogConfig.Conf.ElasticSearchPassword, "es-password", "", "es pwd")
+	//fs.BoolVar(&a.EventLogConfig.Conf.ElasticEnable, "es-enable", false, "enable es")
 }
 
 // SetLog 设置log
