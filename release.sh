@@ -122,7 +122,7 @@ build::image() {
 	if [ "$GOARCH" = "arm64" ]; then
 		if [ "$1" = "gateway" ]; then
 			BASE_IMAGE_VERSION="1.19.3.2-alpine"
-		elif [ "$1" = "eventlog" ]; then
+		elif [ "$1" = "mq" ]; then
 			DOCKERFILE_BASE="Dockerfile.arm"
 		elif [ "$1" = "mesh-data-panel" ]; then
 			DOCKERFILE_BASE="Dockerfile.arm"
