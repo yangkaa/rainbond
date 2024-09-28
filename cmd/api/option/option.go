@@ -21,7 +21,9 @@ package option
 import (
 	"fmt"
 	"github.com/goodrain/rainbond-operator/util/constants"
+	"github.com/goodrain/rainbond/api/eventlog/conf"
 	utils "github.com/goodrain/rainbond/util"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
@@ -74,9 +76,14 @@ type Config struct {
 	ElasticEnable         bool
 }
 
+type EventLogConfig struct {
+	Conf conf.Conf
+}
+
 // APIServer  apiserver server
 type APIServer struct {
 	Config
+	EventLogConfig EventLogConfig
 	LogLevel       string
 	StartRegionAPI bool
 }
@@ -132,6 +139,61 @@ func (a *APIServer) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.ElasticSearchUsername, "es-username", "", "es username")
 	fs.StringVar(&a.ElasticSearchPassword, "es-password", "", "es pwd")
 	fs.BoolVar(&a.ElasticEnable, "es-enable", false, "enable es")
+
+	// event log conf
+	fs.StringVar(&a.EventLogConfig.Conf.Entry.EventLogServer.BindIP, "eventlog.bind.ip", "0.0.0.0", "Collect the log service to listen the IP")
+	fs.IntVar(&a.EventLogConfig.Conf.Entry.EventLogServer.BindPort, "eventlog.bind.port", 6366, "Collect the log service to listen the Port")
+	fs.IntVar(&a.EventLogConfig.Conf.Entry.EventLogServer.CacheMessageSize, "eventlog.cache", 100, "the event log server cache the receive message size")
+	fs.StringVar(&a.EventLogConfig.Conf.Entry.DockerLogServer.BindIP, "dockerlog.bind.ip", "0.0.0.0", "Collect the log service to listen the IP")
+	fs.StringVar(&a.EventLogConfig.Conf.Entry.DockerLogServer.Mode, "dockerlog.mode", "stream", "the server mode zmq or stream")
+	fs.IntVar(&a.EventLogConfig.Conf.Entry.DockerLogServer.BindPort, "dockerlog.bind.port", 6362, "Collect the log service to listen the Port")
+	fs.IntVar(&a.EventLogConfig.Conf.Entry.DockerLogServer.CacheMessageSize, "dockerlog.cache", 200, "the docker log server cache the receive message size")
+	fs.StringSliceVar(&a.EventLogConfig.Conf.Entry.MonitorMessageServer.SubAddress, "monitor.subaddress", []string{"tcp://127.0.0.1:9442"}, "monitor message source address")
+	fs.IntVar(&a.EventLogConfig.Conf.Entry.MonitorMessageServer.CacheMessageSize, "monitor.cache", 200, "the monitor sub server cache the receive message size")
+	fs.StringVar(&a.EventLogConfig.Conf.Entry.MonitorMessageServer.SubSubscribe, "monitor.subscribe", "ceptop", "the monitor message sub server subscribe info")
+	fs.StringVar(&a.EventLogConfig.Conf.Cluster.Discover.InstanceIP, "cluster.instance.ip", "", "The current instance IP in the cluster can be communications.")
+	fs.StringVar(&a.EventLogConfig.Conf.Cluster.Discover.Type, "discover.type", "etcd", "the instance in cluster auto discover way.")
+	fs.StringVar(&a.EventLogConfig.Conf.Cluster.Discover.HomePath, "discover.etcd.homepath", "/event", "etcd home key")
+	fs.StringVar(&a.EventLogConfig.Conf.Cluster.PubSub.PubBindIP, "cluster.bind.ip", "0.0.0.0", "Cluster communication to listen the IP")
+	fs.IntVar(&a.EventLogConfig.Conf.Cluster.PubSub.PubBindPort, "cluster.bind.port", 6365, "Cluster communication to listen the Port")
+	fs.StringVar(&a.EventLogConfig.Conf.EventStore.MessageType, "message.type", "json", "Receive and transmit the log message type.")
+	fs.StringVar(&a.EventLogConfig.Conf.EventStore.GarbageMessageSaveType, "message.garbage.save", "file", "garbage message way of storage")
+	fs.StringVar(&a.EventLogConfig.Conf.EventStore.GarbageMessageFile, "message.garbage.file", "/var/log/envent_garbage_message.log", "save garbage message file path when save type is file")
+	fs.Int64Var(&a.EventLogConfig.Conf.EventStore.PeerEventMaxLogNumber, "message.max.number", 100000, "the max number log message for peer event")
+	fs.IntVar(&a.EventLogConfig.Conf.EventStore.PeerEventMaxCacheLogNumber, "message.cache.number", 256, "Maintain log the largest number in the memory peer event")
+	fs.Int64Var(&a.EventLogConfig.Conf.EventStore.PeerDockerMaxCacheLogNumber, "dockermessage.cache.number", 128, "Maintain log the largest number in the memory peer docker service")
+	fs.IntVar(&a.EventLogConfig.Conf.EventStore.HandleMessageCoreNumber, "message.handle.core.number", 2, "The number of concurrent processing receive log data.")
+	fs.IntVar(&a.EventLogConfig.Conf.EventStore.HandleSubMessageCoreNumber, "message.sub.handle.core.number", 3, "The number of concurrent processing receive log data. more than message.handle.core.number")
+	fs.IntVar(&a.EventLogConfig.Conf.EventStore.HandleDockerLogCoreNumber, "message.dockerlog.handle.core.number", 2, "The number of concurrent processing receive log data. more than message.handle.core.number")
+	fs.StringVar(&a.EventLogConfig.Conf.Log.LogLevel, "log.level", "info", "app log level")
+	fs.StringVar(&a.EventLogConfig.Conf.Log.LogOutType, "log.type", "stdout", "app log output type. stdout or file ")
+	fs.StringVar(&a.EventLogConfig.Conf.Log.LogPath, "log.path", "/var/log/", "app log output file path.it is effective when log.type=file")
+	fs.StringVar(&a.EventLogConfig.Conf.WebSocket.BindIP, "websocket.bind.ip", "0.0.0.0", "the bind ip of websocket for push event message")
+	fs.IntVar(&a.EventLogConfig.Conf.WebSocket.BindPort, "websocket.bind.port", 6363, "the bind port of websocket for push event message")
+	fs.IntVar(&a.EventLogConfig.Conf.WebSocket.SSLBindPort, "websocket.ssl.bind.port", 6364, "the ssl bind port of websocket for push event message")
+	fs.BoolVar(&a.EventLogConfig.Conf.WebSocket.EnableCompression, "websocket.compression", true, "weither enable compression for web socket")
+	fs.IntVar(&a.EventLogConfig.Conf.WebSocket.ReadBufferSize, "websocket.readbuffersize", 4096, "the readbuffersize of websocket for push event message")
+	fs.IntVar(&a.EventLogConfig.Conf.WebSocket.WriteBufferSize, "websocket.writebuffersize", 4096, "the writebuffersize of websocket for push event message")
+	fs.IntVar(&a.EventLogConfig.Conf.WebSocket.MaxRestartCount, "websocket.maxrestart", 5, "the max restart count of websocket for push event message")
+	fs.BoolVar(&a.EventLogConfig.Conf.WebSocket.SSL, "websocket.ssl", false, "whether to enable websocket  SSL")
+	fs.StringVar(&a.EventLogConfig.Conf.WebSocket.CertFile, "websocket.certfile", "/etc/ssl/goodrain.com/goodrain.com.crt", "websocket ssl cert file")
+	fs.StringVar(&a.EventLogConfig.Conf.WebSocket.KeyFile, "websocket.keyfile", "/etc/ssl/goodrain.com/goodrain.com.key", "websocket ssl cert file")
+	fs.StringVar(&a.EventLogConfig.Conf.WebSocket.TimeOut, "websocket.timeout", "1m", "Keep websocket service the longest time when without message ")
+	fs.StringVar(&a.EventLogConfig.Conf.WebSocket.PrometheusMetricPath, "monitor-path", "/metrics", "promethesu monitor metrics path")
+	fs.StringVar(&a.EventLogConfig.Conf.EventStore.DB.Type, "db.type", "mysql", "Data persistence type.")
+	fs.StringVar(&a.EventLogConfig.Conf.EventStore.DB.URL, "db.url", "root:admin@tcp(127.0.0.1:3306)/event", "Data persistence db url.")
+	fs.IntVar(&a.EventLogConfig.Conf.EventStore.DB.PoolSize, "db.pool.size", 3, "Data persistence db pool init size.")
+	fs.IntVar(&a.EventLogConfig.Conf.EventStore.DB.PoolMaxSize, "db.pool.maxsize", 10, "Data persistence db pool max size.")
+	fs.StringVar(&a.EventLogConfig.Conf.EventStore.DB.HomePath, "docker.log.homepath", "/grdata/logs/", "container log persistent home path")
+	fs.StringVar(&a.EventLogConfig.Conf.Entry.NewMonitorMessageServerConf.ListenerHost, "monitor.udp.host", "0.0.0.0", "receive new monitor udp server host")
+	fs.IntVar(&a.EventLogConfig.Conf.Entry.NewMonitorMessageServerConf.ListenerPort, "monitor.udp.port", 6166, "receive new monitor udp server port")
+	fs.StringVar(&a.EventLogConfig.Conf.Cluster.Discover.NodeID, "node-id", "", "the unique ID for this node.")
+	fs.DurationVar(&a.EventLogConfig.Conf.Cluster.PubSub.PollingTimeout, "zmq4-polling-timeout", 200*time.Millisecond, "The timeout determines the time-out on the polling of sockets")
+
+	fs.StringVar(&a.EventLogConfig.Conf.ElasticSearchURL, "es-url", "http://47.92.106.114:9200", "es url")
+	fs.StringVar(&a.EventLogConfig.Conf.ElasticSearchUsername, "es-username", "", "es username")
+	fs.StringVar(&a.EventLogConfig.Conf.ElasticSearchPassword, "es-password", "", "es pwd")
+	fs.BoolVar(&a.EventLogConfig.Conf.ElasticEnable, "es-enable", false, "enable es")
 }
 
 // SetLog 设置log

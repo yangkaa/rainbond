@@ -30,6 +30,7 @@ import (
 	"github.com/goodrain/rainbond/mq/mqcomponent/metrics"
 	"github.com/goodrain/rainbond/mq/mqcomponent/mqclient"
 	"github.com/goodrain/rainbond/pkg/component/es"
+	"github.com/goodrain/rainbond/pkg/component/eventlog"
 	"github.com/goodrain/rainbond/pkg/component/grpc"
 	"github.com/goodrain/rainbond/pkg/component/hubregistry"
 	"github.com/goodrain/rainbond/pkg/component/k8s"
@@ -145,4 +146,9 @@ func MQClient() rainbond.Component {
 // ES -
 func ES() rainbond.Component {
 	return es.New()
+}
+
+// EventLog -
+func EventLog() rainbond.Component {
+	return eventlog.New()
 }

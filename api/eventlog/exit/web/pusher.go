@@ -362,7 +362,7 @@ func (p *PubContext) Close() {
 	})
 }
 
-func (s *SocketServer) pubsub(w http.ResponseWriter, r *http.Request) {
+func (s *SocketServer) Pubsub(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:    s.conf.ReadBufferSize,
 		WriteBufferSize:   s.conf.WriteBufferSize,

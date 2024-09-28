@@ -26,8 +26,8 @@ import (
 	httputil "github.com/goodrain/rainbond/util/http"
 )
 
-//getDockerLogs get history docker logs
-func (s *SocketServer) getDockerLogs(w http.ResponseWriter, r *http.Request) {
+// getDockerLogs get history docker logs
+func (s *SocketServer) GetDockerLogs(w http.ResponseWriter, r *http.Request) {
 	rows, _ := strconv.Atoi(r.URL.Query().Get("rows"))
 	serviceID := chi.URLParam(r, "serviceID")
 	if rows == 0 {

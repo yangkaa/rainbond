@@ -10,13 +10,14 @@ type Env string
 
 // Config -
 type Config struct {
-	AppName      string
-	Version      string
-	Env          Env
-	Debug        bool
-	APIConfig    apiconfig.Config
-	MQConfig     mqconfig.Config
-	WebCliConfig WebCliConfig
+	AppName        string
+	Version        string
+	Env            Env
+	Debug          bool
+	APIConfig      apiconfig.Config
+	MQConfig       mqconfig.Config
+	WebCliConfig   WebCliConfig
+	EventlogConfig apiconfig.EventLogConfig
 }
 
 var defaultConfig *Config

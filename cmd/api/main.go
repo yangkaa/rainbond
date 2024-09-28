@@ -44,8 +44,9 @@ func main() {
 	s.SetLog()
 
 	configs.SetDefault(&configs.Config{
-		AppName:   "rbd-api",
-		APIConfig: s.Config,
+		AppName:        "rbd-api",
+		APIConfig:      s.Config,
+		EventlogConfig: s.EventLogConfig,
 	})
 
 	if s.Config.ElasticEnable {
@@ -57,6 +58,7 @@ func main() {
 		Registry(component.Database()).
 		Registry(component.Grpc()).
 		Registry(component.Event()).
+		Registry(component.EventLog()).
 		Registry(component.K8sClient()).
 		Registry(component.HubRegistry()).
 		Registry(component.Proxy()).

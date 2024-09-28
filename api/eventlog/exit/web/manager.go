@@ -80,7 +80,7 @@ func NewSocket(conf conf.WebSocketConf, discoverConf conf.DiscoverConf, log *log
 	}
 }
 
-func (s *SocketServer) pushEventMessage(w http.ResponseWriter, r *http.Request) {
+func (s *SocketServer) PushEventMessage(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:    s.conf.ReadBufferSize,
 		WriteBufferSize:   s.conf.WriteBufferSize,
@@ -160,7 +160,7 @@ func (s *SocketServer) pushEventMessage(w http.ResponseWriter, r *http.Request) 
 
 }
 
-func (s *SocketServer) pushDockerLog(w http.ResponseWriter, r *http.Request) {
+func (s *SocketServer) PushDockerLog(w http.ResponseWriter, r *http.Request) {
 	// if r.FormValue("host") == "" || r.FormValue("host") != s.cluster.GetInstanceID() {
 	// 	w.WriteHeader(404)
 	// 	return
@@ -246,7 +246,7 @@ func (s *SocketServer) pushDockerLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
-func (s *SocketServer) pushMonitorMessage(w http.ResponseWriter, r *http.Request) {
+func (s *SocketServer) PushMonitorMessage(w http.ResponseWriter, r *http.Request) {
 	// if r.FormValue("host") == "" || r.FormValue("host") != s.cluster.GetInstanceID() {
 	// 	w.WriteHeader(404)
 	// 	return
@@ -329,7 +329,7 @@ func (s *SocketServer) pushMonitorMessage(w http.ResponseWriter, r *http.Request
 	}
 
 }
-func (s *SocketServer) pushNewMonitorMessage(w http.ResponseWriter, r *http.Request) {
+func (s *SocketServer) PushNewMonitorMessage(w http.ResponseWriter, r *http.Request) {
 	// if r.FormValue("host") == "" || r.FormValue("host") != s.cluster.GetInstanceID() {
 	// 	w.WriteHeader(404)
 	// 	return
@@ -430,21 +430,21 @@ func (s *SocketServer) reader(ws *websocket.Conn, ch chan struct{}) {
 // Run 执行
 func (s *SocketServer) Run() error {
 	s.log.Info("WebSocker Server start")
-	go s.listen()
-	go s.checkHealth()
+	//go s.listen()
+	//go s.checkHealth()
 	return nil
 }
 func (s *SocketServer) listen() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	// deprecated
-	r.Get("/event_log", s.pushEventMessage)
+	r.Get("/event_log", s.PushEventMessage)
 	// deprecated
-	r.Get("/docker_log", s.pushDockerLog)
+	r.Get("/docker_log", s.PushDockerLog)
 	// deprecated
-	r.Get("/monitor_message", s.pushMonitorMessage)
+	r.Get("/monitor_message", s.PushMonitorMessage)
 	// deprecated
-	r.Get("/new_monitor_message", s.pushNewMonitorMessage)
+	r.Get("/new_monitor_message", s.PushNewMonitorMessage)
 
 	r.Get("/monitor", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
@@ -458,9 +458,9 @@ func (s *SocketServer) listen() {
 		httputil.ReturnSuccess(r, w, s.healthInfo)
 	})
 	// new websocket pubsub
-	r.Get("/services/{serviceID}/pubsub", s.pubsub)
-	r.Get("/tenants/{tenantName}/services/{serviceID}/logs", s.getDockerLogs)
-	r.Get("/rbd-name/{serviceID}/logs", s.getDockerLogs)
+	r.Get("/services/{serviceID}/pubsub", s.Pubsub)
+	r.Get("/tenants/{tenantName}/services/{serviceID}/logs", s.GetDockerLogs)
+	r.Get("/rbd-name/{serviceID}/logs", s.GetDockerLogs)
 	//monitor setting
 	s.prometheus(r)
 	//pprof debug
