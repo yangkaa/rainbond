@@ -71,7 +71,7 @@ build::binary() {
 	docker build -t goodrain.me/golang-gcc-buildstack:${GO_VERSION} --build-arg GO_VERSION="${GO_VERSION}" -f "${BUILD_STACK_PATH}/${DOCKERFILE_BASE}" "${BUILD_STACK_PATH}"
 
 	CGO_ENABLED=1
-	if [ "$1" = "eventlog" ]; then
+	if [ "$1" = "api" ]; then
 		if [ "$GOARCH" = "arm64" ]; then
 			DOCKERFILE_BASE="Dockerfile.arm"
 		fi

@@ -2,7 +2,7 @@ FROM golang:1.19-alpine
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && apk --no-cache add pkgconfig gcc musl-dev
 
-COPY ./libzmq /opt/libzmq
+COPY libzmq /opt/libzmq
 
 ENV PKG_CONFIG_PATH /opt/libzmq/lib/pkgconfig/
 
@@ -10,7 +10,3 @@ RUN cp /opt/libzmq/include/* /usr/include/ && cp -r /opt/libzmq/share/* /usr/sha
     && cp -r /opt/libzmq/lib/* /usr/lib/
 
 WORKDIR /go
-
-    
-
-
