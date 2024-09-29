@@ -106,6 +106,7 @@ func Handler() rainbond.FuncComponent {
 
 // Router -
 func Router() rainbond.FuncComponent {
+	logrus.Infof("init router..., eventlog socket server is %+v, entry is %+v", eventlog.Default().SocketServer, eventlog.Default().Entry)
 	return func(ctx context.Context, cfg *configs.Config) error {
 		if err := controller.CreateV2RouterManager(cfg.APIConfig, grpc.Default().StatusClient); err != nil {
 			logrus.Errorf("create v2 route manager error, %v", err)

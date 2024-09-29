@@ -27,6 +27,11 @@ import (
 	"github.com/goodrain/rainbond/config/configs"
 	"github.com/goodrain/rainbond/pkg/component/es"
 	"github.com/sirupsen/logrus"
+	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"time"
 )
 
 var defaultEventlogComponent *EventlogComponent
@@ -45,40 +50,79 @@ func New() *EventlogComponent {
 
 // Start -
 func (s *EventlogComponent) Start(ctx context.Context, cfg *configs.Config) error {
-	logrus.Debug("Start run server.")
+	go func() {
+		err := func() error {
+			logrus.Debug("Start run server.")
 
-	if cfg.EventlogConfig.Conf.ElasticEnable {
-		es.New().SingleStart(cfg.EventlogConfig.Conf.ElasticSearchURL, cfg.EventlogConfig.Conf.ElasticSearchUsername, cfg.EventlogConfig.Conf.ElasticSearchPassword)
-	}
+			if cfg.EventlogConfig.Conf.ElasticEnable {
+				es.New().SingleStart(cfg.EventlogConfig.Conf.ElasticSearchURL, cfg.EventlogConfig.Conf.ElasticSearchUsername, cfg.EventlogConfig.Conf.ElasticSearchPassword)
+			}
 
-	//init new db
-	if err := db.CreateDBManager(cfg.EventlogConfig.Conf.EventStore.DB); err != nil {
-		logrus.Infof("create db manager error, %v", err)
-		return err
-	}
+			//init new db
+			if err := db.CreateDBManager(cfg.EventlogConfig.Conf.EventStore.DB); err != nil {
+				logrus.Infof("create db manager error, %v", err)
+				return err
+			}
 
-	storeManager, err := store.NewManager(cfg.EventlogConfig.Conf.EventStore, logrus.WithField("module", "MessageStore"))
-	if err != nil {
-		return err
-	}
-	healthInfo := storeManager.HealthCheck()
-	if err := storeManager.Run(); err != nil {
-		return err
-	}
-	defer storeManager.Stop()
+			storeManager, err := store.NewManager(cfg.EventlogConfig.Conf.EventStore, logrus.WithField("module", "MessageStore"))
+			if err != nil {
+				return err
+			}
+			healthInfo := storeManager.HealthCheck()
+			if err := storeManager.Run(); err != nil {
+				return err
+			}
+			defer storeManager.Stop()
 
-	s.SocketServer = web.NewSocket(cfg.EventlogConfig.Conf.WebSocket, cfg.EventlogConfig.Conf.Cluster.Discover,
-		logrus.WithField("module", "SocketServer"), storeManager, healthInfo)
-	if err := s.SocketServer.Run(); err != nil {
-		return err
-	}
-	defer s.SocketServer.Stop()
+			s.SocketServer = web.NewSocket(cfg.EventlogConfig.Conf.WebSocket, cfg.EventlogConfig.Conf.Cluster.Discover,
+				logrus.WithField("module", "SocketServer"), storeManager, healthInfo)
+			if err := s.SocketServer.Run(); err != nil {
+				return err
+			}
+			defer s.SocketServer.Stop()
 
-	s.Entry = entry.NewEntry(cfg.EventlogConfig.Conf.Entry, logrus.WithField("module", "EntryServer"), storeManager)
-	if err := s.Entry.Start(); err != nil {
-		return err
+			s.Entry = entry.NewEntry(cfg.EventlogConfig.Conf.Entry, logrus.WithField("module", "EntryServer"), storeManager)
+			if err := s.Entry.Start(); err != nil {
+				return err
+			}
+			defer s.Entry.Stop()
+			term := make(chan os.Signal)
+			signal.Notify(term, os.Interrupt, syscall.SIGTERM)
+			select {
+			case <-term:
+				logrus.Warn("Received SIGTERM, exiting gracefully...")
+			case err := <-s.SocketServer.ListenError():
+				logrus.Errorln("Error listen web socket server, exiting gracefully:", err)
+			case err := <-storeManager.Error():
+				logrus.Errorln("Store receive a error, exiting gracefully:", err)
+			}
+			logrus.Info("See you next time!")
+			return nil
+		}()
+		if err != nil {
+			panic(err)
+		}
+	}()
+	eventlogTimeout := 2
+	if os.Getenv("EVENTLOG_TIMEOUT") != "" {
+		t, err := strconv.Atoi(os.Getenv("EVENTLOG_TIMEOUT"))
+		if err == nil {
+			eventlogTimeout = t
+		}
 	}
-	defer s.Entry.Stop()
+	startTime := time.Now()
+	for {
+		if defaultEventlogComponent.Entry != nil && defaultEventlogComponent.SocketServer != nil {
+			logrus.Infof("eventlog server is running...")
+			break
+		}
+		logrus.Info("waiting for eventlog server to start...")
+		time.Sleep(5 * time.Second)
+		if time.Since(startTime) > time.Duration(eventlogTimeout)*time.Minute {
+			logrus.Error("eventlog server start timeout")
+			break
+		}
+	}
 	return nil
 }
 

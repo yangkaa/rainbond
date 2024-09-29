@@ -204,4 +204,5 @@ func (a *APIServer) SetLog() {
 		return
 	}
 	logrus.SetLevel(level)
+	logrus.SetReportCaller(true)
 }

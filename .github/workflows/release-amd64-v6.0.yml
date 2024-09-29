@@ -100,13 +100,41 @@ jobs:
           fi
           chmod +x  ./release.sh
           ./release.sh allinone
+  build-rainbond-api:
+    runs-on: ${{ github.event.inputs.os }}
+    environment: ${{ github.event.inputs.environment }}
+    strategy:
+      matrix:
+        component: [api]
+    steps:
+      - name: Pull code and Build the Docker image
+        env:
+          DISABLE_GOPROXY: true
+          # GitHub
+          DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
+          # GitLab
+          DOMESTIC_DOCKER_USERNAME: ${{ vars.DOMESTIC_DOCKER_USERNAME }}
+          DOMESTIC_DOCKER_PASSWORD: ${{ secrets.DOMESTIC_DOCKER_PASSWORD }}
+          DOMESTIC_BASE_NAME: ${{ vars.DOMESTIC_BASE_NAME }}
+          DOMESTIC_NAMESPACE: ${{ vars.DOMESTIC_NAMESPACE }}
+        run: |
+          if [ ${{ github.event.inputs.action }} == 'GitHub' ];then
+            git clone -b ${{ github.event.inputs.branch }} ${{ github.event.inputs.clone_url }}/rainbond.git
+          else
+            git clone -b ${{ github.event.inputs.branch }} $GITLAB_CLONE_URL/rainbond.git
+          fi
+          cd rainbond
+          chmod +x ./release.sh
+          ./release.sh ${{ matrix.component }} push
 
   build-rainbond-region:
     runs-on: ${{ github.event.inputs.os }}
     environment: ${{ github.event.inputs.environment }}
     strategy:
       matrix:
-        component: [api, chaos, worker, init-probe, resource-proxy]
+        component: [chaos, worker, init-probe, resource-proxy]
     steps:
       - name: Pull code and Build the Docker image
         env:
