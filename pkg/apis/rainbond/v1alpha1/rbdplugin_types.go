@@ -103,6 +103,7 @@ type RBDPluginSpec struct {
 	Icon        string   `json:"icon,omitempty"`
 	Version     string   `json:"version,omitempty"`
 	FrontedPath string   `json:"fronted_path,omitempty"`
+	Backend     string   `json:"backend,omitempty"`
 	// AccessUrls Access URL defines the accessible address of the plug-in.
 	// If this field is not set, all accessible addresses under the application will be listed in the platform.
 	AccessURLs []string `json:"access_urls,omitempty"`
