@@ -146,17 +146,24 @@ func PluginBackendProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 解析 backend_path 内容
-	backendHost, err := resolveBackendHost(plugin)
+	backend, err := resolveBackend(plugin)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to resolve backend_path content: %v", err), http.StatusInternalServerError)
 		return
 	}
-	proxy := httputil.NewSingleHostReverseProxy(backendHost)
-	r.URL.Path = chi.URLParam(r, "*")
+	proxy := httputil.NewSingleHostReverseProxy(backend)
+	// 修改 Director 来调整请求路径，直接代理到 backend，并保留请求的 path
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		proxyPath := chi.URLParam(r, "*")
+		req.URL.Path = "/" + strings.TrimLeft(proxyPath, "/")
+		req.Host = backend.Host
+	}
 	proxy.ServeHTTP(w, r)
 }
 
-func resolveBackendHost(plugin *v1alpha1.RBDPlugin) (url *url.URL, err error) {
+func resolveBackend(plugin *v1alpha1.RBDPlugin) (url *url.URL, err error) {
 	backend := plugin.Spec.Backend
 	// 路径可能为两种形式，携带环境变量的，和固定值不携带环境变量：
 	// 1. http://${WEBSERVER_HOST}:${WEBSERVER_PORT} ,这种形式下，需要从环境变量中获取值并渲染
