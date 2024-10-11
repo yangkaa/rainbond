@@ -80,6 +80,7 @@ func (v2 *V2) Routes() chi.Router {
 	r.Mount("/helm", v2.helmRouter())
 	r.Mount("/proxy-pass", v2.proxyRoute())
 	r.Get("/pods/logs", controller.GetManager().PodLogs)
+	r.Mount("/platform", v2.platformPluginsRouter())
 
 	return r
 }
