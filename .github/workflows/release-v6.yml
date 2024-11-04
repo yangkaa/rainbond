@@ -38,7 +38,7 @@ jobs:
     environment: release-v6
     strategy:
       matrix:
-        component: [api, chaos, worker, init-probe, mq]
+        component: [api]
     if: ${{ github.event.inputs.build-who == 'all' || github.event.inputs.build-who == 'region' }}
     steps:
       - name: Checkout repository
