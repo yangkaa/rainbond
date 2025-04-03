@@ -386,9 +386,17 @@ func (c *containerdImageCliImpl) ImagesPullAndPush(sourceImage, targetImage, use
 	logrus.Infof("source image %v, targetImage %v, exists %v", sourceImage, targetImage, exists)
 	if !exists {
 		hubUser, hubPass := builder.GetImageUserInfoV2(sourceImage, username, password)
-		if _, err := c.ImagePull(targetImage, hubUser, hubPass, logger, 15); err != nil {
-			printLog(logger, "error", fmt.Sprintf("pull image %s failed %v", targetImage, err), map[string]string{"step": "builder-exector", "status": "failure"})
-			return err
+		if os.Getenv("USE_SOURCEIMAGE_PASS") != "" {
+			if _, err := c.ImagePull(targetImage, hubUser, hubPass, logger, 15); err != nil {
+				printLog(logger, "error", fmt.Sprintf("pull image %s failed %v", targetImage, err), map[string]string{"step": "builder-exector", "status": "failure"})
+				return err
+			}
+		} else {
+			logrus.Infof("---------pull image %s, username %s, password %s", targetImage, username, password)
+			if _, err := c.ImagePull(targetImage, "", "", logger, 15); err != nil {
+				printLog(logger, "error", fmt.Sprintf("pull image %s failed %v", targetImage, err), map[string]string{"step": "builder-exector", "status": "failure"})
+				return err
+			}
 		}
 		if err := c.ImageTag(targetImage, sourceImage, logger, 15); err != nil {
 			printLog(logger, "error", fmt.Sprintf("change image tag %s to %s failed", targetImage, sourceImage), map[string]string{"step": "builder-exector", "status": "failure"})
