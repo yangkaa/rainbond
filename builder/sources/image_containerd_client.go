@@ -104,11 +104,13 @@ func (c *containerdImageCliImpl) ImagePull(image string, username, password stri
 	printLog(logger, "info", fmt.Sprintf("start get image:%s", image), map[string]string{"step": "pullimage"})
 	named, err := refdocker.ParseDockerRef(image)
 	if err != nil {
+		printLog(logger, "error", fmt.Sprintf("parse image %s: %v", image, err), map[string]string{"step": "pullimage"})
 		return nil, err
 	}
 	reference := named.String()
 	ongoing := NewJobs(reference)
 	ctx := namespaces.WithNamespace(context.Background(), Namespace)
+	logrus.Infof("pull image %s, username %s, password %s", reference, username, password)
 	pctx, stopProgress := context.WithCancel(ctx)
 	progress := make(chan struct{})
 
