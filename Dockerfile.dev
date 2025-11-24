@@ -1,0 +1,15 @@
+# 显式指定基础镜像
+FROM golang:1.23-alpine
+
+# 1. 设置好所有需要的环境变量（以后不用敲了）
+ENV GOPROXY=https://goproxy.cn,direct \
+    CGO_ENABLED=1 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    CGO_CFLAGS="-D_LARGEFILE64_SOURCE -D_GNU_SOURCE"
+
+# 2. 一次性安装好所有 CGO 依赖
+RUN apk add --no-cache binutils-gold gcc g++ musl-dev sqlite-dev zeromq-dev libsodium-dev
+
+# 3. 设置工作目录
+WORKDIR /go/src/github.com/goodrain/rainbond
