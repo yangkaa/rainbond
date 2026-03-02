@@ -1,0 +1,105 @@
+name: orchestrator-stage-go
+
+on:
+  workflow_call:
+    inputs:
+      feature_id:
+        required: true
+        type: string
+      engine:
+        required: true
+        type: string
+      strict_verify:
+        required: false
+        default: false
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      feature_id:
+        description: Feature ID (e.g. RB-123)
+        required: true
+        type: string
+      engine:
+        description: Engine used by orchestrator
+        required: true
+        default: opencode
+        type: choice
+        options:
+          - opencode
+          - claude
+      strict_verify:
+        description: Run stricter verification commands
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  verify-go:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Execute Go stage checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          FEATURE_ID="${{ inputs.feature_id }}"
+          ENGINE="${{ inputs.engine }}"
+          STRICT="${{ inputs.strict_verify }}"
+
+          mkdir -p /tmp/orchestrator
+          RAW_LOG="/tmp/orchestrator/raw-go-${FEATURE_ID}.log"
+          SUMMARY_JSON="/tmp/orchestrator/verify-summary-go-${FEATURE_ID}.json"
+
+          {
+            echo "feature_id=${FEATURE_ID}"
+            echo "engine=${ENGINE}"
+            echo "strict_verify=${STRICT}"
+            echo "repo=rainbond"
+            echo "stage=go"
+            echo "timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } > "${RAW_LOG}"
+
+          if [[ "${STRICT}" == "true" ]]; then
+            {
+              echo "running: go build ./..."
+              go build ./...
+              echo "running: go vet ./..."
+              go vet ./...
+            } >> "${RAW_LOG}" 2>&1
+          else
+            {
+              echo "running: go version"
+              go version
+              echo "running: go list ./..."
+              go list ./...
+            } >> "${RAW_LOG}" 2>&1
+          fi
+
+          cat > "${SUMMARY_JSON}" <<JSON
+          {
+            "feature_id": "${FEATURE_ID}",
+            "repo": "rainbond",
+            "stage": "go",
+            "engine": "${ENGINE}",
+            "strict_verify": ${STRICT},
+            "status": "passed"
+          }
+          JSON
+
+          cat "${SUMMARY_JSON}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload raw go verification log
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchestrator-raw-go-${{ inputs.feature_id }}
+          path: /tmp/orchestrator/raw-go-${{ inputs.feature_id }}.log
+
+      - name: Upload go summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchestrator-summary-go-${{ inputs.feature_id }}
+          path: /tmp/orchestrator/verify-summary-go-${{ inputs.feature_id }}.json
