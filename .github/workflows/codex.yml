@@ -1,18 +1,17 @@
 name: codex
 
 # Comment "/codex" (instead of "/claude") in an issue or comment to run the same
-# cross-repo flow with OpenAI Codex CLI, pointed at a third-party
-# OpenAI-compatible endpoint (DeepSeek / MiMo / etc.).
+# cross-repo flow with OpenAI Codex CLI.
 #
-# NOTE: Codex CLI flags and config keys change between versions. The provider
-# block and `codex exec` flags below are a known-good shape but VERIFY them
-# against the codex version pinned in the install step before relying on it.
+# IMPORTANT: current Codex only speaks the Responses API (/v1/responses). The
+# endpoint in CODEX_BASE_URL MUST support it — a Chat-Completions-only endpoint
+# (e.g. MiMo) will 404. Use OpenAI official or a Responses-API-compatible provider.
 #
 # Required repo config:
 #   secrets.CLAUDE_APP_ID / CLAUDE_APP_PRIVATE_KEY  (same GitHub App as claude.yml)
-#   secrets.CODEX_API_KEY                           (third-party key)
-#   vars.CODEX_BASE_URL                             (e.g. https://api.deepseek.com/v1)
-#   vars.CODEX_MODEL                                (e.g. deepseek-chat)
+#   secrets.CODEX_API_KEY                           (provider key)
+#   vars.CODEX_BASE_URL                             (Responses-API endpoint, e.g. https://api.openai.com/v1)
+#   vars.CODEX_MODEL                                (e.g. gpt-5-codex)
 
 on:
   issue_comment:
@@ -75,12 +74,7 @@ jobs:
           node-version: "20"
 
       - name: Install Codex CLI
-        # Pin to a version that still supports wire_api = "chat". OpenAI removed
-        # Chat Completions support around v0.92+ (fully gone ~Feb 2026), but
-        # third-party endpoints like MiMo only expose /v1/chat/completions, not
-        # /v1/responses. 0.80.0 is a known-good chat-capable release.
-        # Override via vars.CODEX_VERSION if needed.
-        run: npm install -g @openai/codex@${{ vars.CODEX_VERSION || '0.80.0' }}
+        run: npm install -g @openai/codex
 
       # Point Codex at the third-party OpenAI-compatible endpoint.
       - name: Configure Codex provider
@@ -97,10 +91,9 @@ jobs:
           name = "Third Party"
           base_url = "${CODEX_BASE_URL}"
           env_key = "CODEX_API_KEY"
-          # Most third-party endpoints only speak the Chat Completions API.
-          # Without this, Codex calls the Responses API (/v1/responses) and
-          # gets a 404. base_url should be the OpenAI-style root (e.g. .../v1).
-          wire_api = "chat"
+          # Current Codex only supports the Responses API. The provider set in
+          # CODEX_BASE_URL MUST expose /v1/responses (a chat-only endpoint 404s).
+          wire_api = "responses"
           EOF
 
       - name: Run Codex
