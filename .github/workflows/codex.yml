@@ -75,7 +75,12 @@ jobs:
           node-version: "20"
 
       - name: Install Codex CLI
-        run: npm install -g @openai/codex
+        # Pin to a version that still supports wire_api = "chat". OpenAI removed
+        # Chat Completions support around v0.92+ (fully gone ~Feb 2026), but
+        # third-party endpoints like MiMo only expose /v1/chat/completions, not
+        # /v1/responses. 0.80.0 is a known-good chat-capable release.
+        # Override via vars.CODEX_VERSION if needed.
+        run: npm install -g @openai/codex@${{ vars.CODEX_VERSION || '0.80.0' }}
 
       # Point Codex at the third-party OpenAI-compatible endpoint.
       - name: Configure Codex provider
