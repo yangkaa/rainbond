@@ -92,6 +92,10 @@ jobs:
           name = "Third Party"
           base_url = "${CODEX_BASE_URL}"
           env_key = "CODEX_API_KEY"
+          # Most third-party endpoints only speak the Chat Completions API.
+          # Without this, Codex calls the Responses API (/v1/responses) and
+          # gets a 404. base_url should be the OpenAI-style root (e.g. .../v1).
+          wire_api = "chat"
           EOF
 
       - name: Run Codex
