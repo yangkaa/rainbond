@@ -149,8 +149,10 @@ jobs:
                    * rainbond (Go):         go build ./... && go vet ./...
                    * rainbond-console (Py): make check && pytest (relevant subset)
                    * rainbond-ui (React):   yarn install && yarn build
-               - Commit using Conventional Commits, English, NO emoji and NO AI
-                 attribution / Co-authored-by lines.
+               - Commit with `git commit -s` (the -s adds the DCO Signed-off-by
+                 trailer REQUIRED by the repo's DCO check; it matches the bot git
+                 identity and is NOT AI attribution). Use Conventional Commits,
+                 English, NO emoji and NO Co-authored-by / AI attribution lines.
                - Push and open a PR:
                    gh pr create -R ${{ github.repository_owner }}/<repo> --base main
                  In the PR body, reference the issue:

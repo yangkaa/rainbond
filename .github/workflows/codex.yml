@@ -136,7 +136,8 @@ jobs:
              and a test is impractical, say so in the PR with manual steps.
              Then make the minimal correct change following that repo's CLAUDE.md, run
              its quality gate (Go: go build ./... && go vet ./...; console:
-             make check && pytest; ui: yarn install && yarn build), commit
+             make check && pytest; ui: yarn install && yarn build), commit with
+             `git commit -s` (DCO Signed-off-by trailer is REQUIRED by the repo)
              (Conventional Commits, English, no emoji, no AI attribution), push,
              and open a PR: gh pr create -R ${{ github.repository_owner }}/<repo> --base main
              referencing the issue in the body.
