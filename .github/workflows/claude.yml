@@ -91,6 +91,9 @@ jobs:
           # set above, Claude Code uses the Bearer token and ignores this.
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN || secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.app-token.outputs.token }}
+          # Print the full agent transcript (tool calls, commands, edits) to the
+          # Actions log instead of hiding it. Useful for watching/debugging runs.
+          show_full_output: true
           # --max-turns caps how long the agent runs => caps token spend.
           # --allowedTools lets the agent run git/gh/build commands non-interactively;
           #   without it every Bash call is denied (permission_denials) and nothing happens.
