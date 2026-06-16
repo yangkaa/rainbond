@@ -77,10 +77,10 @@ jobs:
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          # Point Claude Code at a third-party Anthropic-compatible endpoint.
-          # Leave the ANTHROPIC_BASE_URL var unset to use the official API.
-          # e.g. vars.ANTHROPIC_BASE_URL = https://api.deepseek.com/anthropic
-          ANTHROPIC_BASE_URL: ${{ vars.ANTHROPIC_BASE_URL }}
+          # Third-party Anthropic-compatible endpoint. Stored as a SECRET (not a
+          # var) so a private relay domain is masked in public Actions logs.
+          # Leave the secret empty to use the official Anthropic API.
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           # Bearer-auth third parties need ANTHROPIC_AUTH_TOKEN (sent as
           # "Authorization: Bearer ..."), which takes precedence over x-api-key.
           # For the OFFICIAL Anthropic API leave this secret empty and instead
@@ -91,9 +91,14 @@ jobs:
           # set above, Claude Code uses the Bearer token and ignores this.
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN || secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.app-token.outputs.token }}
-          # Print the full agent transcript (tool calls, commands, edits) to the
-          # Actions log instead of hiding it. Useful for watching/debugging runs.
-          show_full_output: true
+          # Post a live-updating progress comment on the issue (todo checklist +
+          # current action). Better than log-watching: visible on the issue and
+          # safe on public repos (it is a comment, not secret-bearing logs).
+          track_progress: true
+          # Full transcript in the Actions log ONLY on private repos. On public
+          # repos (e.g. goodrain) this auto-disables so runtime values the agent
+          # prints are not exposed in the world-readable logs.
+          show_full_output: ${{ github.event.repository.private }}
           # --max-turns caps how long the agent runs => caps token spend.
           # --allowedTools lets the agent run git/gh/build commands non-interactively;
           #   without it every Bash call is denied (permission_denials) and nothing happens.
@@ -107,9 +112,18 @@ jobs:
 
             The Rainbond platform spans three repos under the
             "${{ github.repository_owner }}" GitHub org:
-              - ${{ github.repository_owner }}/rainbond         (Go 1.23, core services / K8s)
-              - ${{ github.repository_owner }}/rainbond-console (Python 3.6 / Django 2.2, web backend)
-              - ${{ github.repository_owner }}/rainbond-ui      (React 16.8 / UMI, frontend)
+              - ${{ github.repository_owner }}/rainbond         (Go 1.23, port 8443) core services
+                (API/builder/worker); the only layer that talks to Kubernetes.
+              - ${{ github.repository_owner }}/rainbond-console (Python 3.6 / Django 2.2, port 7070)
+                web backend; serves the UI and orchestrates calls to rainbond via
+                RegionInvokeApi (HTTP to /v2/tenants/...). Shares the MySQL instance
+                with rainbond but uses a separate logical DB (no shared tables).
+              - ${{ github.repository_owner }}/rainbond-ui      (React 16.8 / UMI) frontend dashboard;
+                calls console at /console/* and /openapi/v1/*.
+
+            Request flow: rainbond-ui -> rainbond-console -> rainbond -> Kubernetes.
+            Each repo has its own CLAUDE.md and AGENTS.md with detailed conventions —
+            ALWAYS read the target repo's CLAUDE.md before changing it.
 
             The current working directory is a checkout of the rainbond (Go) repo.
 
@@ -124,6 +138,12 @@ jobs:
                    gh repo clone ${{ github.repository_owner }}/<repo> /tmp/<repo>
                  then cd into it.
                - Create branch: claude/issue-${{ github.event.issue.number }}-<short-slug>
+               - Where practical, FIRST add a regression test that reproduces the
+                 bug: it must FAIL before your change and PASS after. This proves
+                 the real problem is fixed, not just that existing tests pass.
+                 (Go: table test; console: pytest.) If the bug is purely
+                 visual/frontend and a meaningful automated test is impractical,
+                 say so in the PR and give manual verification steps instead.
                - Make the MINIMAL correct change. Follow that repo's CLAUDE.md.
                - Run the repo's quality gate BEFORE committing:
                    * rainbond (Go):         go build ./... && go vet ./...

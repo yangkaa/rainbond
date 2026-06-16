@@ -76,10 +76,11 @@ jobs:
       - name: Install Codex CLI
         run: npm install -g @openai/codex
 
-      # Point Codex at the third-party OpenAI-compatible endpoint.
+      # Point Codex at the Responses-API endpoint. base_url is a SECRET so a
+      # private relay domain stays masked in public Actions logs.
       - name: Configure Codex provider
         env:
-          CODEX_BASE_URL: ${{ vars.CODEX_BASE_URL }}
+          CODEX_BASE_URL: ${{ secrets.CODEX_BASE_URL }}
           CODEX_MODEL: ${{ vars.CODEX_MODEL }}
         run: |
           mkdir -p "$HOME/.codex"
@@ -107,9 +108,17 @@ jobs:
           ${{ github.repository }} repository.
 
           The platform spans three repos under "${{ github.repository_owner }}":
-            - ${{ github.repository_owner }}/rainbond         (Go 1.23, core / K8s)
-            - ${{ github.repository_owner }}/rainbond-console (Python 3.6 / Django 2.2)
-            - ${{ github.repository_owner }}/rainbond-ui      (React 16.8 / UMI)
+            - ${{ github.repository_owner }}/rainbond         (Go 1.23, port 8443) core services
+              (API/builder/worker); only layer that talks to Kubernetes.
+            - ${{ github.repository_owner }}/rainbond-console (Python 3.6 / Django 2.2, port 7070)
+              web backend; serves UI, orchestrates rainbond via RegionInvokeApi
+              (/v2/tenants/...). Same MySQL instance, separate logical DB.
+            - ${{ github.repository_owner }}/rainbond-ui      (React 16.8 / UMI) frontend;
+              calls console at /console/* and /openapi/v1/*.
+
+          Request flow: rainbond-ui -> rainbond-console -> rainbond -> Kubernetes.
+          Each repo has its own CLAUDE.md and AGENTS.md — read the target repo's
+          before changing it.
 
           The current directory is a checkout of the rainbond (Go) repo. GH_TOKEN
           is set and `gh` is authenticated for all three repos.
@@ -120,8 +129,12 @@ jobs:
           2. Decide which repo(s) actually need the fix (do NOT assume Go).
           3. For each repo needing a change: clone it if needed
              (gh repo clone ${{ github.repository_owner }}/<repo> /tmp/<repo>),
-             create branch codex/issue-${{ github.event.issue.number }}-<slug>,
-             make the minimal correct change following that repo's CLAUDE.md, run
+             create branch codex/issue-${{ github.event.issue.number }}-<slug>.
+             Where practical, FIRST add a regression test that reproduces the bug
+             (must FAIL before the fix, PASS after) to prove the real problem is
+             fixed — not just that existing tests pass. If purely visual/frontend
+             and a test is impractical, say so in the PR with manual steps.
+             Then make the minimal correct change following that repo's CLAUDE.md, run
              its quality gate (Go: go build ./... && go vet ./...; console:
              make check && pytest; ui: yarn install && yarn build), commit
              (Conventional Commits, English, no emoji, no AI attribution), push,
