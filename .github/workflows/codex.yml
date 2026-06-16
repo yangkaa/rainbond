@@ -1,6 +1,6 @@
 name: codex
 
-# Mention @codex (instead of @claude) in an issue or comment to run the same
+# Comment "/codex" (instead of "/claude") in an issue or comment to run the same
 # cross-repo flow with OpenAI Codex CLI, pointed at a third-party
 # OpenAI-compatible endpoint (DeepSeek / MiMo / etc.).
 #
@@ -31,17 +31,17 @@ jobs:
   codex:
     if: |
       (github.event_name == 'issue_comment' &&
-        contains(github.event.comment.body, '@codex') &&
+        contains(github.event.comment.body, '/codex') &&
         (github.event.comment.author_association == 'OWNER' ||
          github.event.comment.author_association == 'MEMBER' ||
          github.event.comment.author_association == 'COLLABORATOR')) ||
       (github.event_name == 'pull_request_review_comment' &&
-        contains(github.event.comment.body, '@codex') &&
+        contains(github.event.comment.body, '/codex') &&
         (github.event.comment.author_association == 'OWNER' ||
          github.event.comment.author_association == 'MEMBER' ||
          github.event.comment.author_association == 'COLLABORATOR')) ||
       (github.event_name == 'issues' &&
-        contains(github.event.issue.body, '@codex') &&
+        contains(github.event.issue.body, '/codex') &&
         (github.event.issue.author_association == 'OWNER' ||
          github.event.issue.author_association == 'MEMBER' ||
          github.event.issue.author_association == 'COLLABORATOR'))

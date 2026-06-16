@@ -1,6 +1,6 @@
 name: claude
 
-# Mention @claude in an issue or issue comment (in this repo) and Claude Code
+# Comment "/claude" in an issue or issue comment (in this repo) and Claude Code
 # will analyze the request, figure out which Rainbond repo actually needs the
 # fix (rainbond / rainbond-console / rainbond-ui), make the change, run that
 # repo's quality gate, and open a PR back-linked to the issue.
@@ -29,17 +29,17 @@ jobs:
     # Gate: trigger phrase present AND author has write access.
     if: |
       (github.event_name == 'issue_comment' &&
-        contains(github.event.comment.body, '@claude') &&
+        contains(github.event.comment.body, '/claude') &&
         (github.event.comment.author_association == 'OWNER' ||
          github.event.comment.author_association == 'MEMBER' ||
          github.event.comment.author_association == 'COLLABORATOR')) ||
       (github.event_name == 'pull_request_review_comment' &&
-        contains(github.event.comment.body, '@claude') &&
+        contains(github.event.comment.body, '/claude') &&
         (github.event.comment.author_association == 'OWNER' ||
          github.event.comment.author_association == 'MEMBER' ||
          github.event.comment.author_association == 'COLLABORATOR')) ||
       (github.event_name == 'issues' &&
-        contains(github.event.issue.body, '@claude') &&
+        contains(github.event.issue.body, '/claude') &&
         (github.event.issue.author_association == 'OWNER' ||
          github.event.issue.author_association == 'MEMBER' ||
          github.event.issue.author_association == 'COLLABORATOR'))
@@ -92,9 +92,11 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN || secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.app-token.outputs.token }}
           # --max-turns caps how long the agent runs => caps token spend.
+          # --allowedTools lets the agent run git/gh/build commands non-interactively;
+          #   without it every Bash call is denied (permission_denials) and nothing happens.
           # --model sets the third-party model name (e.g. deepseek-chat).
           # Set vars.ANTHROPIC_MODEL to override; defaults to the official model.
-          claude_args: "--max-turns 30 ${{ vars.ANTHROPIC_MODEL && format('--model {0}', vars.ANTHROPIC_MODEL) || '' }}"
+          claude_args: "--max-turns 50 --allowedTools Bash,Edit,MultiEdit,Write,Read,Glob,Grep,TodoWrite,WebFetch ${{ vars.ANTHROPIC_MODEL && format('--model {0}', vars.ANTHROPIC_MODEL) || '' }}"
           prompt: |
             You are an automated engineer for the Rainbond platform. Issue
             #${{ github.event.issue.number }} was filed in the
