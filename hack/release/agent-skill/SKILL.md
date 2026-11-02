@@ -70,12 +70,16 @@ done
 
 ### 第 1 步：发版准备报告（只读，不需要审批）
 
+0. 归类这个发版任务：项目按中版本分，`v6.10.3` 放 `v6.10`。用 `multica project list --output json` 找到它（没有时：
+   `multica project create --title vX.Y --status in_progress --description "X.Y 版本迭代"`），再运行
+   `multica issue update <任务> --project <项目ID> --no-start`；用 `multica label list` 查「发版」标签的 ID，再运行 `multica issue label add <任务> <标签ID>`。
+   演练任务（目标仓库不是 goodrain/rainbond）不用归类。
 1. 确认 `$TAG` 尚未发布：`gh release view $TAG -R $REPO`。已发布就停止，说明情况。
    **只看 `$REPO` 的实际状态**：Multica 里以前做过同版本的任务（例如演练）不影响本次，不要因此停下来问是否重做。
    在 `$REPO` 上没有发布就照常进行；同一版本的发版说明可以直接参考以前的任务。
 2. 收集 `$PREV` 以来合并的 PR，四个仓库都要看：goodrain/rainbond、rainbond-console、rainbond-ui、rainbond-operator。
    用 `gh api repos/<repo>/compare/$PREV...main` 拿提交，再用 `gh pr list -R <repo> --state merged --search "<sha>"` 或提交信息里的 `#编号` 对应到 PR。
-3. 查 Multica 里这个版本对应项目或标签下仍未完成的任务。
+3. 查这个版本所在迭代项目里仍未完成的任务：`multica issue list --project <项目ID> --output json`，排除本任务和状态为 done、cancelled 的，写进报告供人判断。
 4. 标出风险项，每条都附上 PR 链接：
    - **数据库变更**：console 的 `console/models/`、`www/models/`；region 的 `db/model/`、`db/mysql/`。
      注意 console 启动时会自动生成并执行迁移，删表、删字段、改类型都要重点提示。
