@@ -1,0 +1,51 @@
+name: gw-debug
+on:
+  push:
+    branches: [debug/standalone-gateway]
+jobs:
+  install:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [v6.11.0-release, v6.10.3-release]
+        n: [1, 2, 3]
+    env:
+      VERSION: ${{ matrix.version }}
+    steps:
+      - name: Start
+        run: |
+          docker run --privileged -d -p 7070:7070 -p 80:80 -p 443:443 --name=rainbond \
+            -v /opt/rainbond:/opt/rainbond -e EIP="$(hostname -I | awk '{print $1}')" \
+            -e REGION_WS_PROXY_TARGET=ws://127.0.0.1:6060 -e UUID="dbg-${GITHUB_RUN_ID}-${{ matrix.n }}" \
+            "registry.cn-hangzhou.aliyuncs.com/goodrain/rainbond:${VERSION}-k3s"
+      - name: Wait for console
+        id: wait
+        continue-on-error: true
+        run: |
+          start=$(date +%s)
+          until [ "$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:7070/)" = "200" ]; do
+            [ $(( $(date +%s) - start )) -gt 900 ] && { echo "RESULT=FAIL"; exit 1; }
+            sleep 10
+          done
+          echo "RESULT=PASS after $(( $(date +%s) - start ))s"
+      - name: Dump gateway state
+        if: always()
+        run: |
+          kc() { docker exec rainbond /bin/k3s kubectl "$@"; }
+          echo "### outcome: ${{ steps.wait.outcome }}"
+          echo "### pods"; kc get pods -n rbd-system -o wide || true
+          echo "### svc/ep rbd-app-ui"; kc get svc,endpoints,endpointslices -n rbd-system -o wide | grep -E "NAME|rbd-app-ui" || true
+          kc get endpointslices -n rbd-system -l kubernetes.io/service-name=rbd-app-ui -o yaml || true
+          echo "### apisixroutes"; kc get apisixroutes -A -o yaml || true
+          echo "### apisixupstreams"; kc get apisixupstreams -A -o yaml || true
+          gw=$(kc get pod -n rbd-system -l name=rbd-gateway -o jsonpath='{.items[0].metadata.name}')
+          for c in $(kc get pod -n rbd-system "$gw" -o jsonpath='{.spec.containers[*].name}'); do
+            echo "### container $c"
+            for p in /v1/routes /v1/upstreams /v1/stream_routes /v1/services; do
+              echo "#### control $p"; kc exec -n rbd-system "$gw" -c "$c" -- curl -s -m 5 "http://127.0.0.1:9090$p" | head -c 20000 || true; echo
+            done
+            echo "#### logs $c"; kc logs -n rbd-system "$gw" -c "$c" --tail=-1 | grep -vE 'GET /v1/healthcheck' | head -c 400000 || true
+          done
+          echo "### rbd-app-ui events"; kc get events -n rbd-system --sort-by=.lastTimestamp | grep -iE 'app-ui|gateway|apisix' | tail -50 || true
