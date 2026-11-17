@@ -19,6 +19,12 @@ jobs:
             -v /opt/rainbond:/opt/rainbond -e EIP="$(hostname -I | awk '{print $1}')" \
             -e REGION_WS_PROXY_TARGET=ws://127.0.0.1:6060 -e UUID="dbg-${GITHUB_RUN_ID}-${{ matrix.n }}" \
             "registry.cn-hangzhou.aliyuncs.com/goodrain/rainbond:${VERSION}-k3s"
+      - name: Watch rbd-app-ui endpoints versions
+        run: |
+          nohup bash -c 'until docker exec rainbond /bin/k3s kubectl get ns rbd-system >/dev/null 2>&1; do sleep 2; done
+            docker exec rainbond /bin/k3s kubectl get endpoints -n rbd-system -w \
+              -o custom-columns=NAME:.metadata.name,RV:.metadata.resourceVersion,READY:.subsets[*].addresses[*].ip,NOTREADY:.subsets[*].notReadyAddresses[*].ip' \
+            > /tmp/ep-watch.txt 2>&1 &
       - name: Wait for console
         id: wait
         continue-on-error: true
@@ -49,10 +55,27 @@ jobs:
           print("header", r.get("header"))
           for kv in r.get("kvs",[]): print(base64.b64decode(kv["key"]).decode(), kv.get("mod_revision"), base64.b64decode(kv["value"]).decode()[:600])' || true
           done
+      - name: Endpoint versions seen
+        if: always()
+        run: grep -E "^(NAME|rbd-app-ui) " /tmp/ep-watch.txt || cat /tmp/ep-watch.txt | tail -20
+      - name: Bump endpoints and retry
+        id: bump
+        if: steps.wait.outcome == 'failure'
+        run: |
+          kc() { docker exec rainbond /bin/k3s kubectl "$@"; }
+          kc annotate endpoints -n rbd-system rbd-app-ui debug/bump="$(date +%s)" --overwrite
+          kc get endpoints -n rbd-system rbd-app-ui -o jsonpath='{.metadata.resourceVersion}'; echo
+          start=$(date +%s)
+          until [ "$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:7070/)" = "200" ]; do
+            if [ $(( $(date +%s) - start )) -gt 90 ]; then echo "BUMP_FAIL"; exit 0; fi
+            sleep 5
+          done
+          echo "BUMP_PASS after $(( $(date +%s) - start ))s"
       - name: Restart gateway and retry
         if: steps.wait.outcome == 'failure'
         run: |
           kc() { docker exec rainbond /bin/k3s kubectl "$@"; }
+          [ "$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:7070/)" = "200" ] && { echo "already fixed by bump"; exit 0; }
           kc delete pod -n rbd-system -l name=rbd-gateway --wait=false
           start=$(date +%s)
           until [ "$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:7070/)" = "200" ]; do
