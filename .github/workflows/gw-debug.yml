@@ -5,14 +5,13 @@ on:
 jobs:
   install:
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        version: [v6.11.0-release, v6.10.3-release]
-        n: [1, 2, 3]
+        n: [1, 2, 3, 4, 5, 6]
     env:
-      VERSION: ${{ matrix.version }}
+      VERSION: v6.11.0-release
     steps:
       - name: Start
         run: |
@@ -26,26 +25,38 @@ jobs:
         run: |
           start=$(date +%s)
           until [ "$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:7070/)" = "200" ]; do
-            [ $(( $(date +%s) - start )) -gt 900 ] && { echo "RESULT=FAIL"; exit 1; }
+            if [ $(( $(date +%s) - start )) -gt 720 ]; then echo "OUTCOME_FAIL"; exit 1; fi
             sleep 10
           done
-          echo "RESULT=PASS after $(( $(date +%s) - start ))s"
+          echo "OUTCOME_PASS after $(( $(date +%s) - start ))s"
       - name: Dump gateway state
         if: always()
         run: |
-          kc() { docker exec rainbond /bin/k3s kubectl "$@"; }
-          echo "### outcome: ${{ steps.wait.outcome }}"
-          echo "### pods"; kc get pods -n rbd-system -o wide || true
-          echo "### svc/ep rbd-app-ui"; kc get svc,endpoints,endpointslices -n rbd-system -o wide | grep -E "NAME|rbd-app-ui" || true
-          kc get endpointslices -n rbd-system -l kubernetes.io/service-name=rbd-app-ui -o yaml || true
-          echo "### apisixroutes"; kc get apisixroutes -A -o yaml || true
-          echo "### apisixupstreams"; kc get apisixupstreams -A -o yaml || true
-          gw=$(kc get pod -n rbd-system -l name=rbd-gateway -o jsonpath='{.items[0].metadata.name}')
-          for c in $(kc get pod -n rbd-system "$gw" -o jsonpath='{.spec.containers[*].name}'); do
-            echo "### container $c"
-            for p in /v1/routes /v1/upstreams /v1/stream_routes /v1/services; do
-              echo "#### control $p"; kc exec -n rbd-system "$gw" -c "$c" -- curl -s -m 5 "http://127.0.0.1:9090$p" | head -c 20000 || true; echo
-            done
-            echo "#### logs $c"; kc logs -n rbd-system "$gw" -c "$c" --tail=-1 | grep -vE 'GET /v1/healthcheck' | head -c 400000 || true
+          d() { docker exec rainbond "$@"; }
+          kc() { d /bin/k3s kubectl "$@"; }
+          echo "### outcome ${{ steps.wait.outcome }}"
+          kc get endpoints -n rbd-system rbd-app-ui -o wide || true
+          kc get endpointslices -n rbd-system -l kubernetes.io/service-name=rbd-app-ui -o jsonpath='{.items[0].metadata.annotations}' || true; echo
+          for p in /v1/routes /v1/upstreams /v1/stream_routes /v1/services; do
+            echo "### control $p"; d curl -s -m 5 "http://127.0.0.1:9090$p" | head -c 30000; echo
           done
-          echo "### rbd-app-ui events"; kc get events -n rbd-system --sort-by=.lastTimestamp | grep -iE 'app-ui|gateway|apisix' | tail -50 || true
+          for pre in /apisix/upstreams/ /apisix/stream_routes/; do
+            echo "### etcd $pre"
+            k=$(printf '%s' "$pre" | base64 -w0); e=$(printf '%s' "${pre%/}0" | base64 -w0)
+            d curl -s -m 5 -X POST http://127.0.0.1:12379/v3/kv/range -d "{\"key\":\"$k\",\"range_end\":\"$e\"}" \
+              | python3 -c 'import sys,json,base64
+          r=json.load(sys.stdin)
+          print("header", r.get("header"))
+          for kv in r.get("kvs",[]): print(base64.b64decode(kv["key"]).decode(), kv.get("mod_revision"), base64.b64decode(kv["value"]).decode()[:600])' || true
+          done
+      - name: Restart gateway and retry
+        if: steps.wait.outcome == 'failure'
+        run: |
+          kc() { docker exec rainbond /bin/k3s kubectl "$@"; }
+          kc delete pod -n rbd-system -l name=rbd-gateway --wait=false
+          start=$(date +%s)
+          until [ "$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:7070/)" = "200" ]; do
+            if [ $(( $(date +%s) - start )) -gt 300 ]; then echo "RESTART_FAIL"; exit 0; fi
+            sleep 10
+          done
+          echo "RESTART_PASS after $(( $(date +%s) - start ))s"
